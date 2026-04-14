@@ -26,11 +26,11 @@ jobs:
             --env UV_INSTALL_DIR=/usr/local \
             --volume ./:/app \
             clickable/ci-ut24.04-1.x-arm64:latest \
-            bash -c "cd /app && clickable build --arch arm64"
+            bash -c "cd /app && clickable build"
 
       - name: Upload click package
         uses: actions/upload-artifact@v4
         with:
-          name: disports-arm64-${{ github.sha }}
-          path: build/aarch64-linux-gnu/app/*.click
+          name: disports-${{ github.sha }}
+          path: build/all/app/*.click
           retention-days: 30
