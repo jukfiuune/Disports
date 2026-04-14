@@ -24,8 +24,9 @@ QtObject {
     property int lastConnectivityStatus: Connectivity.status
     property string qrStatusText:      ""
     property bool pythonReady:         false
-    property string startupPhase:      "initializing" // initializing | checking | offline | loaded
+    property string startupPhase:      "initializing" // initializing | checking | syncing | offline | loaded
     property bool isWideLayout:        false
+    property int sidebarRevision:      0
     // When true, skip Lomiri Connectivity offline gate (clickable desktop / DISPORTS_IGNORE_CONNECTIVITY).
     property bool ignoreConnectivityGate: false
 }

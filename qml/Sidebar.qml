@@ -1,20 +1,11 @@
 /*
  * Sidebar.qml
  *
- * Narrow vertical rail on the left of the main page.
- *
- *  ┌────────┐
- *  │  DMs   │  ← pinned, always visible
- *  ├────────┤
- *  │  UT   │
- *  │  PY   │  ← scrollable ListView; folders (collapsible) + servers
- *  │  LM   │
- *  │  ...  │
- *  └────────┘
- *
- * Signals:
- *   dmSelected()
- *   serverSelected(string id, string name)
+ * Single scrollable rail for:
+ *   1. DM home button
+ *   2. unread DM avatars/groups
+ *   3. divider
+ *   4. servers / folders
  */
 
 import QtQuick 2.7
@@ -24,15 +15,22 @@ Item {
     id: sidebar
     width: units.gu(7)
 
-    property alias servers: serverList.model
+    property var servers
+    property var dmChannels
     property string activeMode: "dm"
     property string activeServerId: ""
+    property string activeChannelId: ""
     property int dmUnreadCount: 0
+    property int revision: 0
+    property bool startupDone: false
+    property int _savedHeaderHeight: 0
 
     // folderKey -> expanded (true) / collapsed (false or missing)
     property var folderExpanded: ({})
+    property var unreadDmItems: []
 
     signal dmSelected()
+    signal dmChannelSelected(string channelId, string name)
     signal serverSelected(string id, string name)
 
     function isFolderOpen(key) {
@@ -52,91 +50,173 @@ Item {
         sidebar.folderExpanded = o
     }
 
-    // Thin right border
+    function rebuildUnreadDmItems() {
+        _savedHeaderHeight = railList.headerItem ? Math.round(railList.headerItem.height) : 0
+        var items = []
+        var i
+        if (!dmChannels) {
+            unreadDmItems = items
+            return
+        }
+        for (i = 0; i < dmChannels.count; i++) {
+            var row = dmChannels.get(i)
+            var unread = Number(row.unread || 0)
+            if (unread <= 0)
+                continue
+            items.push({
+                "channelId": row.channelId || "",
+                "name": row.name || "",
+                "abbr": row.abbr || "",
+                "iconUrl": row.iconUrl || "",
+                "iconName": row.iconName || "",
+                "unread": unread,
+                "unreadKind": row.unreadKind || "count"
+            })
+        }
+        unreadDmItems = items
+    }
+
+    onDmChannelsChanged: rebuildUnreadDmItems()
+    onRevisionChanged: rebuildUnreadDmItems()
+    onUnreadDmItemsChanged: {
+        if (!startupDone) {
+            Qt.callLater(function() { railList.contentY = 0 })
+        } else if (railList.contentY > 0) {
+            // Anchor the visible content by compensating for header height change
+            var savedY = railList.contentY
+            var savedH = _savedHeaderHeight
+            Qt.callLater(function() {
+                var newH = railList.headerItem ? Math.round(railList.headerItem.height) : 0
+                railList.contentY = Math.max(0, savedY + (newH - savedH))
+            })
+        }
+    }
+    Component.onCompleted: {
+        rebuildUnreadDmItems()
+        Qt.callLater(function() {
+            railList.contentY = 0
+            startupDone = true
+        })
+    }
+
+    Connections {
+        target: sidebar.dmChannels
+        function onCountChanged() { sidebar.rebuildUnreadDmItems() }
+    }
+
     Rectangle {
         anchors { top: parent.top; bottom: parent.bottom; right: parent.right }
         width: units.dp(1)
         color: theme.palette.normal.base
     }
 
-    // ── DM button + divider — pinned to top, never scrolls ───────────────
-    Column {
-        id: topSection
-        anchors {
-            top: parent.top
-            left: parent.left
-            right: parent.right
-            topMargin: units.gu(1)
-        }
-        spacing: units.gu(0.5)
+    ListView {
+        id: railList
+        anchors.fill: parent
+        anchors.topMargin: units.gu(1)
+        anchors.bottomMargin: units.gu(0.5)
+        model: sidebar.servers
+        spacing: 0
+        clip: true
+        Component.onCompleted: Qt.callLater(function() { railList.contentY = 0 })
+        onModelChanged: Qt.callLater(function() { railList.contentY = 0 })
 
-        Item {
-            width: parent.width
-            height: sidebar.width
+        header: Column {
+            width: railList.width
+            spacing: units.gu(0.5)
 
-            Rectangle {
-                anchors.fill: parent
-                color: dmMouse.pressed || sidebar.activeMode === "dm"
-                       ? theme.palette.highlighted.base
-                       : "transparent"
-            }
+            Item {
+                width: parent.width
+                height: sidebar.width
 
-            SidebarIcon {
-                anchors.centerIn: parent
-                iconName: "contact"
-                label: i18n.tr("DMs")
-                showTileBackground: true
-            }
+                Rectangle {
+                    anchors.fill: parent
+                    color: dmMouse.pressed || sidebar.activeMode === "dm"
+                           ? theme.palette.highlighted.base
+                           : "transparent"
+                }
 
-            UnreadBadge {
-                count: sidebar.dmUnreadCount
-                anchors {
-                    bottom: parent.bottom
-                    right: parent.right
-                    bottomMargin: units.gu(0.5)
-                    rightMargin: units.gu(0.5)
+                SidebarIcon {
+                    anchors.centerIn: parent
+                    iconName: "contact"
+                    label: i18n.tr("DMs")
+                    showTileBackground: true
+                }
+
+                MouseArea {
+                    id: dmMouse
+                    anchors.fill: parent
+                    onClicked: sidebar.dmSelected()
                 }
             }
 
-            MouseArea {
-                id: dmMouse
-                anchors.fill: parent
-                onClicked: sidebar.dmSelected()
+            Repeater {
+                model: sidebar.unreadDmItems
+
+                delegate: Item {
+                    width: railList.width
+                    height: sidebar.width
+
+                    readonly property bool selected: sidebar.activeMode === "dm"
+                                                     && sidebar.activeChannelId === (modelData.channelId || "")
+
+                    Rectangle {
+                        anchors.fill: parent
+                        color: dmEntryMouse.pressed || selected
+                               ? theme.palette.highlighted.base
+                               : "transparent"
+                    }
+
+                    SidebarIcon {
+                        anchors.centerIn: parent
+                        width: units.gu(5)
+                        height: width
+                        imageSource: modelData.iconUrl || ""
+                        iconName: modelData.iconName || ""
+                        label: modelData.abbr || ""
+                    }
+
+                    UnreadBadge {
+                        count: modelData.unread || 0
+                        kind: modelData.unreadKind || ((modelData.unread || 0) > 0 ? "count" : "none")
+                        anchors {
+                            bottom: parent.bottom
+                            right: parent.right
+                            bottomMargin: units.gu(0.5)
+                            rightMargin: units.gu(0.5)
+                        }
+                    }
+
+                    MouseArea {
+                        id: dmEntryMouse
+                        anchors.fill: parent
+                        onClicked: sidebar.dmChannelSelected(modelData.channelId || "", modelData.name || "")
+                    }
+                }
+            }
+
+            Rectangle {
+                width: units.gu(4)
+                height: units.dp(1)
+                anchors.horizontalCenter: parent.horizontalCenter
+                color: theme.palette.normal.base
+                visible: true
+            }
+
+            Item {
+                width: parent.width
+                height: units.gu(0.5)
             }
         }
 
-        Rectangle {
-            width: units.gu(4)
-            height: units.dp(1)
-            anchors.horizontalCenter: parent.horizontalCenter
-            color: theme.palette.normal.base
-            visible: true
-        }
-    }
-
-    // ── Server icons — scrollable ListView ───────────────────────────────
-    ListView {
-        id: serverList
-        anchors {
-            top: topSection.bottom
-            bottom: parent.bottom
-            left: parent.left
-            right: parent.right
-            topMargin: units.gu(1)
-        }
-        spacing: 0
-        clip: true
-
         delegate: Item {
             id: del
-            width: serverList.width
+            width: railList.width
             readonly property bool isFH: model.itemType === "folderHeader"
             readonly property bool isSrv: model.itemType === "server"
             readonly property string fk: model.folderKey || ""
             readonly property bool srvInFolder: isSrv && fk !== ""
             readonly property bool srvVisible: isSrv && (!srvInFolder || sidebar.isFolderOpen(fk))
-            // PyOtherSide cannot pass nested lists through ListModel roles.
-            // Python sends these as newline-delimited strings; split here.
             readonly property var previewUrls: {
                 var s = model.previewIconUrls || ""
                 return s !== "" ? s.split("\n") : []
@@ -149,7 +229,7 @@ Item {
                 var n = Math.min(4, Math.max(previewUrls.length, previewAbbrs.length))
                 return (n > 0) ? n : 0
             }
-
+            readonly property bool hasFolderColor: (model.folderColorHex && String(model.folderColorHex).length > 1)
 
             height: {
                 if (isFH) {
@@ -163,9 +243,6 @@ Item {
             }
             visible: height > 0
 
-            readonly property bool hasFolderColor: (model.folderColorHex && String(model.folderColorHex).length > 1)
-
-            // ── Folder header (collapsed = 2×2 preview; expanded = thin title bar) ──
             Item {
                 anchors.fill: parent
                 visible: isFH
@@ -185,7 +262,6 @@ Item {
                     onClicked: sidebar.toggleFolder(model.folderKey)
                 }
 
-                // Collapsed: up to four small server previews
                 Item {
                     anchors.fill: parent
                     anchors.leftMargin: fhStripe.width
@@ -204,6 +280,7 @@ Item {
                             delegate: Item {
                                 width: (previewGrid.width - previewGrid.spacing) / 2
                                 height: (previewGrid.height - previewGrid.spacing) / 2
+
                                 SidebarIcon {
                                     anchors.centerIn: parent
                                     width: Math.min(parent.width, parent.height) * 0.9
@@ -217,6 +294,7 @@ Item {
 
                     UnreadBadge {
                         count: model.folderUnread || 0
+                        kind: model.folderUnreadKind || ((model.folderUnread || 0) > 0 ? "count" : "none")
                         anchors {
                             bottom: parent.bottom
                             right: parent.right
@@ -226,7 +304,6 @@ Item {
                     }
                 }
 
-                // Expanded: compact bar (stripe + title); servers below keep their own stripes
                 Rectangle {
                     anchors.fill: parent
                     anchors.leftMargin: fhStripe.width
@@ -265,7 +342,6 @@ Item {
                 }
             }
 
-            // ── Server row (full icon; colored rail when inside a folder) ──
             Item {
                 id: serverRow
                 anchors.fill: parent
@@ -294,6 +370,7 @@ Item {
                 Item {
                     anchors.fill: parent
                     anchors.leftMargin: srvInFolder ? srvStripe.width : 0
+
                     SidebarIcon {
                         anchors.centerIn: parent
                         width: units.gu(5)
@@ -305,6 +382,7 @@ Item {
 
                 UnreadBadge {
                     count: model.unread || 0
+                    kind: model.unreadKind || ((model.unread || 0) > 0 ? "count" : "none")
                     anchors {
                         bottom: parent.bottom
                         right: parent.right
@@ -327,7 +405,7 @@ Item {
         Rectangle {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: units.gu(3)
-            visible: serverList.contentHeight > serverList.height
+            visible: railList.contentHeight > railList.height
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "transparent" }
                 GradientStop { position: 1.0; color: theme.palette.normal.background }

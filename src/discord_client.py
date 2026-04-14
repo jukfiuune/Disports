@@ -139,5 +139,9 @@ def ack_message(channel_id: str, message_id: str) -> dict:
     return _client.ack_message(channel_id, message_id)
 
 
+def mark_seen(channel_id: str, message_id: str) -> dict:
+    return _client.mark_seen(channel_id, message_id)
+
+
 def set_active_channel(channel_id: str) -> bool:
     return _client.set_active_channel(channel_id)

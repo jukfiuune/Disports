@@ -50,8 +50,8 @@ QtObject {
                 appState.loginError = ""
                 appState.qrImageSource = ""
                 appState.qrStatusText = ""
+                appState.startupPhase = "syncing"
                 python.call("discord_client.connect_gateway", [], function() {})
-                appState.startupPhase = "loaded"
             })
         })
     }
@@ -88,6 +88,7 @@ QtObject {
         appState.replyMessageId = ""
         appState.replyAuthor = ""
         appState.replyBody = ""
+        appState.sidebarRevision += 1
         
         serverModel.clear()
         dmContactModel.clear()

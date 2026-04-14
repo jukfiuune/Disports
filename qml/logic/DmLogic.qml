@@ -14,11 +14,14 @@ QtObject {
 
         for (i = 0; i < dmContactModel.count; i++) {
             var contact = dmContactModel.get(i)
-            if (contact.unread > 0) dmUnreads++
+            dmUnreads += Number(contact.unread || 0)
             merged.push({
                 "channelId": contact.channelId || "",
                 "name": contact.name || "",
+                "abbr": contact.abbr || "",
+                "iconUrl": contact.iconUrl || "",
                 "unread": contact.unread || 0,
+                "unreadKind": contact.unreadKind || ((contact.unread || 0) > 0 ? "count" : "none"),
                 "itemType": "contact",
                 "status": contact.status || "offline",
                 "iconName": "",
@@ -29,11 +32,14 @@ QtObject {
 
         for (i = 0; i < dmGroupModel.count; i++) {
             var group = dmGroupModel.get(i)
-            if (group.unread > 0) dmUnreads++
+            dmUnreads += Number(group.unread || 0)
             merged.push({
                 "channelId": group.channelId || "",
                 "name": group.name || "",
+                "abbr": group.abbr || "",
+                "iconUrl": group.iconUrl || "",
                 "unread": group.unread || 0,
+                "unreadKind": group.unreadKind || ((group.unread || 0) > 0 ? "count" : "none"),
                 "itemType": "group",
                 "status": "",
                 "iconName": "contact-group",
@@ -52,6 +58,7 @@ QtObject {
 
         chatLogic.replaceModel(dmChannelModel, merged)
         appState.totalDmUnread = dmUnreads
+        appState.sidebarRevision += 1
     }
 
     function updateContactStatus(userId, status) {

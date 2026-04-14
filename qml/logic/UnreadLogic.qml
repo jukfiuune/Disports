@@ -37,7 +37,8 @@ QtObject {
     function recomputeFolderUnreadTotals() {
         if (!serverModel)
             return
-        var sums = {}
+        var counts = {}
+        var dots = {}
         var i
         for (i = 0; i < serverModel.count; i++) {
             var row = serverModel.get(i)
@@ -46,14 +47,21 @@ QtObject {
             var fk = row.folderKey || ""
             if (fk === "")
                 continue
-            var u = row.unread || 0
-            sums[fk] = (sums[fk] || 0) + u
+            var kind = row.unreadKind || "none"
+            var u = Number(row.unread || 0)
+            if (kind === "count")
+                counts[fk] = (counts[fk] || 0) + u
+            if (kind !== "none")
+                dots[fk] = true
         }
         for (i = 0; i < serverModel.count; i++) {
             var h = serverModel.get(i)
             if (h.itemType !== "folderHeader" || !h.folderKey)
                 continue
-            serverModel.setProperty(i, "folderUnread", sums[h.folderKey] || 0)
+            var total = counts[h.folderKey] || 0
+            var kindOut = total > 0 ? "count" : (dots[h.folderKey] ? "dot" : "none")
+            serverModel.setProperty(i, "folderUnread", total)
+            serverModel.setProperty(i, "folderUnreadKind", kindOut)
         }
     }
 
@@ -67,6 +75,7 @@ QtObject {
             for (i = 0; i < serverModel.count; i++) {
                 if (serverModel.get(i).serverId === data.guildId) {
                     serverModel.setProperty(i, "unread", data.guildUnread || 0)
+                    serverModel.setProperty(i, "unreadKind", data.guildUnreadKind || ((data.guildUnread || 0) > 0 ? "count" : "none"))
                     break
                 }
             }
@@ -75,6 +84,8 @@ QtObject {
         if (entry && entry.model && entry.index < entry.model.count) {
             if (entry.model.get(entry.index).channelId === cId) {
                 entry.model.setProperty(entry.index, "unread", unread)
+                entry.model.setProperty(entry.index, "unreadKind", data.unreadKind || ((unread || 0) > 0 ? "count" : "none"))
+                appState.sidebarRevision += 1
                 recomputeFolderUnreadTotals()
                 return
             }
@@ -86,12 +97,15 @@ QtObject {
             for (i = 0; i < mod.count; i++) {
                 if (mod.get(i).channelId === cId) {
                     mod.setProperty(i, "unread", unread)
+                    mod.setProperty(i, "unreadKind", data.unreadKind || ((unread || 0) > 0 ? "count" : "none"))
                     rebuildChannelIndex()
+                    appState.sidebarRevision += 1
                     recomputeFolderUnreadTotals()
                     return
                 }
             }
         }
+        appState.sidebarRevision += 1
         recomputeFolderUnreadTotals()
     }
 }

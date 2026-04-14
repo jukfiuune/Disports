@@ -45,6 +45,8 @@ MainView {
             chatLogic.replaceModel(dmContactModel, data.dmContacts || [])
             chatLogic.replaceModel(dmGroupModel, data.dmGroups || [])
             dmLogic.rebuildDmChannelModel()
+            if (appState.authenticated)
+                appState.startupPhase = "loaded"
         }
         onPrivateChannels: function(data) {
             chatLogic.replaceModel(dmContactModel, data.dmContacts || [])
@@ -61,8 +63,10 @@ MainView {
         onMessageCreate: function(msg) {
             appState.typingNotice = ""
             chatLogic.upsertMessage(msg)
-            if (appSettings.syncReadReceipts && msg.channelId === appState.activeChannelId) {
-                pythonBridge.call("discord_client.ack_message", [msg.channelId, msg.messageId], function(){});
+            if (msg.channelId === appState.activeChannelId) {
+                pythonBridge.call("discord_client.mark_seen", [msg.channelId, msg.messageId], function(){});
+                if ((msg.authorId || "") !== appState.myUserId)
+                    pythonBridge.call("discord_client.ack_message", [msg.channelId, msg.messageId], function(){});
             }
         }
         onChannelUnread: function(data) { unreadLogic.applyChannelUnread(data) }
@@ -158,7 +162,6 @@ MainView {
         property string token: ""
         property int themeMode: 2
         property string uitkTheme: ""
-        property bool syncReadReceipts: false
     }
 
     // ── Shared models ─────────────────────────────────────────────────────
@@ -253,10 +256,17 @@ MainView {
                         id: sidebar
                         height: parent.height
                         servers: serverModel
+                        dmChannels: dmChannelModel
                         activeMode: appState.mode
                         activeServerId: appState.activeServerId
+                        activeChannelId: appState.activeChannelId
                         dmUnreadCount: appState.totalDmUnread
+                        revision: appState.sidebarRevision
                         onDmSelected: { appState.mode = "dm" }
+                        onDmChannelSelected: function(channelId, name) {
+                            appState.mode = "dm"
+                            chatLogic.openChat(channelId, name)
+                        }
                         onServerSelected: function(id, name) { navigationLogic.selectServer(id, name) }
                     }
 

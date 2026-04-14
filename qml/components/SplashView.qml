@@ -5,7 +5,7 @@ Rectangle {
     id: splashView
     anchors.fill: parent
     property string startupPhase: ""
-    visible: startupPhase === "initializing" || startupPhase === "checking"
+    visible: startupPhase === "initializing" || startupPhase === "checking" || startupPhase === "syncing"
     color: "#1f1f1f"
     z: 10000
 
@@ -31,7 +31,13 @@ Rectangle {
             }
 
             Label {
-                text: splashView.startupPhase === "initializing" ? i18n.tr("Starting Disports…") : i18n.tr("Signing in…")
+                text: {
+                    if (splashView.startupPhase === "initializing")
+                        return i18n.tr("Starting Disports…")
+                    if (splashView.startupPhase === "syncing")
+                        return i18n.tr("Loading your conversations…")
+                    return i18n.tr("Signing in…")
+                }
                 color: "white"
                 font.pixelSize: units.gu(1.5)
             }

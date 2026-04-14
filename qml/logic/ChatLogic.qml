@@ -29,10 +29,12 @@ QtObject {
             replaceModel(chatMessageModel, messages)
             if (!appState.isWideLayout && pageStack.currentPage.objectName !== "chatPage")
                 pageStack.push(chatPageComp)
-                
-            if (appSettings.syncReadReceipts && messages.length > 0) {
-                var latestId = messages[messages.length - 1].messageId;
-                python.call("discord_client.ack_message", [channelId, latestId], function(){});
+
+            if (messages.length > 0) {
+                var latestId = messages[0].messageId
+                python.call("discord_client.mark_seen", [channelId, latestId], function(){})
+                if ((messages[0].authorId || "") !== appState.myUserId)
+                    python.call("discord_client.ack_message", [channelId, latestId], function(){})
             }
         })
     }

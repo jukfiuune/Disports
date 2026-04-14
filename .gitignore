@@ -176,7 +176,10 @@ pyrightconfig.json
 
 CLAUDE.md
 claude/
+.codex
 
 .envrc
 
 .tmp/**
+
+help/

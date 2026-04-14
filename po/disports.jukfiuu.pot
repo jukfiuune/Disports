@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-12 22:05+0000\n"
+"POT-Creation-Date: 2026-04-14 18:44+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:44 ../qml/SettingsPage.qml:38
+#: ../qml/ChatPage.qml:44 ../qml/SettingsPage.qml:37
 msgid "Back"
 msgstr ""
 
@@ -109,31 +109,31 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/Main.qml:80
+#: ../qml/Main.qml:84
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:83
+#: ../qml/Main.qml:87
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:89
+#: ../qml/Main.qml:93
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:236 disports.desktop.in.h:1
+#: ../qml/Main.qml:239 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:240 ../qml/SettingsPage.qml:34
+#: ../qml/Main.qml:243 ../qml/SettingsPage.qml:33
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:324
+#: ../qml/Main.qml:334
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:329
+#: ../qml/Main.qml:339
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -189,28 +189,19 @@ msgstr ""
 msgid "Dark"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:59
+#: ../qml/SettingsPage.qml:58
 msgid "Theme"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:111
-msgid "Sync read receipts"
-msgstr ""
-
-#: ../qml/SettingsPage.qml:127
-msgid ""
-"Warning: Syncing read receipts might ban your account. Use at your own risk."
-msgstr ""
-
-#: ../qml/SettingsPage.qml:143
+#: ../qml/SettingsPage.qml:97
 msgid "Log out"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:157
+#: ../qml/SettingsPage.qml:111
 msgid "Disports — a Discord client for Ubuntu Touch"
 msgstr ""
 
-#: ../qml/Sidebar.qml:87
+#: ../qml/Sidebar.qml:142
 msgid "DMs"
 msgstr ""
 
@@ -234,12 +225,16 @@ msgstr ""
 msgid "Retry"
 msgstr ""
 
-#: ../qml/components/SplashView.qml:34 ../qml/logic/AuthLogic.qml:23
-msgid "Signing in…"
+#: ../qml/components/SplashView.qml:36
+msgid "Starting Disports…"
 msgstr ""
 
-#: ../qml/components/SplashView.qml:34
-msgid "Starting Disports…"
+#: ../qml/components/SplashView.qml:38
+msgid "Loading your conversations…"
+msgstr ""
+
+#: ../qml/components/SplashView.qml:39 ../qml/logic/AuthLogic.qml:23
+msgid "Signing in…"
 msgstr ""
 
 #: ../qml/logic/AuthLogic.qml:32
@@ -250,26 +245,26 @@ msgstr ""
 msgid "Could not save login securely."
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:104
+#: ../qml/logic/AuthLogic.qml:105
 msgid "Generating QR code…"
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:107
+#: ../qml/logic/AuthLogic.qml:108
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:134
+#: ../qml/logic/ChatLogic.qml:136
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:136
+#: ../qml/logic/ChatLogic.qml:138
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:138
+#: ../qml/logic/ChatLogic.qml:140
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:142
+#: ../qml/logic/ChatLogic.qml:144
 msgid "Message"
 msgstr ""

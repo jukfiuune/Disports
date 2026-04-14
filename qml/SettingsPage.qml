@@ -27,7 +27,6 @@ Page {
     Settings {
         id: appSettings
         property int themeMode: 2
-        property bool syncReadReceipts: false
     }
 
     header: PageHeader {
@@ -83,51 +82,6 @@ Page {
                             themeChooser.selectedIndex = i
                             break
                         }
-                    }
-                }
-            }
-
-            Rectangle {
-                width: parent.width; height: units.dp(1)
-                color: theme.palette.normal.base
-            }
-
-            ListItem {
-                divider.visible: false
-                width: parent.width
-                height: layout.height + units.gu(2)
-                
-                Column {
-                    id: layout
-                    anchors {
-                        left: parent.left; right: parent.right
-                        verticalCenter: parent.verticalCenter
-                    }
-                    spacing: units.gu(1)
-
-                    Row {
-                        width: parent.width
-                        Label {
-                            text: i18n.tr("Sync read receipts")
-                            font.bold: true
-                            width: parent.width - syncSwitch.width - units.gu(1)
-                            anchors.verticalCenter: parent.verticalCenter
-                        }
-                        Switch {
-                            id: syncSwitch
-                            checked: appSettings.syncReadReceipts
-                            onCheckedChanged: {
-                                appSettings.syncReadReceipts = checked
-                            }
-                        }
-                    }
-
-                    Label {
-                        width: parent.width
-                        text: i18n.tr("Warning: Syncing read receipts might ban your account. Use at your own risk.")
-                        wrapMode: Text.WordWrap
-                        color: "#ED3146" // Ubuntu red
-                        font.pixelSize: units.gu(1.2)
                     }
                 }
             }

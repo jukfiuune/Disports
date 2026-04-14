@@ -69,7 +69,7 @@ class DiscordState:
         self.users: dict[str, dict[str, Any]] = {}
         self.presences: dict[str, str] = {}
         self.active_channel_id: str | None = None
-        self.read_states: dict[str, str] = {}
+        self.read_states: dict[str, dict[str, Any]] = {}
         self.session_start_id: str = str(int((time.time() * 1000) - 1420070400000) << 22)
         self.read_states_file = os.path.join(
             os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share")),
@@ -80,6 +80,9 @@ class DiscordState:
         self._user_settings_cache: dict[str, Any] = {}
         self.guild_positions_raw: list[str] = []
         self.guild_folders_raw: list[dict[str, Any]] = []
+        self.user_guild_settings: dict[str, dict[str, Any]] = {}
+        self.channel_overrides: dict[str, dict[str, Any]] = {}
+        self.channel_to_guild: dict[str, str] = {}
 
     def _normalize_guild_folders_value(self, raw: Any) -> list[dict[str, Any]]:
         if raw is None:
@@ -105,6 +108,38 @@ class DiscordState:
             self._user_settings_cache.get("guild_folders")
         )
 
+    def _sync_notification_settings(self, raw: Any) -> None:
+        guilds: dict[str, dict[str, Any]] = {}
+        overrides: dict[str, dict[str, Any]] = {}
+
+        entries: list[dict[str, Any]] = []
+        if isinstance(raw, list):
+            entries = [x for x in raw if isinstance(x, dict)]
+        elif isinstance(raw, dict):
+            if isinstance(raw.get("entries"), list):
+                entries = [x for x in raw.get("entries") if isinstance(x, dict)]
+            elif raw.get("guild_id") is not None:
+                entries = [raw]
+            else:
+                vals = [x for x in raw.values() if isinstance(x, dict)]
+                if vals:
+                    entries = vals
+
+        for entry in entries:
+            guild_id = str(entry.get("guild_id", "") or "")
+            if not guild_id:
+                continue
+            guilds[guild_id] = dict(entry)
+            for override in entry.get("channel_overrides", []) or []:
+                if not isinstance(override, dict):
+                    continue
+                channel_id = str(override.get("channel_id", "") or "")
+                if channel_id:
+                    overrides[channel_id] = dict(override)
+
+        self.user_guild_settings = guilds
+        self.channel_overrides = overrides
+
     def merge_user_settings_gateway_update(self, data: dict[str, Any]) -> bool:
         if not isinstance(data, dict):
             return False
@@ -118,6 +153,21 @@ class DiscordState:
         if changed:
             self._sync_guild_layout_from_user_settings()
         return changed
+
+    def merge_user_guild_settings_update(self, data: dict[str, Any]) -> bool:
+        if not isinstance(data, dict):
+            return False
+        guild_id = str(data.get("guild_id", "") or "")
+        if not guild_id:
+            return False
+        self.user_guild_settings[guild_id] = dict(data)
+        for override in data.get("channel_overrides", []) or []:
+            if not isinstance(override, dict):
+                continue
+            channel_id = str(override.get("channel_id", "") or "")
+            if channel_id:
+                self.channel_overrides[channel_id] = dict(override)
+        return True
 
     @staticmethod
     def _folder_color_hex(color_val: Any) -> str:
@@ -136,7 +186,13 @@ class DiscordState:
                 with open(self.read_states_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     if isinstance(data, dict):
-                        self.read_states = data
+                        normalized = {}
+                        for channel_id, entry in data.items():
+                            normalized_id = str(channel_id or "")
+                            if not normalized_id:
+                                continue
+                            normalized[normalized_id] = self._normalize_read_state_entry(entry)
+                        self.read_states = normalized
         except Exception:
             self.read_states = {}
 
@@ -156,8 +212,12 @@ class DiscordState:
     def mark_channel_read(self, channel_id: str, message_id: str | None = None) -> None:
         if not channel_id:
             return
+        state = self._read_state(channel_id)
+        state["badge_count"] = 0
+        state["mention_count"] = 0
         if message_id:
-            self.read_states[channel_id] = message_id
+            state["last_message_id"] = str(message_id)
+            self.read_states[channel_id] = state
             self._save_read_states()
         else:
             last_id = None
@@ -174,8 +234,9 @@ class DiscordState:
                     if last_id:
                         break
             if last_id:
-                self.read_states[channel_id] = last_id
-                self._save_read_states()
+                state["last_message_id"] = str(last_id)
+            self.read_states[channel_id] = state
+            self._save_read_states()
 
     def is_channel_unread(self, channel: dict[str, Any]) -> int:
         channel_id = channel.get("id")
@@ -188,11 +249,56 @@ class DiscordState:
             return 0
         try:
             last_val = int(last_message_id)
-            read_id = self.read_states.get(channel_id)
+            read_id = self._read_state(channel_id).get("last_message_id", "")
             read_val = int(read_id) if read_id else int(self.session_start_id)
             return 1 if last_val > read_val else 0
         except (ValueError, TypeError):
             return 0
+
+    def _is_muted(self, raw: dict[str, Any] | None) -> bool:
+        if not isinstance(raw, dict):
+            return False
+        if not raw.get("muted", False):
+            return False
+        cfg = raw.get("mute_config")
+        if not isinstance(cfg, dict):
+            return True
+        selected = cfg.get("selected_time_window")
+        if selected in (-1, None):
+            return True
+        end_time = cfg.get("end_time")
+        if not isinstance(end_time, str) or end_time == "":
+            return True
+        try:
+            end_dt = datetime.fromisoformat(end_time.replace("Z", "+00:00"))
+        except ValueError:
+            return True
+        return end_dt.astimezone(timezone.utc) > datetime.now(timezone.utc)
+
+    def guild_setting(self, guild_id: str) -> dict[str, Any]:
+        return dict(self.user_guild_settings.get(guild_id, {}))
+
+    def channel_override(self, channel_id: str) -> dict[str, Any]:
+        return dict(self.channel_overrides.get(channel_id, {}))
+
+    def is_guild_muted(self, guild_id: str) -> bool:
+        if not guild_id:
+            return False
+        return self._is_muted(self.guild_setting(guild_id))
+
+    def is_channel_muted(self, channel: dict[str, Any], include_muted_categories: bool = False) -> bool:
+        channel_id = str(channel.get("id", "") or "")
+        if not channel_id:
+            return False
+        if self._is_muted(self.channel_override(channel_id)):
+            return True
+        parent_id = str(channel.get("parent_id", "") or "")
+        if include_muted_categories or not parent_id:
+            return False
+        parent = self.get_channel(parent_id)
+        if not parent:
+            return False
+        return self.is_channel_muted(parent, include_muted_categories)
 
     def reset(self) -> None:
         self.__init__()
@@ -218,9 +324,11 @@ class DiscordState:
 
         for rs in entries:
             c_id = str(rs.get("id", ""))
-            m_id = str(rs.get("last_message_id", ""))
-            if c_id and m_id:
-                self.read_states[c_id] = m_id
+            if not c_id:
+                continue
+            incoming = self._normalize_read_state_entry(rs)
+            existing = self._read_state(c_id)
+            self.read_states[c_id] = self._merge_ready_read_state(existing, incoming)
         if entries:
             self._save_read_states()
 
@@ -234,6 +342,21 @@ class DiscordState:
         us = payload.get("user_settings")
         self._user_settings_cache = dict(us) if isinstance(us, dict) else {}
         self._sync_guild_layout_from_user_settings()
+        self._sync_notification_settings(payload.get("user_guild_settings"))
+
+        # Discord includes a 'channels' list inside each guild object in the
+        # READY payload.  Store them so unread counts work before the user
+        # ever taps into a server.
+        for guild in self.guilds:
+            guild_id = str(guild.get("id", "") or "")
+            channels = guild.get("channels") or []
+            if guild_id and channels:
+                if guild_id not in self.guild_channels:
+                    self.guild_channels[guild_id] = channels
+                for ch in channels:
+                    ch_id = str(ch.get("id", "") or "")
+                    if ch_id:
+                        self.channel_to_guild[ch_id] = guild_id
 
     def apply_presence(self, payload: dict[str, Any]) -> None:
         user = payload.get("user") or {}
@@ -264,6 +387,10 @@ class DiscordState:
 
     def set_guild_channels(self, guild_id: str, channels: list[dict[str, Any]]) -> None:
         self.guild_channels[guild_id] = channels
+        for ch in channels:
+            ch_id = str(ch.get("id", "") or "")
+            if ch_id:
+                self.channel_to_guild[ch_id] = guild_id
 
     def set_guild_context(
         self,
@@ -290,6 +417,10 @@ class DiscordState:
         if not channel_id:
             return False
 
+        author_id = str((message.get("author") or {}).get("id", ""))
+        is_own_message = author_id != "" and author_id == str((self.me or {}).get("id", ""))
+        is_active = channel_id == self.active_channel_id
+
         for channel in self.private_channels:
             if channel.get("id") != channel_id:
                 continue
@@ -298,44 +429,92 @@ class DiscordState:
             if message_id:
                 channel["last_message_id"] = message_id
 
-            if "mentions" in message:
-                channel["mention_count"] = len(message["mentions"])
+            state = self._read_state(channel_id)
+            state["last_message_id"] = str(message_id or state.get("last_message_id", ""))
+
+            if is_own_message or is_active:
+                state["badge_count"] = 0
+                state["mention_count"] = 0
+            else:
+                state["badge_count"] = max(0, int(state.get("badge_count") or 0)) + 1
+                state["mention_count"] = 0
+
+            self.read_states[channel_id] = state
+            self._save_read_states()
 
             return True
         return False
 
     def get_guild_unread_count(self, guild_id: str) -> int:
+        mentions = self.get_guild_mention_count(guild_id)
+        if mentions > 0:
+            return mentions
+
+        if self.is_guild_muted(guild_id):
+            return 0
+
         count = 0
         for channel in self.guild_channels.get(guild_id, []):
+            if self.is_channel_muted(channel):
+                continue
             count += self.is_channel_unread(channel)
         return count
 
     def get_dm_unread_count(self) -> int:
         count = 0
         for channel in self.private_channels:
-            count += self.is_channel_unread(channel)
+            count += self.channel_badge_count(channel)
         return count
 
     def apply_guild_channel_activity(self, message: dict[str, Any]) -> str | None:
         channel_id = message.get("channel_id", "")
         if not channel_id:
             return None
+        author_id = str((message.get("author") or {}).get("id", ""))
+        is_own_message = author_id != "" and author_id == str((self.me or {}).get("id", ""))
+        is_active = channel_id == self.active_channel_id
+        mentioned = self.message_mentions_me(message)
         for guild_id, channels in self.guild_channels.items():
             for channel in channels:
                 if channel.get("id") == channel_id:
                     message_id = message.get("id")
                     if message_id:
                         channel["last_message_id"] = message_id
+                    state = self._read_state(channel_id)
+                    state["last_message_id"] = str(message_id or state.get("last_message_id", ""))
+                    if is_own_message or is_active:
+                        state["mention_count"] = 0
+                    elif mentioned:
+                        state["mention_count"] = max(0, int(state.get("mention_count") or 0)) + 1
+                    self.read_states[channel_id] = state
+                    self._save_read_states()
                     return guild_id
         return None
 
     def get_guild_for_channel(self, channel_id: str) -> str | None:
         if not channel_id:
             return None
+        # Fast path: use the pre-built reverse index
+        if channel_id in self.channel_to_guild:
+            return self.channel_to_guild[channel_id]
+        # Slow path: scan loaded guild channel lists
         for guild_id, channels in self.guild_channels.items():
             for channel in channels:
                 if channel.get("id") == channel_id:
+                    self.channel_to_guild[channel_id] = guild_id
                     return guild_id
+        return None
+
+    def get_channel(self, channel_id: str) -> dict[str, Any] | None:
+        if not channel_id:
+            return None
+        for channel in self.private_channels:
+            if channel.get("id") == channel_id:
+                return channel
+        for channels in self.guild_channels.values():
+            for channel in channels:
+                if channel.get("id") == channel_id:
+                    return channel
         return None
 
     def format_ready_payload(self) -> dict[str, Any]:
@@ -385,6 +564,7 @@ class DiscordState:
             "abbr": self.abbr(guild.get("name", "")),
             "iconUrl": self.guild_icon_url(guild_id, guild.get("icon")),
             "unread": self.get_guild_unread_count(guild_id),
+            "unreadKind": self.guild_unread_kind(guild_id),
         }
 
     def format_sidebar_guild_rows(self) -> list[dict[str, Any]]:
@@ -433,8 +613,12 @@ class DiscordState:
                     preview_abbrs = [
                         self.abbr(g.get("name", "")) for g in guild_objs[:4]
                     ]
-                    fu = sum(
-                        self.get_guild_unread_count(str(g.get("id", "")))
+                    folder_mentions = sum(
+                        self.get_guild_mention_count(str(g.get("id", "")))
+                        for g in guild_objs
+                    )
+                    folder_has_unread = any(
+                        self.guild_has_unread(str(g.get("id", "")))
                         for g in guild_objs
                     )
                     rows.append(
@@ -446,7 +630,8 @@ class DiscordState:
                             "folderColorHex": hexcol,
                             "previewIconUrls": "\n".join(preview_urls),
                             "previewAbbrs": "\n".join(preview_abbrs),
-                            "folderUnread": fu,
+                            "folderUnread": folder_mentions if folder_mentions > 0 else 0,
+                            "folderUnreadKind": "count" if folder_mentions > 0 else ("dot" if folder_has_unread else "none"),
                             "serverId": "",
                             "name": "",
                             "abbr": "",
@@ -502,8 +687,11 @@ class DiscordState:
                     "contactId": user_id,
                     "channelId": channel.get("id", ""),
                     "name": self.display_name(recipient),
+                    "abbr": self.abbr(self.display_name(recipient)),
+                    "iconUrl": self.user_avatar_url(user_id, recipient.get("avatar")),
                     "status": self.presences.get(user_id, "offline"),
-                    "unread": self.is_channel_unread(channel),
+                    "unread": self.channel_badge_count(channel),
+                    "unreadKind": self.channel_unread_kind(channel),
                     "sortKey": self._last_message_sort_value(channel.get("last_message_id")),
                 }
             )
@@ -520,7 +708,10 @@ class DiscordState:
                     "groupId": channel.get("id", ""),
                     "channelId": channel.get("id", ""),
                     "name": name,
-                    "unread": self.is_channel_unread(channel),
+                    "abbr": self.abbr(name),
+                    "iconUrl": self.group_dm_icon_url(channel.get("id", ""), channel.get("icon")),
+                    "unread": self.channel_badge_count(channel),
+                    "unreadKind": self.channel_unread_kind(channel),
                     "sortKey": self._last_message_sort_value(channel.get("last_message_id")),
                 }
             )
@@ -572,7 +763,8 @@ class DiscordState:
                     "channelGlyph": self.channel_type_glyph(channel_type),
                     "channelIconName": self.channel_type_icon(channel_type),
                     "openable": channel_type in (0, 5),
-                    "unread": self.is_channel_unread(channel),
+                    "unread": self.channel_badge_count(channel),
+                    "unreadKind": self.channel_unread_kind(channel),
                 }
             )
         return formatted
@@ -725,6 +917,18 @@ class DiscordState:
         if not guild_id or not icon_hash:
             return ""
         return f"https://cdn.discordapp.com/icons/{guild_id}/{icon_hash}.png?size=128"
+
+    @staticmethod
+    def user_avatar_url(user_id: str, avatar_hash: str | None) -> str:
+        if not user_id or not avatar_hash:
+            return ""
+        return f"https://cdn.discordapp.com/avatars/{user_id}/{avatar_hash}.png?size=128"
+
+    @staticmethod
+    def group_dm_icon_url(channel_id: str, icon_hash: str | None) -> str:
+        if not channel_id or not icon_hash:
+            return ""
+        return f"https://cdn.discordapp.com/channel-icons/{channel_id}/{icon_hash}.png?size=128"
 
     @staticmethod
     def avatar_color(seed: str) -> str:
@@ -1178,3 +1382,142 @@ class DiscordState:
             if isinstance(value, str) and value == "":
                 continue
             target[key] = value
+
+    @staticmethod
+    def _int_value(raw_value: Any) -> int:
+        try:
+            return max(0, int(raw_value or 0))
+        except (TypeError, ValueError):
+            return 0
+
+    def _normalize_read_state_entry(self, entry: Any) -> dict[str, Any]:
+        if isinstance(entry, str):
+            return {
+                "last_message_id": entry,
+                "badge_count": 0,
+                "mention_count": 0,
+            }
+
+        if not isinstance(entry, dict):
+            return {
+                "last_message_id": "",
+                "badge_count": 0,
+                "mention_count": 0,
+            }
+
+        return {
+            "last_message_id": str(entry.get("last_message_id", "") or ""),
+            "badge_count": self._int_value(entry.get("badge_count")),
+            "mention_count": self._int_value(entry.get("mention_count")),
+        }
+
+    def _read_state(self, channel_id: str) -> dict[str, Any]:
+        return dict(self._normalize_read_state_entry(self.read_states.get(channel_id)))
+
+    def _merge_ready_read_state(
+        self,
+        existing: dict[str, Any],
+        incoming: dict[str, Any],
+    ) -> dict[str, Any]:
+        existing_last = str(existing.get("last_message_id", "") or "")
+        incoming_last = str(incoming.get("last_message_id", "") or "")
+
+        if self._snowflake_ge(incoming_last, existing_last):
+            return {
+                "last_message_id": incoming_last,
+                "badge_count": self._int_value(incoming.get("badge_count")),
+                "mention_count": self._int_value(incoming.get("mention_count")),
+            }
+
+        return {
+            "last_message_id": existing_last,
+            "badge_count": self._int_value(existing.get("badge_count")),
+            "mention_count": self._int_value(existing.get("mention_count")),
+        }
+
+    def channel_badge_count(self, channel: dict[str, Any]) -> int:
+        channel_id = str(channel.get("id", "") or "")
+        if not channel_id:
+            return 0
+
+        state = self._read_state(channel_id)
+        if int(channel.get("type", -1)) in (1, 3):
+            badge_count = self._int_value(state.get("badge_count"))
+            if badge_count > 0:
+                return badge_count
+            return 1 if self.is_channel_unread(channel) else 0
+
+        mention_count = self._int_value(state.get("mention_count"))
+        if mention_count > 0:
+            return mention_count
+        return 0
+
+    def channel_unread_kind(self, channel: dict[str, Any]) -> str:
+        if not channel:
+            return "none"
+        count = self.channel_badge_count(channel)
+        if count > 0:
+            return "count"
+        if int(channel.get("type", -1)) not in (1, 3) and self.is_channel_muted(channel):
+            return "none"
+        if self.is_channel_unread(channel):
+            return "dot"
+        return "none"
+
+    def guild_has_unread(self, guild_id: str) -> bool:
+        if self.is_guild_muted(guild_id) and self.get_guild_mention_count(guild_id) == 0:
+            return False
+        for channel in self.guild_channels.get(guild_id, []):
+            if self.channel_unread_kind(channel) != "none":
+                return True
+        return False
+
+    def get_guild_mention_count(self, guild_id: str) -> int:
+        count = 0
+        for channel in self.guild_channels.get(guild_id, []):
+            channel_id = str(channel.get("id", "") or "")
+            if not channel_id:
+                continue
+            count += self._int_value(self._read_state(channel_id).get("mention_count"))
+        return count
+
+    def guild_unread_kind(self, guild_id: str) -> str:
+        if self.get_guild_mention_count(guild_id) > 0:
+            return "count"
+        if self.guild_has_unread(guild_id):
+            return "dot"
+        return "none"
+
+    def message_mentions_me(self, message: dict[str, Any]) -> bool:
+        me_id = str((self.me or {}).get("id", "") or "")
+        if not me_id:
+            return False
+
+        mention_everyone = bool(message.get("mention_everyone"))
+        if mention_everyone:
+            return True
+
+        for mention in message.get("mentions", []) or []:
+            if str(mention.get("id", "") or "") == me_id:
+                return True
+
+        guild_id = str(message.get("guild_id", "") or "")
+        if guild_id:
+            member = self.guild_members.get(guild_id) or {}
+            my_roles = {str(role_id) for role_id in (member.get("roles") or []) if role_id is not None}
+            for role_id in message.get("mention_roles", []) or []:
+                if str(role_id) in my_roles:
+                    return True
+
+        return False
+
+    @staticmethod
+    def _snowflake_ge(lhs: str, rhs: str) -> bool:
+        if not lhs:
+            return False
+        if not rhs:
+            return True
+        try:
+            return int(lhs) >= int(rhs)
+        except (TypeError, ValueError):
+            return lhs >= rhs
