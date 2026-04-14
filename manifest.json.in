@@ -1,0 +1,16 @@
+{
+    "name": "disports.jukfiuu",
+    "description": "A Discord client for Ubuntu Touch",
+    "architecture": "$ENV{ARCH}",
+    "title": "Disports",
+    "icon": "assets/logo.svg",
+    "hooks": {
+        "disports": {
+            "apparmor": "disports.apparmor",
+            "desktop":  "disports.desktop"
+        }
+    },
+    "version": "0.8.2",
+    "maintainer": "Martin Filipov <jukfiuune@gmail.com>",
+    "framework" : "$ENV{CLICK_FRAMEWORK}"
+}

@@ -1,0 +1,10 @@
+[Desktop Entry]
+_Name=Disports
+Exec=qmlscene %U qml/Main.qml
+Icon=assets/logo.svg
+Terminal=false
+Type=Application
+X-Lomiri-Touch=true
+X-Lomiri-SymbolicIcon=assets/logo.svg
+X-Lomiri-Splash-Image=assets/splash.svg
+X-Lomiri-Splash-Color=#1f1f1f

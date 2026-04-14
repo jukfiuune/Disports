@@ -1,0 +1,13 @@
+{
+    "policy_groups": [
+        "audio",
+        "connectivity",
+        "content_exchange",
+        "content_exchange_source",
+        "keep-display-on",
+        "microphone",
+        "networking",
+        "video"
+    ],
+    "policy_version": 20.04
+}
