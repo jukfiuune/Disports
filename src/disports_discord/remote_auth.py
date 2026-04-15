@@ -22,7 +22,7 @@ REMOTE_AUTH_URL_PREFIX = "https://discord.com/ra/"
 
 
 def _url_to_data_uri(url: str) -> str:
-    """Render a QR code for *url* and return an SVG data URI (no PIL needed)."""
+    # Render a QR code for *url* and return an SVG data URI (no PIL needed).
     qr = qrcode.QRCode(
         error_correction=qrcode.constants.ERROR_CORRECT_M,
         border=2,

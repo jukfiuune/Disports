@@ -16,7 +16,6 @@ from .errors import GatewayClosed, ReconnectRequested
 
 
 class DiscordWsClient:
-    """Thin sync WebSocket wrapper around websocket-client (RFC framing + TLS)."""
 
     def __init__(self, url: str) -> None:
         self._url = url

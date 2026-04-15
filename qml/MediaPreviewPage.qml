@@ -39,7 +39,7 @@ Page {
             }
         }
 
-        // ============ IMAGE VIEWER (Pinch to Zoom) ============
+        // Image viewer
         PinchArea {
             id: pinchArea
             anchors.fill: parent
@@ -121,7 +121,7 @@ Page {
             }
         }
 
-        // ============ VIDEO VIEWER (Teleports Workaround) ============
+        // Video viewer
         Item {
             anchors.fill: parent
             visible: previewPage.mediaType === "video"

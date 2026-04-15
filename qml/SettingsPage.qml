@@ -132,7 +132,7 @@ Page {
                 }
             }
 
-            // ── About ─────────────────────────────────────────────────────
+            // About
             Rectangle {
                 width: parent.width; height: units.dp(1)
                 color: theme.palette.normal.base

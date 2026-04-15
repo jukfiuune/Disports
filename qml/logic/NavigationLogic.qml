@@ -7,13 +7,10 @@ QtObject {
     property var appSettings
     property var pageStack
     
-    // components
     property var chatPageComp
     
-    // models
     property var channelModel
     
-    // logic refs
     property var authLogic
     property var chatLogic
     

@@ -7,11 +7,9 @@ QtObject {
     property var pageStack
     property var unreadLogic
     
-    // models
     property var chatMessageModel
     property var channelModel
     
-    // components
     property var chatPageComp
     
     signal deleteConfirmRequested(string messageId)

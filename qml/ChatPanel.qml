@@ -64,7 +64,6 @@ Item {
         anchoredToBottom = true
         lastMessageCount = messageList.count
         highlightedMessageId = ""
-        // cancel any in-progress edit/reply when switching channels
         chatPanel.editMessageId = ""
         chatPanel.editOriginalBody = ""
     }
@@ -229,7 +228,6 @@ Item {
             anchors.margins: composerPadding
             spacing: units.gu(0.5)
 
-            // Reply bar
             ComposerActionBar {
                 id: replyBar
                 accentColor: "#335280"
@@ -239,7 +237,6 @@ Item {
                 onDismissed: chatPanel.clearReplyRequested()
             }
 
-            // Edit bar
             ComposerActionBar {
                 id: editBar
                 accentColor: "#F0B232"
@@ -365,7 +362,6 @@ Item {
         chatPanel.draftEdited("")
         
         if (chatPanel.editMessageId !== "") {
-            // Editing an existing message
             chatPanel.editRequested(chatPanel.editMessageId, content)
             chatPanel.editMessageId = ""
             chatPanel.editOriginalBody = ""

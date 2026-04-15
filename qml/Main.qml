@@ -1,17 +1,3 @@
-/*
- * Main.qml — Disports
- *
- * Layout (main page):
- *   ┌─ PageHeader: "Disports"  [settings icon] ─────────────────────┐
- *   │ Sidebar │ DmPanel  (contacts / groups)                         │
- *   │         │   — or —                                             │
- *   │         │ ServerPanel  (categories & channels)                  │
- *   └─────────┴───────────────────────────────────────────────────── ┘
- *
- * Tapping a contact, group, or channel pushes ChatPage (full-screen).
- * Tapping Settings pushes SettingsPage.
- */
-
 import QtQuick 2.7
 import QtQuick.Layouts 1.3
 import Lomiri.Components 1.3
@@ -33,7 +19,7 @@ MainView {
     width:  units.gu(45)
     height: units.gu(75)
 
-    // ── Logic & State ─────────────────────────────────────────────────────
+    // Logic & State
     AppState { id: appState; isWideLayout: root.width >= units.gu(90) }
     
     PythonBridge {
@@ -161,14 +147,13 @@ MainView {
 
     Settings {
         id: appSettings
-        // Legacy: migrated once to secure token file on disk (see NavigationLogic).
         property string token: ""
         property int themeMode: 2
         property bool inlineGifPlayback: true
         property string uitkTheme: ""
     }
 
-    // ── Shared models ─────────────────────────────────────────────────────
+    // Shared models
     ListModel {
         id: serverModel
     }
@@ -228,7 +213,7 @@ MainView {
                 onRefreshQrRequested: authLogic.startQrLogin()
             }
 
-    // ── Navigation stack ──────────────────────────────────────────────────
+    // Navigation stack
             PageStack {
                 id: pageStack
                 anchors.fill: parent
@@ -389,7 +374,7 @@ MainView {
     } // end mainArea
     } // end mainLayout
 
-    // ── Splash & Offline Views ───────────────────────────────────────────
+    // Splash & Offline Views
     SplashView { startupPhase: appState.startupPhase }
     OfflineView {
         visibleState: appState.startupPhase === "offline"

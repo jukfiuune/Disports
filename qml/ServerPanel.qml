@@ -21,7 +21,7 @@ Item {
 
     signal channelOpened(string channelId, string name)
 
-    // ── Server name header ────────────────────────────────────────────────
+    // Server name header
     // Sits above the channel list, styled like a sub-header inside the panel.
     PanelHeader {
         id: serverHeader
@@ -29,7 +29,7 @@ Item {
         title: serverPanel.serverName
     }
 
-    // ── Channel list, grouped by category ─────────────────────────────────
+    // Channel list, grouped by category
     // We use a plain ListView and detect category boundaries in the delegate.
     ListView {
         id: channelList
