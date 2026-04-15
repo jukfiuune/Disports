@@ -84,6 +84,14 @@ class DiscordState:
         self.channel_overrides: dict[str, dict[str, Any]] = {}
         self.channel_to_guild: dict[str, str] = {}
 
+    def guild_name(self, guild_id: str) -> str:
+        if not guild_id:
+            return ""
+        for guild in self.guilds:
+            if str(guild.get("id", "") or "") == guild_id:
+                return str(guild.get("name", "") or "")
+        return ""
+
     def _normalize_guild_folders_value(self, raw: Any) -> list[dict[str, Any]]:
         if raw is None:
             return []
@@ -350,6 +358,16 @@ class DiscordState:
         for guild in self.guilds:
             guild_id = str(guild.get("id", "") or "")
             channels = guild.get("channels") or []
+            member_data = guild.get("member")
+            if not member_data and isinstance(guild.get("members"), list):
+                me_id = str((self.me or {}).get("id", "") or "")
+                for member in guild.get("members") or []:
+                    user_id = str(((member or {}).get("user") or {}).get("id", "") or "")
+                    if me_id and user_id == me_id:
+                        member_data = member
+                        break
+            if guild_id:
+                self.set_guild_context(guild_id, guild, member_data if isinstance(member_data, dict) else None)
             if guild_id and channels:
                 if guild_id not in self.guild_channels:
                     self.guild_channels[guild_id] = channels
@@ -454,7 +472,7 @@ class DiscordState:
             return 0
 
         count = 0
-        for channel in self.guild_channels.get(guild_id, []):
+        for channel in self.iter_visible_guild_channels(guild_id):
             if self.is_channel_muted(channel):
                 continue
             count += self.is_channel_unread(channel)
@@ -748,9 +766,7 @@ class DiscordState:
         formatted = []
         for channel in sorted(channels, key=channel_sort_key):
             channel_type = int(channel.get("type", -1))
-            if channel_type not in (0, 2, 5, 13, 15):
-                continue
-            if not self.has_channel_access(guild_id, channel):
+            if not self.is_visible_guild_channel(guild_id, channel):
                 continue
             parent_id = channel.get("parent_id")
             formatted.append(
@@ -808,14 +824,32 @@ class DiscordState:
             elif em_type == "video":
                 vid = em.get("video") or {}
                 thumbnail = em.get("thumbnail") or {}
-                if vid.get("url"):
+                provider = (em.get("provider") or {}).get("name", "").lower()
+                url = em.get("url") or vid.get("url") or ""
+                # YouTube / Vimeo etc. are link previews, not direct video files
+                is_web_video = provider in ("youtube", "vimeo", "twitch") or \
+                               "youtube.com" in url or "youtu.be" in url
+                
+                if is_web_video:
+                    if thumbnail.get("url"):
+                        medias.append({
+                            "messageType": "link",
+                            "mediaUrl": url,
+                            "mediaPreviewUrl": thumbnail.get("proxy_url") or thumbnail.get("url"),
+                            "mediaFileName": em.get("title") or url,
+                            "mediaContentType": "text/html",
+                            "mediaWidth": thumbnail.get("width") or 0,
+                            "mediaHeight": thumbnail.get("height") or 0,
+                        })
+                elif vid.get("url"):
                     medias.append(self.format_media({
                         "content_type": "video/mp4", 
                         "url": vid.get("url"), 
                         "proxy_url": thumbnail.get("proxy_url") or vid.get("proxy_url"), 
                         "width": vid.get("width"), 
                         "height": vid.get("height"), 
-                        "filename": "Video"
+                        "filename": "Video",
+                        "is_gif_like": provider == "tenor",
                     }))
             elif em_type == "gifv":
                 vid = em.get("video") or {}
@@ -826,7 +860,8 @@ class DiscordState:
                         "proxy_url": vid.get("proxy_url"), 
                         "width": vid.get("width"), 
                         "height": vid.get("height"), 
-                        "filename": "GIF"
+                        "filename": "GIF",
+                        "is_gif_like": True,
                     }))
         if medias:
             temp_content = re.sub(r'https?://[^\s]+', '', message.get("content", ""))
@@ -857,6 +892,7 @@ class DiscordState:
             "avatarCol": self.avatar_color(author.get("id", "")),
             "timestamp": self.format_timestamp(message.get("timestamp")),
             "body": content,
+            "rawBody": message.get("content", ""),
             "channelId": message.get("channel_id", ""),
             "displayKind": display_kind,
             "discordMessageType": self.MESSAGE_TYPE_NAMES.get(message_type, str(message_type)),
@@ -1132,6 +1168,7 @@ class DiscordState:
         result = {
             "isMedia": False,
             "messageType": "text",
+            "mediaIsGifLike": False,
             "mediaUrl": "",
             "mediaPreviewUrl": "",
             "mediaWidth": 0,
@@ -1163,6 +1200,7 @@ class DiscordState:
                 "mediaWidth": int(attachment.get("width") or 0),
                 "mediaHeight": int(attachment.get("height") or 0),
                 "mediaContentType": content_type,
+                "mediaIsGifLike": bool(attachment.get("is_gif_like")),
                 "mediaFileName": attachment.get("filename", ""),
                 "mediaDuration": int(attachment.get("duration_secs") or 0),
             }
@@ -1265,6 +1303,19 @@ class DiscordState:
             return False
 
         return True
+
+    def is_visible_guild_channel(self, guild_id: str, channel: dict[str, Any]) -> bool:
+        channel_type = int(channel.get("type", -1))
+        if channel_type not in (0, 2, 5, 13, 15):
+            return False
+        return self.has_channel_access(guild_id, channel)
+
+    def iter_visible_guild_channels(self, guild_id: str) -> list[dict[str, Any]]:
+        return [
+            channel
+            for channel in self.guild_channels.get(guild_id, [])
+            if self.is_visible_guild_channel(guild_id, channel)
+        ]
 
     def has_channel_access(self, guild_id: str, channel: dict[str, Any]) -> bool:
         computed = self.compute_channel_permissions(guild_id, channel)
@@ -1467,14 +1518,14 @@ class DiscordState:
     def guild_has_unread(self, guild_id: str) -> bool:
         if self.is_guild_muted(guild_id) and self.get_guild_mention_count(guild_id) == 0:
             return False
-        for channel in self.guild_channels.get(guild_id, []):
+        for channel in self.iter_visible_guild_channels(guild_id):
             if self.channel_unread_kind(channel) != "none":
                 return True
         return False
 
     def get_guild_mention_count(self, guild_id: str) -> int:
         count = 0
-        for channel in self.guild_channels.get(guild_id, []):
+        for channel in self.iter_visible_guild_channels(guild_id):
             channel_id = str(channel.get("id", "") or "")
             if not channel_id:
                 continue

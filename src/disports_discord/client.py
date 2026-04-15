@@ -94,6 +94,10 @@ class DiscordClient:
         self.state.set_guild_context(guild_id, guild_data, member_data)
         channels = self.http.request("GET", f"guilds/{guild_id}/channels")
         self.state.set_guild_channels(guild_id, channels or [])
+        self._emit(
+            "guild_sidebar",
+            {"guilds": self.state.format_sidebar_guild_rows()},
+        )
         return self.state.format_guild_channel_list(guild_id)
 
     def fetch_private_channels(self) -> dict[str, Any]:

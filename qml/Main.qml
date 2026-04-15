@@ -78,7 +78,10 @@ MainView {
         }
         onTyping: function(data) { if (data.channelId === appState.activeChannelId) appState.typingNotice = data.author + " is typing..." }
         onPresence: function(data) { dmLogic.updateContactStatus(data.userId, data.status) }
-        onGatewayLog: function(data) { console.log("Gateway: " + data.message) }
+        onGatewayLog: function(data) {
+            var message = (data && data.message) ? String(data.message) : ""
+            console.log("Gateway: " + message)
+        }
         onQrLoginImage: function(data) {
             appState.qrImageSource = data.dataUri || ""
             appState.qrStatusText = i18n.tr("Scan with the Discord mobile app.")
@@ -161,6 +164,7 @@ MainView {
         // Legacy: migrated once to secure token file on disk (see NavigationLogic).
         property string token: ""
         property int themeMode: 2
+        property bool inlineGifPlayback: true
         property string uitkTheme: ""
     }
 
@@ -305,6 +309,7 @@ MainView {
                                 visible: appState.activeChannelId !== ""
                                 channelId: appState.activeChannelId
                                 channelName: appState.activeChannelName
+                                inlineGifPlayback: appSettings.inlineGifPlayback
                                 messagesModel: chatMessageModel
                                 myUserId: appState.myUserId
                                 typingNotice: appState.typingNotice
@@ -343,6 +348,7 @@ MainView {
                         }
                     }
                 }
+
             }
         }
 
@@ -352,6 +358,7 @@ MainView {
                 stack: pageStack
                 channelId: appState.activeChannelId
                 channelName: appState.activeChannelName
+                inlineGifPlayback: appSettings.inlineGifPlayback
                 messagesModel: chatMessageModel
                 myUserId: appState.myUserId
                 typingNotice: appState.typingNotice
@@ -373,6 +380,7 @@ MainView {
             id: settingsPageComp
             SettingsPage {
                 stack: pageStack
+                settingsObject: appSettings
                 onThemeModeSelected: function(tMode) { themeLogic.applyThemePreference(tMode) }
                 onLogoutRequested: authLogic.logout()
             }

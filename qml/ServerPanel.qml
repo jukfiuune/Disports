@@ -98,7 +98,7 @@ Item {
 
                     UnreadBadge {
                         count: model.unread
-                        kind: model.unreadKind || ((model.unread || 0) > 0 ? "count" : "none")
+                        kind: model.unreadKind || "none"
                         anchors.verticalCenter: parent.verticalCenter
                     }
                 }

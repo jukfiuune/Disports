@@ -12,6 +12,7 @@ import Qt.labs.settings 1.0
 Page {
     id: settingsPage
     property var stack
+    property var settingsObject
     signal themeModeSelected(int themeMode)
     signal logoutRequested()
 
@@ -24,9 +25,12 @@ Page {
         }
     }
 
+    readonly property var settingsStore: settingsPage.settingsObject ? settingsPage.settingsObject : localSettings
+
     Settings {
-        id: appSettings
+        id: localSettings
         property int themeMode: 2
+        property bool inlineGifPlayback: true
     }
 
     header: PageHeader {
@@ -70,19 +74,46 @@ Page {
                 }
                 onDelegateClicked: {
                     var themeMode = themeModel.get(index).value
-                    if (appSettings.themeMode !== themeMode) {
-                        appSettings.themeMode = themeMode
+                    if (settingsStore.themeMode !== themeMode) {
+                        settingsStore.themeMode = themeMode
                         settingsPage.themeModeSelected(themeMode)
                     }
                 }
                 Component.onCompleted: {
                     themeModel.initialize()
                     for (var i = 0; i < themeModel.count; i++) {
-                        if (themeModel.get(i).value === appSettings.themeMode) {
+                        if (themeModel.get(i).value === settingsStore.themeMode) {
                             themeChooser.selectedIndex = i
                             break
                         }
                     }
+                }
+            }
+
+            Rectangle {
+                width: parent.width; height: units.dp(1)
+                color: theme.palette.normal.base
+            }
+
+            Item {
+                width: parent.width
+                height: units.gu(4.5)
+
+                Label {
+                    anchors {
+                        left: parent.left
+                        verticalCenter: parent.verticalCenter
+                    }
+                    text: i18n.tr("Autoplay GIFs")
+                }
+
+                Switch {
+                    anchors {
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                    }
+                    checked: settingsStore.inlineGifPlayback
+                    onCheckedChanged: settingsStore.inlineGifPlayback = checked
                 }
             }
 

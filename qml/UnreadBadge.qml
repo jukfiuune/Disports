@@ -8,7 +8,7 @@ import Lomiri.Components 1.3
 
 Rectangle {
     property int count: 0
-    property string kind: count > 0 ? "count" : "none"
+    property string kind: "none"
 
     visible: kind !== "none"
     width: kind === "dot" ? units.gu(1.2) : countLabel.width + units.gu(1.2)

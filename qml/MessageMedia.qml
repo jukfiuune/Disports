@@ -1,10 +1,12 @@
 import QtQuick 2.7
+import QtMultimedia 5.0
 import Lomiri.Components 1.3
 
 Item {
     id: mediaRoot
 
     property string messageType: "text"
+    property bool mediaIsGifLike: false
     property string mediaUrl: ""
     property string mediaPreviewUrl: ""
     property int mediaWidth: 0
@@ -12,12 +14,23 @@ Item {
     property string mediaFileName: ""
     property string mediaContentType: ""
     property string body: ""
+    property bool inlineGifPlayback: false
 
     signal mediaClicked(string url, string type)
 
     readonly property real maxMediaWidth: units.gu(30)
     readonly property real maxMediaHeight: units.gu(24)
     readonly property real aspectRatio: mediaWidth > 0 && mediaHeight > 0 ? mediaWidth / mediaHeight : 1.0
+    readonly property bool inlineGifMode: mediaRoot.messageType === "video"
+                                          && mediaRoot.mediaIsGifLike
+                                          && mediaRoot.inlineGifPlayback
+    readonly property string previewPathLower: (mediaPreviewUrl || "").toLowerCase().split("?")[0]
+    readonly property bool linkPreviewIsImage: previewPathLower.endsWith(".png")
+                                               || previewPathLower.endsWith(".jpg")
+                                               || previewPathLower.endsWith(".jpeg")
+                                               || previewPathLower.endsWith(".gif")
+                                               || previewPathLower.endsWith(".webp")
+                                               || previewPathLower.endsWith(".bmp")
     readonly property real fittedWidth: {
         if (mediaWidth <= 0 || mediaHeight <= 0)
             return maxMediaWidth
@@ -82,14 +95,14 @@ Item {
                 anchors.margins: units.dp(1)
                 radius: units.gu(0.8)
                 color: theme.palette.normal.background
-                visible: mediaRoot.messageType === "video"
+                visible: mediaRoot.messageType === "video" && !mediaRoot.inlineGifMode
             }
 
             Column {
                 anchors.fill: parent
                 anchors.margins: units.gu(1)
                 spacing: units.gu(1)
-                visible: mediaRoot.messageType === "video"
+                visible: mediaRoot.messageType === "video" && !mediaRoot.inlineGifMode
 
                 Icon {
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -117,9 +130,108 @@ Item {
                 }
             }
 
+            Loader {
+                anchors.fill: parent
+                active: mediaRoot.inlineGifMode
+                sourceComponent: Component {
+                    Item {
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: units.dp(1)
+                            radius: units.gu(0.8)
+                            color: theme.palette.normal.background
+                        }
+
+                        MediaPlayer {
+                            id: inlineGifPlayer
+                            autoPlay: true
+                            muted: true
+                            source: mediaRoot.mediaUrl
+                            onStatusChanged: {
+                                if (status === MediaPlayer.EndOfMedia && mediaRoot.inlineGifMode) {
+                                    seek(0)
+                                    play()
+                                }
+                            }
+                        }
+
+                        VideoOutput {
+                            anchors.fill: parent
+                            anchors.margins: units.dp(1)
+                            source: inlineGifPlayer
+                            fillMode: VideoOutput.PreserveAspectFit
+                        }
+
+                        Component.onDestruction: inlineGifPlayer.stop()
+                    }
+                }
+            }
+
             MouseArea {
                 anchors.fill: parent
                 onClicked: mediaRoot.mediaClicked(mediaRoot.mediaUrl, mediaRoot.messageType)
+            }
+        }
+
+        Rectangle {
+            width: parent.width
+            height: mediaRoot.fittedHeight
+            radius: units.gu(0.8)
+            color: theme.palette.normal.base
+            visible: mediaRoot.messageType === "link"
+
+            Image {
+                anchors.fill: parent
+                anchors.margins: units.dp(1)
+                source: mediaRoot.linkPreviewIsImage ? mediaRoot.mediaPreviewUrl : ""
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                cache: true
+                opacity: 0.8
+                visible: mediaRoot.linkPreviewIsImage
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                color: "black"
+                opacity: 0.3
+                radius: units.gu(0.8)
+            }
+
+            Column {
+                anchors.centerIn: parent
+                spacing: units.gu(1)
+                width: parent.width - units.gu(2)
+
+                Icon {
+                    name: "external-link"
+                    width: units.gu(4)
+                    height: width
+                    color: "white"
+                    anchors.horizontalCenter: parent.horizontalCenter
+                }
+
+                Label {
+                    width: parent.width
+                    text: mediaRoot.mediaFileName
+                    color: "white"
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    elide: Text.ElideRight
+                }
+
+                Label {
+                    width: parent.width
+                    text: i18n.tr("Open in browser")
+                    color: "white"
+                    font.pixelSize: units.gu(1.2)
+                    horizontalAlignment: Text.AlignHCenter
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                onClicked: Qt.openUrlExternally(mediaRoot.mediaUrl)
             }
         }
 

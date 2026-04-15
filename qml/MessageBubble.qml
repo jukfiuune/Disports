@@ -14,6 +14,8 @@ ListItem {
     property string author
     property string timestamp
     property string body
+    property string rawBody: ""
+    property bool inlineGifPlayback: false
     property string displayKind: "default"
     property string discordMessageType: "Default"
     property var medias: []
@@ -68,7 +70,7 @@ ListItem {
         id: editAction
         iconName: "edit"
         text: i18n.tr("Edit")
-        onTriggered: bubble.editRequested(bubble.messageId, bubble.body)
+        onTriggered: bubble.editRequested(bubble.messageId, bubble.rawBody !== "" ? bubble.rawBody : bubble.body)
     }
 
     Action {
@@ -77,7 +79,7 @@ ListItem {
         text: i18n.tr("Copy")
         onTriggered: {
             var mimeData = Clipboard.newData();
-            mimeData.text = bubble.body;
+            mimeData.text = bubble.rawBody !== "" ? bubble.rawBody : bubble.body;
             Clipboard.push(mimeData);
         }
     }
@@ -148,12 +150,14 @@ ListItem {
             model: bubble.medias || []
             delegate: MessageMedia {
                 messageType: model.messageType || "text"
+                mediaIsGifLike: !!model.mediaIsGifLike
                 mediaContentType: model.mediaContentType || ""
                 mediaUrl: model.mediaUrl || ""
                 mediaPreviewUrl: model.mediaPreviewUrl || ""
                 mediaWidth: model.mediaWidth || 0
                 mediaHeight: model.mediaHeight || 0
                 mediaFileName: model.mediaFileName || ""
+                inlineGifPlayback: bubble.inlineGifPlayback
                 body: ""
                 onMediaClicked: function(url, type) {
                     bubble.mediaClicked(url, type)

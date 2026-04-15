@@ -23,12 +23,13 @@ Item {
     property string replyMessageId: ""
     property string replyAuthor: ""
     property string replyBody: ""
-    // Edit mode
     property string editMessageId: ""
     property string editOriginalBody: ""
+    property bool inlineGifPlayback: false
     property bool showHeader: true
     property bool initialScrollPending: channelId !== ""
     property bool anchoredToBottom: true
+    property bool userHasScrolled: false
     property int lastMessageCount: 0
     property string highlightedMessageId: ""
     property real composerPadding: units.gu(1)
@@ -47,6 +48,7 @@ Item {
                                                 )
     property bool loadingOlder: false
     property bool isOnline: true
+    readonly property bool listInteracting: messageList.dragging || messageList.flicking
 
     signal loadOlderRequested()
     signal sendRequested(string content, string replyMessageId)
@@ -118,23 +120,36 @@ Item {
         
         onCountChanged: {
             var countIncreased = count > chatPanel.lastMessageCount
-            var shouldScroll = countIncreased && (chatPanel.initialScrollPending || chatPanel.anchoredToBottom)
+            var shouldScroll = countIncreased
+                               && (chatPanel.initialScrollPending || chatPanel.anchoredToBottom)
+                               && !chatPanel.listInteracting
             chatPanel.lastMessageCount = count
 
             if (shouldScroll)
                 Qt.callLater(chatPanel.scrollToBottom)
         }
-        onHeightChanged: if (chatPanel.anchoredToBottom || chatPanel.initialScrollPending) Qt.callLater(chatPanel.scrollToBottom)
-        onWidthChanged: if (chatPanel.anchoredToBottom || chatPanel.initialScrollPending) Qt.callLater(chatPanel.scrollToBottom)
-        onContentHeightChanged: {
-            if (chatPanel.anchoredToBottom || chatPanel.initialScrollPending)
+        onHeightChanged: {
+            if ((chatPanel.anchoredToBottom || chatPanel.initialScrollPending) && !chatPanel.listInteracting)
                 Qt.callLater(chatPanel.scrollToBottom)
-            else
-                Qt.callLater(chatPanel.rememberScrollPosition)
         }
-        onContentYChanged: Qt.callLater(chatPanel.rememberScrollPosition)
-        onMovementEnded: Qt.callLater(chatPanel.rememberScrollPosition)
-        onDraggingChanged: if (!dragging) Qt.callLater(chatPanel.rememberScrollPosition)
+        onWidthChanged: {
+            if ((chatPanel.anchoredToBottom || chatPanel.initialScrollPending) && !chatPanel.listInteracting)
+                Qt.callLater(chatPanel.scrollToBottom)
+        }
+        onContentHeightChanged: {
+            if ((chatPanel.anchoredToBottom || chatPanel.initialScrollPending) && !chatPanel.listInteracting)
+                Qt.callLater(chatPanel.scrollToBottom)
+        }
+        onContentYChanged: {
+            Qt.callLater(chatPanel.rememberScrollPosition)
+        }
+        onDraggingChanged: {
+            if (dragging) {
+                chatPanel.userHasScrolled = true
+                chatPanel.anchoredToBottom = false
+            }
+            if (!dragging) Qt.callLater(chatPanel.rememberScrollPosition)
+        }
         onFlickingChanged: if (!flicking) Qt.callLater(chatPanel.rememberScrollPosition)
 
         delegate: MessageBubble {
@@ -145,6 +160,8 @@ Item {
             author: model.author
             timestamp: model.timestamp
             body: model.body
+            rawBody: model.rawBody || ""
+            inlineGifPlayback: chatPanel.inlineGifPlayback
             displayKind: model.displayKind || "default"
             discordMessageType: model.discordMessageType || "Default"
             medias: model.medias || []
@@ -340,18 +357,21 @@ Item {
     }
 
     function submit() {
-        if (msgInput.text.trim() === "")
+        var content = msgInput.text
+        if (content.trim() === "")
             return
+        
+        msgInput.text = ""
+        chatPanel.draftEdited("")
+        
         if (chatPanel.editMessageId !== "") {
             // Editing an existing message
-            chatPanel.editRequested(chatPanel.editMessageId, msgInput.text)
+            chatPanel.editRequested(chatPanel.editMessageId, content)
             chatPanel.editMessageId = ""
             chatPanel.editOriginalBody = ""
         } else {
-            chatPanel.sendRequested(msgInput.text, chatPanel.replyMessageId)
+            chatPanel.sendRequested(content, chatPanel.replyMessageId)
         }
-        msgInput.text = ""
-        chatPanel.draftEdited("")
     }
 
     onDraftTextChanged: {
@@ -372,6 +392,7 @@ Item {
             messageList.positionViewAtBeginning()
         initialScrollPending = false
         anchoredToBottom = true
+        userHasScrolled = false
     }
 
     function jumpToMessage(messageId) {

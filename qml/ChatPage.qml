@@ -17,6 +17,7 @@ Page {
     property var stack
     property string channelId: ""
     property string channelName: ""
+    property bool inlineGifPlayback: false
     property var messagesModel
     property string myUserId: ""
     property string typingNotice: ""
@@ -65,6 +66,7 @@ Page {
         showHeader: false
         channelId: chatPage.channelId
         channelName: chatPage.channelName
+        inlineGifPlayback: chatPage.inlineGifPlayback
         messagesModel: chatPage.messagesModel
         myUserId: chatPage.myUserId
         typingNotice: chatPage.typingNotice
