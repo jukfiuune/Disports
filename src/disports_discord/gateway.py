@@ -111,6 +111,33 @@ class DiscordGateway:
     def reconnect(self) -> None:
         self._reconnect_event.set()
 
+    def request_guild_members(self, guild_id: str, user_ids: list[str]) -> bool:
+        if not guild_id or not user_ids or not self._ws:
+            return False
+        unique_ids: list[str] = []
+        seen: set[str] = set()
+        for user_id in user_ids:
+            sid = str(user_id or "")
+            if not sid or sid in seen:
+                continue
+            seen.add(sid)
+            unique_ids.append(sid)
+            if len(unique_ids) >= 100:
+                break
+        if not unique_ids:
+            return False
+        self._ws.send_json(
+            {
+                "op": 8,
+                "d": {
+                    "guild_id": guild_id,
+                    "user_ids": unique_ids,
+                    "presences": True,
+                },
+            }
+        )
+        return True
+
     def _run_forever(self) -> None:
         attempt = 0
         while not self._stop.is_set():

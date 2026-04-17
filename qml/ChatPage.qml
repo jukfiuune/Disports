@@ -17,6 +17,11 @@ Page {
     property var stack
     property string channelId: ""
     property string channelName: ""
+    property string serverName: ""
+    property string activeServerId: ""
+    property url activeServerIcon: ""
+    property var serverEmojis: []
+    property var unicodeEmojis: []
     property bool inlineGifPlayback: false
     property var messagesModel
     property string myUserId: ""
@@ -35,6 +40,7 @@ Page {
     signal draftEdited(string text)
     signal editRequested(string messageId, string newContent)
     signal deleteRequested(string messageId)
+    signal channelMentionRequested(string channelId)
 
     header: PageHeader {
         title: chatPage.channelName !== "" ? chatPage.channelName : i18n.tr("Chat")
@@ -66,6 +72,11 @@ Page {
         showHeader: false
         channelId: chatPage.channelId
         channelName: chatPage.channelName
+        serverName: chatPage.serverName
+        activeServerId: chatPage.activeServerId
+        activeServerIcon: chatPage.activeServerIcon
+        serverEmojis: chatPage.serverEmojis
+        unicodeEmojis: chatPage.unicodeEmojis
         inlineGifPlayback: chatPage.inlineGifPlayback
         messagesModel: chatPage.messagesModel
         myUserId: chatPage.myUserId
@@ -80,6 +91,7 @@ Page {
         onDraftEdited: function(text) { chatPage.draftEdited(text) }
         onEditRequested: function(messageId, newContent) { chatPage.editRequested(messageId, newContent) }
         onDeleteRequested: function(messageId) { chatPage.deleteRequested(messageId) }
+        onChannelMentionRequested: function(channelId) { chatPage.channelMentionRequested(channelId) }
         loadingOlder: chatPage.loadingOlder
         onLoadOlderRequested: chatPage.loadOlderRequested()
         isOnline: chatPage.isOnline

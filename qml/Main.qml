@@ -19,6 +19,30 @@ MainView {
     width:  units.gu(45)
     height: units.gu(75)
 
+    function refreshActiveServerEmojis() {
+        if (!appState.pythonReady) {
+            appState.activeServerEmojis = []
+            return
+        }
+        if ((appState.activeServerId || "") === "") {
+            appState.activeServerEmojis = []
+            return
+        }
+        pythonBridge.call("discord_client.fetch_guild_emojis", [appState.activeServerId], function(emojis) {
+            appState.activeServerEmojis = emojis || []
+        })
+    }
+
+    function refreshUnicodeEmojis() {
+        if (!appState.pythonReady) {
+            appState.unicodeEmojis = []
+            return
+        }
+        pythonBridge.call("discord_client.fetch_unicode_emojis", [], function(emojis) {
+            appState.unicodeEmojis = emojis || []
+        })
+    }
+
     // Logic & State
     AppState { id: appState; isWideLayout: root.width >= units.gu(90) }
     
@@ -45,6 +69,13 @@ MainView {
         }
         onGuildSidebar: function(data) {
             chatLogic.replaceModel(serverModel, data.guilds || [])
+        }
+        onGuildMemberChunk: function(data) {
+            if (!data)
+                return
+            var activeGuildId = appState.mode === "server" ? (appState.activeServerId || "") : ""
+            if ((data.guildId || "") === activeGuildId)
+                chatLogic.refreshActiveChannel()
         }
         onMessageCreate: function(msg) {
             appState.typingNotice = ""
@@ -83,6 +114,7 @@ MainView {
         }
         onReadyForInit: {
             appState.pythonReady = true
+            root.refreshUnicodeEmojis()
             pythonBridge.call("discord_client.dev_flags", [], function(flags) {
                 if (flags && flags.force === true)
                     appState.ignoreConnectivityGate = !!flags.ignoreConnectivityGate
@@ -124,13 +156,18 @@ MainView {
     NavigationLogic {
         id: navigationLogic
         appState: appState; python: pythonBridge; appSettings: appSettings; pageStack: pageStack
-        chatPageComp: chatPageComp; channelModel: channelModel; authLogic: authLogic; chatLogic: chatLogic
+        chatPageComp: chatPageComp; channelModel: channelModel; serverModel: serverModel; authLogic: authLogic; chatLogic: chatLogic
         rootWidth: root.width
     }
 
     ThemeLogic {
         id: themeLogic
         appSettings: appSettings
+    }
+
+    Connections {
+        target: appState
+        onActiveServerIdChanged: root.refreshActiveServerEmojis()
     }
 
     Connections {
@@ -294,6 +331,11 @@ MainView {
                                 visible: appState.activeChannelId !== ""
                                 channelId: appState.activeChannelId
                                 channelName: appState.activeChannelName
+                                serverName: appState.mode === "server" ? appState.activeServerName : ""
+                                activeServerId: appState.mode === "server" ? appState.activeServerId : ""
+                                activeServerIcon: appState.mode === "server" ? appState.activeServerIcon : ""
+                                serverEmojis: appState.mode === "server" ? appState.activeServerEmojis : []
+                                unicodeEmojis: appState.unicodeEmojis
                                 inlineGifPlayback: appSettings.inlineGifPlayback
                                 messagesModel: chatMessageModel
                                 myUserId: appState.myUserId
@@ -308,6 +350,7 @@ MainView {
                                 onDraftEdited: function(text) { appState.draftText = text }
                                 onEditRequested: function(mId, content) { chatLogic.editMessage(mId, content) }
                                 onDeleteRequested: function(mId) { chatLogic.confirmDeleteMessage(mId) }
+                                onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
                                 loadingOlder: appState.loadingOlderMessages
                                 onLoadOlderRequested: chatLogic.fetchOlderMessages()
                                 onMediaPreviewRequested: function(url, type) {
@@ -343,6 +386,11 @@ MainView {
                 stack: pageStack
                 channelId: appState.activeChannelId
                 channelName: appState.activeChannelName
+                serverName: appState.mode === "server" ? appState.activeServerName : ""
+                activeServerId: appState.mode === "server" ? appState.activeServerId : ""
+                activeServerIcon: appState.mode === "server" ? appState.activeServerIcon : ""
+                serverEmojis: appState.mode === "server" ? appState.activeServerEmojis : []
+                unicodeEmojis: appState.unicodeEmojis
                 inlineGifPlayback: appSettings.inlineGifPlayback
                 messagesModel: chatMessageModel
                 myUserId: appState.myUserId
@@ -357,6 +405,7 @@ MainView {
                 onDraftEdited: function(text) { appState.draftText = text }
                 onEditRequested: function(mId, content) { chatLogic.editMessage(mId, content) }
                 onDeleteRequested: function(mId) { chatLogic.confirmDeleteMessage(mId) }
+                onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
                 loadingOlder: appState.loadingOlderMessages
                 onLoadOlderRequested: chatLogic.fetchOlderMessages()
             }

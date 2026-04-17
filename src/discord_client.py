@@ -119,6 +119,14 @@ def fetch_guild_channels(guild_id: str) -> list:
     return _client.fetch_guild_channels(guild_id)
 
 
+def fetch_guild_emojis(guild_id: str) -> list:
+    return _client.fetch_guild_emojis(guild_id)
+
+
+def fetch_unicode_emojis() -> list:
+    return _client.fetch_unicode_emojis()
+
+
 def fetch_messages(channel_id: str, limit: int = 50, before: str = "") -> list:
     return _client.fetch_messages(channel_id, limit, before)
 
@@ -145,3 +153,7 @@ def mark_seen(channel_id: str, message_id: str) -> dict:
 
 def set_active_channel(channel_id: str) -> bool:
     return _client.set_active_channel(channel_id)
+
+
+def resolve_channel(channel_id: str) -> dict:
+    return _client.resolve_channel(channel_id)

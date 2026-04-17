@@ -5,6 +5,9 @@ QtObject {
     property string mode:              "dm"   // "dm" | "server"
     property string activeServerId:    ""
     property string activeServerName:  ""
+    property url    activeServerIcon:  ""
+    property var activeServerEmojis:   []
+    property var unicodeEmojis:        []
     property string activeChannelId:   ""
     property string activeChannelName: ""
     property string myUserId:          ""

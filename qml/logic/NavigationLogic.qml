@@ -10,6 +10,7 @@ QtObject {
     property var chatPageComp
     
     property var channelModel
+    property var serverModel
     
     property var authLogic
     property var chatLogic
@@ -66,6 +67,18 @@ QtObject {
         appState.mode            = "server"
         appState.activeServerId   = id
         appState.activeServerName = name
+
+        // Find icon in serverModel
+        if (serverModel) {
+            for (var i = 0; i < serverModel.count; i++) {
+                var item = serverModel.get(i)
+                if (item.serverId === id) {
+                    appState.activeServerIcon = item.iconUrl || ""
+                    break
+                }
+            }
+        }
+
         python.call("discord_client.fetch_guild_channels", [id], function(channels) {
             chatLogic.replaceModel(channelModel, channels)
         })

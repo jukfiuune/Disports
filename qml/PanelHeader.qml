@@ -6,6 +6,7 @@ Rectangle {
 
     property string title: ""
     property bool shown: true
+    property real trailingReservedWidth: 0
 
     height: shown ? units.gu(5) : 0
     visible: shown
@@ -17,7 +18,7 @@ Rectangle {
             right: parent.right
             verticalCenter: parent.verticalCenter
             leftMargin: units.gu(2)
-            rightMargin: units.gu(2)
+            rightMargin: units.gu(2) + panelHeader.trailingReservedWidth
         }
         text: panelHeader.title
         font.pixelSize: units.gu(1.8)

@@ -37,6 +37,35 @@ QtObject {
         })
     }
 
+    function openChannelById(channelId) {
+        if (!appState.pythonReady || channelId === "")
+            return
+
+        python.call("discord_client.resolve_channel", [channelId], function(result) {
+            if (!result || !result.ok || !result.channel) {
+                console.log("Resolve channel failed: " + (result ? result.error : "unknown error"))
+                return
+            }
+
+            var channel = result.channel
+            var guildId = channel.guildId || ""
+            var channelName = channel.name || ""
+            if (guildId !== "") {
+                appState.mode = "server"
+                appState.activeServerId = guildId
+                appState.activeServerName = channel.guildName || appState.activeServerName
+                python.call("discord_client.fetch_guild_channels", [guildId], function(channels) {
+                    replaceModel(channelModel, channels || [])
+                    openChat(channelId, channelName)
+                })
+                return
+            }
+
+            appState.mode = "dm"
+            openChat(channelId, channelName)
+        })
+    }
+
     function fetchOlderMessages() {
         if (!appState.pythonReady || appState.loadingOlderMessages || chatMessageModel.count === 0 || appState.activeChannelId === "") return;
         
@@ -51,6 +80,14 @@ QtObject {
             }
             appState.loadingOlderMessages = false;
         });
+    }
+
+    function refreshActiveChannel() {
+        if (!appState.pythonReady || appState.activeChannelId === "")
+            return
+        python.call("discord_client.fetch_messages", [appState.activeChannelId, 50, ""], function(messages) {
+            replaceModel(chatMessageModel, messages || [])
+        })
     }
 
     function postMessage(content, replyMessageId) {
@@ -86,6 +123,10 @@ QtObject {
     }
 
     function replaceModel(model, items) {
+        if (!model)
+            return
+        if (!items)
+            items = []
         model.clear()
         for (var i = 0; i < items.length; i++)
             model.append(items[i])

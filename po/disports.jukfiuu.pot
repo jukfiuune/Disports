@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-15 17:57+0000\n"
+"POT-Creation-Date: 2026-04-17 10:19+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,47 +17,47 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:40 ../qml/ChatPanel.qml:85
+#: ../qml/ChatPage.qml:46 ../qml/ChatPanel.qml:94
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:45 ../qml/SettingsPage.qml:41
+#: ../qml/ChatPage.qml:51 ../qml/SettingsPage.qml:41
 msgid "Back"
 msgstr ""
 
-#: ../qml/ChatPage.qml:53
+#: ../qml/ChatPage.qml:59
 msgid "Info"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:115
+#: ../qml/ChatPanel.qml:124
 msgid "Load older messages"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:115
+#: ../qml/ChatPanel.qml:124 ../qml/components/EmojiPickerContent.qml:290
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:236
+#: ../qml/ChatPanel.qml:263
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:236 ../qml/ChatPanel.qml:285
+#: ../qml/ChatPanel.qml:263 ../qml/ChatPanel.qml:333
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:246
+#: ../qml/ChatPanel.qml:272
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:283
+#: ../qml/ChatPanel.qml:331
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:285
+#: ../qml/ChatPanel.qml:333
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:286
+#: ../qml/ChatPanel.qml:334
 msgid "Type a message..."
 msgstr ""
 
@@ -109,31 +109,31 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/Main.qml:87
+#: ../qml/Main.qml:104
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:90
+#: ../qml/Main.qml:107
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:96
+#: ../qml/Main.qml:113
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:243 disports.desktop.in.h:1
+#: ../qml/Main.qml:265 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:247 ../qml/SettingsPage.qml:37
+#: ../qml/Main.qml:269 ../qml/SettingsPage.qml:37
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:339
+#: ../qml/Main.qml:367
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:344
+#: ../qml/Main.qml:372
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -145,19 +145,19 @@ msgstr ""
 msgid "Open Externally"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:53 ../qml/components/DeleteDialog.qml:14
+#: ../qml/MessageBubble.qml:54 ../qml/components/DeleteDialog.qml:14
 msgid "Delete"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:65
+#: ../qml/MessageBubble.qml:66
 msgid "Reply"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:72
+#: ../qml/MessageBubble.qml:73
 msgid "Edit"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:79
+#: ../qml/MessageBubble.qml:80
 msgid "Copy"
 msgstr ""
 
@@ -221,6 +221,75 @@ msgstr ""
 msgid "Are you sure you want to permanently delete this message?"
 msgstr ""
 
+#: ../qml/components/EmojiPickerContent.qml:19
+msgid "Faces"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:20
+msgid "People"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:21
+msgid "Nature"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:22
+msgid "Food"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:23
+msgid "Activity"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:24
+msgid "Travel"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:25
+msgid "Objects"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:26
+msgid "Symbols"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:27
+msgid "Flags"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:30
+#: ../qml/components/EmojiPickerContent.qml:31
+msgid "Emoji"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:30
+msgid "Server"
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:304
+msgid "This server has no custom emoji."
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:305
+msgid "Server emoji are for server channels."
+msgstr ""
+
+#: ../qml/components/EmojiPickerContent.qml:306
+msgid "Empty."
+msgstr ""
+
+#: ../qml/components/EmojiPickerDialog.qml:17
+msgid "Choose emoji"
+msgstr ""
+
+#: ../qml/components/EmojiPickerDialog.qml:18
+msgid "Insert an emoji into your message."
+msgstr ""
+
+#: ../qml/components/EmojiPickerDialog.qml:39
+msgid "Close"
+msgstr ""
+
 #: ../qml/components/OfflineBanner.qml:32
 msgid "No network connection"
 msgstr ""
@@ -253,26 +322,26 @@ msgstr ""
 msgid "Could not save login securely."
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:105
+#: ../qml/logic/AuthLogic.qml:106
 msgid "Generating QR code…"
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:108
+#: ../qml/logic/AuthLogic.qml:109
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:136
+#: ../qml/logic/ChatLogic.qml:175
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:138
+#: ../qml/logic/ChatLogic.qml:177
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:140
+#: ../qml/logic/ChatLogic.qml:179
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:144
+#: ../qml/logic/ChatLogic.qml:183
 msgid "Message"
 msgstr ""

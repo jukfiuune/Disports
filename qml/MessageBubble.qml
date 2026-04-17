@@ -34,6 +34,7 @@ ListItem {
     signal editRequested(string messageId, string currentBody)
     signal deleteRequested(string messageId)
     signal mediaClicked(string url, string type)
+    signal channelMentionRequested(string channelId)
 
     divider.visible: false
     height: inner.height + units.gu(displayKind === "system" ? 1 : 1.5)
@@ -142,8 +143,15 @@ ListItem {
                    : theme.palette.normal.backgroundText
             font.italic: bubble.displayKind === "system"
             visible: bubble.body !== "" || bubble.displayKind === "system"
-            textFormat: Text.StyledText
-            onLinkActivated: Qt.openUrlExternally(link)
+            textFormat: Text.RichText
+            onLinkActivated: {
+                var prefix = "disports://channel/"
+                if (link.indexOf(prefix) === 0) {
+                    bubble.channelMentionRequested(link.substring(prefix.length))
+                    return
+                }
+                Qt.openUrlExternally(link)
+            }
         }
 
         Repeater {

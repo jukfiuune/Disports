@@ -8,6 +8,7 @@ import QtQuick 2.7
 import QtQuick.Layouts 1.3
 import QtGraphicalEffects 1.0
 import Lomiri.Components 1.3
+import Lomiri.Components.Popups 1.3 as Popups
 import "./"
 import "./components"
 
@@ -16,6 +17,11 @@ Item {
 
     property string channelId: ""
     property string channelName: ""
+    property string serverName: ""
+    property string activeServerId: ""
+    property url activeServerIcon: ""
+    property var serverEmojis: []
+    property var unicodeEmojis: []
     property var messagesModel
     property string myUserId: ""
     property string typingNotice: ""
@@ -43,7 +49,7 @@ Item {
                                                     composerMinHeight,
                                                     Math.min(
                                                         composerMaxHeight,
-                                                        Math.max(msgInput.implicitHeight, msgInput.contentHeight + units.gu(2))
+                                                        msgInput.implicitHeight
                                                     )
                                                 )
     property bool loadingOlder: false
@@ -58,6 +64,8 @@ Item {
     signal editRequested(string messageId, string newContent)
     signal deleteRequested(string messageId)
     signal mediaPreviewRequested(string url, string type)
+    signal channelMentionRequested(string channelId)
+    signal emojiInserted(var emojiData)
 
     onChannelIdChanged: {
         initialScrollPending = channelId !== ""
@@ -66,6 +74,8 @@ Item {
         highlightedMessageId = ""
         chatPanel.editMessageId = ""
         chatPanel.editOriginalBody = ""
+        if (emojiPanel.visible)
+            emojiPanel.close()
     }
 
     Rectangle {
@@ -90,7 +100,7 @@ Item {
             top: headerBackground.bottom
             left: parent.left
             right: parent.right
-            bottom: typingLabel.visible ? typingLabel.top : inputRow.top
+            bottom: typingLabel.visible ? typingLabel.top : (emojiPanel.visible ? emojiPanel.top : inputRow.top)
         }
         model: chatPanel.messagesModel
         clip: true
@@ -183,6 +193,7 @@ Item {
                 msgInput.forceActiveFocus()
             }
             onDeleteRequested: function(messageId) { chatPanel.deleteRequested(messageId) }
+            onChannelMentionRequested: function(channelId) { chatPanel.channelMentionRequested(channelId) }
             onMediaClicked: function(url, type) {
                 if (type === "video" || type === "image") {
                     chatPanel.mediaPreviewRequested(url, type)
@@ -198,7 +209,7 @@ Item {
         anchors {
             left: parent.left
             right: parent.right
-            bottom: inputRow.top
+            bottom: emojiPanel.visible ? emojiPanel.top : inputRow.top
             leftMargin: units.gu(2)
             rightMargin: units.gu(2)
             bottomMargin: units.gu(0.5)
@@ -208,6 +219,24 @@ Item {
         color: theme.palette.normal.backgroundSecondaryText
         font.pixelSize: units.gu(1.3)
         elide: Text.ElideRight
+    }
+
+    EmojiPanel {
+        id: emojiPanel
+        anchors {
+            left: parent.left
+            right: parent.right
+            bottom: inputRow.top
+        }
+        serverName: chatPanel.serverName
+        activeServerId: chatPanel.activeServerId
+        activeServerIcon: chatPanel.activeServerIcon
+        serverEmojis: chatPanel.serverEmojis || []
+        unicodeEmojis: chatPanel.unicodeEmojis || []
+        onEmojiChosen: {
+            chatPanel.insertEmoji(text, emojiData)
+            emojiPanel.close()
+        }
     }
 
     Rectangle {
@@ -255,15 +284,37 @@ Item {
                 Layout.preferredHeight: composerFieldHeight
                 spacing: units.gu(1)
 
-                Item {
+                StyledItem {
                     Layout.preferredWidth: composerButtonSize
                     Layout.preferredHeight: composerButtonSize
                     Layout.alignment: Qt.AlignBottom
 
                     Icon {
                         anchors.fill: parent
-                        name: "attachment"
-                        color: theme.palette.normal.backgroundSecondaryText
+                        visible: !emojiPanel.visible
+                        source: Qt.resolvedUrl("../assets/emoji.svg")
+                        color: theme.palette.normal.backgroundText
+                    }
+
+                    Icon {
+                        anchors.fill: parent
+                        visible: emojiPanel.visible
+                        name: "down"
+                        color: theme.palette.normal.backgroundText
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: chatPanel.isOnline
+                        onClicked: {
+                            if (emojiPanel.visible) {
+                                emojiPanel.close()
+                                msgInput.forceActiveFocus()
+                            } else {
+                                Qt.inputMethod.hide()
+                                emojiPanel.open("unicode")
+                            }
+                        }
                     }
                 }
 
@@ -283,6 +334,10 @@ Item {
                                          : i18n.tr("Type a message..."))
                     readOnly: !chatPanel.isOnline
                     textFormat: TextEdit.PlainText
+                    onActiveFocusChanged: {
+                        if (activeFocus && emojiPanel.visible)
+                            emojiPanel.close()
+                    }
                     Component.onCompleted: {
                         if (text !== chatPanel.draftText)
                             text = chatPanel.draftText
@@ -353,6 +408,22 @@ Item {
         }
     }
 
+    Component {
+        id: emojiDialogComponent
+        EmojiPickerDialog {
+            id: emojiDialog
+            serverName: chatPanel.serverName
+            activeServerId: chatPanel.activeServerId
+            activeServerIcon: chatPanel.activeServerIcon
+            serverEmojis: chatPanel.serverEmojis || []
+            unicodeEmojis: chatPanel.unicodeEmojis || []
+            onEmojiChosen: function(text, emojiData) {
+                chatPanel.insertEmoji(text, emojiData)
+                Popups.PopupUtils.close(emojiDialog)
+            }
+        }
+    }
+
     function submit() {
         var content = msgInput.text
         if (content.trim() === "")
@@ -368,6 +439,26 @@ Item {
         } else {
             chatPanel.sendRequested(content, chatPanel.replyMessageId)
         }
+    }
+
+    function insertEmoji(text, emojiData) {
+        if (!text)
+            return
+
+        var start = Math.min(msgInput.selectionStart, msgInput.selectionEnd)
+        var end = Math.max(msgInput.selectionStart, msgInput.selectionEnd)
+        if (end > start)
+            msgInput.remove(start, end)
+        msgInput.insert(start, text)
+        msgInput.cursorPosition = start + text.length
+        msgInput.forceActiveFocus()
+        emojiInserted(emojiData || {})
+    }
+
+    function openEmojiDialog(initialMode) {
+        return Popups.PopupUtils.open(emojiDialogComponent, chatPanel, {
+            initialMode: initialMode || "unicode"
+        })
     }
 
     onDraftTextChanged: {

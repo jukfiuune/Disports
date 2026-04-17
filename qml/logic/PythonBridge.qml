@@ -20,6 +20,7 @@ Python {
     signal qrLoginError(var data)
     signal guildChannels(var data)
     signal guildSidebar(var data)
+    signal guildMemberChunk(var data)
     signal readyForInit()
 
     Component.onCompleted: {
@@ -45,6 +46,7 @@ Python {
         setHandler("qr_login_error", function(data) { qrLoginError(data) })
         setHandler("guild_channels", function(data) { guildChannels(data) })
         setHandler("guild_sidebar", function(data) { guildSidebar(data) })
+        setHandler("guild_member_chunk", function(data) { guildMemberChunk(data) })
     }
     
     onError: console.log("Python error: " + traceback)

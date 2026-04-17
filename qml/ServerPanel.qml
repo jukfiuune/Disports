@@ -4,7 +4,7 @@
  * Right panel shown when a server is active.
  * Renders channels grouped by category, just like Discord's sidebar.
  * The channel model has:
- * { channelId, categoryId, category, name, unread, channelType, channelGlyph, channelIconName, openable }
+ * { channelId, categoryId, category, name, unread, channelType, channelGlyph, channelIconName, openable, indentLevel }
  *
  * Signal:
  *   channelOpened(string channelId, string name)
@@ -65,7 +65,8 @@ Item {
                 Row {
                     anchors {
                         left: parent.left; right: parent.right
-                        leftMargin: units.gu(2); rightMargin: units.gu(2)
+                        leftMargin: units.gu(2) + units.gu(model.indentLevel || 0) * 1.5
+                        rightMargin: units.gu(2)
                         verticalCenter: parent.verticalCenter
                     }
                     spacing: units.gu(0.75)
@@ -91,8 +92,9 @@ Item {
                     Label {
                         text: model.name
                         font.pixelSize: units.gu(1.7)
+                        font.bold: (model.indentLevel || 0) > 0
                         elide: Text.ElideRight
-                        width: parent.width - units.gu(8)
+                        width: parent.width - units.gu(10)
                         anchors.verticalCenter: parent.verticalCenter
                     }
 

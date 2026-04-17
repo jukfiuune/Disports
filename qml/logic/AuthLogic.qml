@@ -78,6 +78,7 @@ QtObject {
         appState.mode = "dm"
         appState.activeServerId = ""
         appState.activeServerName = ""
+        appState.activeServerEmojis = []
         appState.activeChannelId = ""
         appState.activeChannelName = ""
         appState.myUserId = ""

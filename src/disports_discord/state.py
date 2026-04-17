@@ -11,6 +11,16 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 MENTION_RE = re.compile(r"<@!?(\d+)>")
+ROLE_MENTION_RE = re.compile(r"<@&(\d+)>")
+CHANNEL_MENTION_RE = re.compile(r"<#(\d+)>")
+CUSTOM_EMOJI_RE = re.compile(r"<(a?):([A-Za-z0-9_~\-]+):(\d+)>")
+DISCORD_TOKEN_RE = re.compile(
+    r"(?P<url>https?://[^\s]+)"
+    r"|<(?P<emoji_anim>a?):(?P<emoji_name>[A-Za-z0-9_~\-]+):(?P<emoji_id>\d+)>"
+    r"|<@!?(?P<user_id>\d+)>"
+    r"|<@&(?P<role_id>\d+)>"
+    r"|<#(?P<channel_id>\d+)>"
+)
 
 
 class DiscordState:
@@ -65,7 +75,10 @@ class DiscordState:
         self.private_channels: list[dict[str, Any]] = []
         self.guild_channels: dict[str, list[dict[str, Any]]] = {}
         self.guild_roles: dict[str, dict[str, int]] = {}
+        self.guild_role_names: dict[str, dict[str, str]] = {}
         self.guild_members: dict[str, dict[str, Any]] = {}
+        self.guild_details: dict[str, dict[str, Any]] = {}
+        self.guild_emojis: dict[str, list[dict[str, Any]]] = {}
         self.users: dict[str, dict[str, Any]] = {}
         self.presences: dict[str, str] = {}
         self.active_channel_id: str | None = None
@@ -90,7 +103,7 @@ class DiscordState:
         for guild in self.guilds:
             if str(guild.get("id", "") or "") == guild_id:
                 return str(guild.get("name", "") or "")
-        return ""
+        return str((self.guild_details.get(guild_id) or {}).get("name", "") or "")
 
     def _normalize_guild_folders_value(self, raw: Any) -> list[dict[str, Any]]:
         if raw is None:
@@ -386,21 +399,28 @@ class DiscordState:
         self,
         user: dict[str, Any] | None,
         member: dict[str, Any] | None = None,
+        guild_id: str = "",
     ) -> dict[str, Any]:
         if not user:
             return {}
 
-        user_id = user.get("id", "")
+        user_id = str(user.get("id", "") or "")
+        if not user_id:
+            return {}
         cached = self.users.setdefault(user_id, {})
         self._merge_dict(cached, user)
         if member:
-            cached_member = cached.setdefault("_member", {})
+            cached_members = cached.setdefault("_members", {})
+            normalized_guild_id = str(guild_id or member.get("guild_id", "") or "")
+            cached_member = cached_members.setdefault(normalized_guild_id, {})
             # nick=None is meaningful: it means "no server nickname".
             # _merge_dict skips None, so we must write it explicitly first
             # so that a cleared nickname doesn't stay stuck in cache.
             if "nick" in member:
                 cached_member["nick"] = member["nick"]  # may be None
             self._merge_dict(cached_member, member)
+            if normalized_guild_id:
+                cached_member["guild_id"] = normalized_guild_id
         return cached
 
     def set_guild_channels(self, guild_id: str, channels: list[dict[str, Any]]) -> None:
@@ -410,25 +430,74 @@ class DiscordState:
             if ch_id:
                 self.channel_to_guild[ch_id] = guild_id
 
+    def upsert_guild_channel(self, channel: dict[str, Any]) -> str | None:
+        if not isinstance(channel, dict):
+            return None
+        channel_id = str(channel.get("id", "") or "")
+        if not channel_id:
+            return None
+        guild_id = str(channel.get("guild_id", "") or "") or self.get_guild_for_channel(channel_id) or ""
+        if not guild_id:
+            return None
+        channels = list(self.guild_channels.get(guild_id, []))
+        replaced = False
+        for index, existing in enumerate(channels):
+            if str(existing.get("id", "") or "") == channel_id:
+                channels[index] = channel
+                replaced = True
+                break
+        if not replaced:
+            channels.append(channel)
+        self.set_guild_channels(guild_id, channels)
+        return guild_id
+
+    def remove_guild_channel(self, channel_id: str, guild_id: str = "") -> str | None:
+        resolved_guild_id = guild_id or self.get_guild_for_channel(channel_id) or ""
+        if not resolved_guild_id:
+            return None
+        channels = [
+            channel
+            for channel in self.guild_channels.get(resolved_guild_id, [])
+            if str(channel.get("id", "") or "") != channel_id
+        ]
+        self.guild_channels[resolved_guild_id] = channels
+        self.channel_to_guild.pop(channel_id, None)
+        return resolved_guild_id
+
+    def set_guild_emojis(self, guild_id: str, emojis: list[dict[str, Any]]) -> None:
+        self.guild_emojis[guild_id] = [dict(emoji) for emoji in (emojis or []) if isinstance(emoji, dict)]
+
     def set_guild_context(
         self,
         guild_id: str,
         guild_data: dict[str, Any] | None,
         member_data: dict[str, Any] | None,
     ) -> None:
+        if guild_data:
+            cached_guild = self.guild_details.setdefault(guild_id, {})
+            self._merge_dict(cached_guild, guild_data)
         roles: dict[str, int] = {}
+        role_names: dict[str, str] = {}
         for role in (guild_data or {}).get("roles", []) or []:
             role_id = role.get("id")
             if not role_id:
                 continue
+            role_id = str(role_id)
             try:
                 roles[role_id] = int(role.get("permissions") or 0)
             except (TypeError, ValueError):
                 roles[role_id] = 0
+            role_names[role_id] = str(role.get("name", "") or "")
         if roles:
             self.guild_roles[guild_id] = roles
+        if role_names:
+            self.guild_role_names[guild_id] = role_names
         if member_data:
             self.guild_members[guild_id] = member_data
+            if isinstance(member_data.get("user"), dict):
+                self.cache_user(member_data.get("user") or {}, member_data, guild_id=guild_id)
+        if guild_data and isinstance(guild_data.get("emojis"), list):
+            self.set_guild_emojis(guild_id, guild_data.get("emojis") or [])
 
     def apply_private_channel_activity(self, message: dict[str, Any]) -> bool:
         channel_id = message.get("channel_id", "")
@@ -743,6 +812,11 @@ class DiscordState:
 
     def format_guild_channel_list(self, guild_id: str) -> list[dict[str, Any]]:
         channels = self.guild_channels.get(guild_id, [])
+        channel_index = {
+            str(channel.get("id", "") or ""): channel
+            for channel in channels
+            if str(channel.get("id", "") or "")
+        }
         categories = {
             channel["id"]: {
                 "id": channel.get("id", ""),
@@ -753,12 +827,33 @@ class DiscordState:
             if channel.get("type") == 4
         }
 
-        def channel_sort_key(channel: dict[str, Any]) -> tuple[int, int, str]:
-            parent_id = channel.get("parent_id")
-            category = categories.get(parent_id)
+        def category_for_channel(channel: dict[str, Any]) -> dict[str, Any] | None:
+            parent_id = str(channel.get("parent_id", "") or "")
+            parent = channel_index.get(parent_id)
+            if parent and int(parent.get("type", -1)) == 4:
+                return categories.get(parent_id)
+            if parent:
+                grandparent_id = str(parent.get("parent_id", "") or "")
+                return categories.get(grandparent_id)
+            return None
+
+        def thread_parent(channel: dict[str, Any]) -> dict[str, Any] | None:
+            channel_type = int(channel.get("type", -1))
+            if channel_type not in (10, 11, 12):
+                return None
+            parent_id = str(channel.get("parent_id", "") or "")
+            return channel_index.get(parent_id)
+
+        def channel_sort_key(channel: dict[str, Any]) -> tuple[int, int, int, int, str]:
+            category = category_for_channel(channel)
             category_position = category["position"] if category else -1
+            parent = thread_parent(channel)
+            parent_position = int(parent.get("position", 0)) if parent else int(channel.get("position", 0))
+            thread_rank = 1 if parent else 0
             return (
                 category_position,
+                parent_position,
+                thread_rank,
                 int(channel.get("position", 0)),
                 channel.get("name", ""),
             )
@@ -768,19 +863,24 @@ class DiscordState:
             channel_type = int(channel.get("type", -1))
             if not self.is_visible_guild_channel(guild_id, channel):
                 continue
-            parent_id = channel.get("parent_id")
+            category = category_for_channel(channel) or {}
+            parent = thread_parent(channel)
+            parent_id = str(channel.get("parent_id", "") or "")
             formatted.append(
                 {
                     "channelId": channel.get("id", ""),
-                    "categoryId": (categories.get(parent_id) or {}).get("id", "uncategorized"),
-                    "category": (categories.get(parent_id) or {}).get("name", "Channels"),
+                    "categoryId": category.get("id", "uncategorized"),
+                    "category": category.get("name", "Channels"),
                     "name": channel.get("name", ""),
                     "channelType": self.channel_type_name(channel_type),
                     "channelGlyph": self.channel_type_glyph(channel_type),
                     "channelIconName": self.channel_type_icon(channel_type),
-                    "openable": channel_type in (0, 5),
+                    "openable": self.channel_is_openable(channel),
                     "unread": self.channel_badge_count(channel),
                     "unreadKind": self.channel_unread_kind(channel),
+                    "indentLevel": 1 if parent else 0,
+                    "parentChannelId": parent_id,
+                    "parentName": str((parent or {}).get("name", "") or ""),
                 }
             )
         return formatted
@@ -788,19 +888,31 @@ class DiscordState:
     def format_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [self.format_message(message) for message in messages]
 
+    def guild_id_for_message(self, message: dict[str, Any] | None) -> str:
+        if not isinstance(message, dict):
+            return ""
+        guild_id = str(message.get("guild_id", "") or "")
+        if guild_id:
+            return guild_id
+        channel_id = str(message.get("channel_id", "") or "")
+        if channel_id:
+            return self.get_guild_for_channel(channel_id) or ""
+        return ""
+
     def format_message(self, message: dict[str, Any]) -> dict[str, Any]:
         author = message.get("author") or {}
         member = message.get("member") or {}
-        cached_user = self.cache_user(author, member)
+        guild_id = self.guild_id_for_message(message)
+        cached_user = self.cache_user(author, member, guild_id=guild_id)
 
-        display_name = self.message_display_name(cached_user) or "Unknown"
-        content = message.get("content", "")
-        import html
-        import re
-        content = html.escape(content)
-        content = self.replace_mentions(content, message.get("mentions", []) or [])
-        content = re.sub(r'(https?://[^\s]+)', r'<a href="\1">\1</a>', content)
-        
+        display_name = self.message_display_name(cached_user, guild_id=guild_id, member=member) or "Unknown"
+        content = self.render_message_content(
+            message.get("content", ""),
+            message.get("mentions", []) or [],
+            guild_id=guild_id,
+            rich=True,
+        )
+
         raw_attachments = message.get("attachments", []) or []
         embeds = message.get("embeds", []) or []
         
@@ -882,7 +994,8 @@ class DiscordState:
 
         display_kind = "system" if system_text else "default"
         if system_text:
-            content = system_text
+            import html
+            content = html.escape(system_text)
 
         return {
             "messageId": message.get("id", ""),
@@ -908,13 +1021,17 @@ class DiscordState:
         }
 
     def format_typing(self, payload: dict[str, Any]) -> dict[str, Any]:
-        user_id = payload.get("user_id", "")
+        user_id = str(payload.get("user_id", "") or "")
+        guild_id = str(payload.get("guild_id", "") or "")
+        if not guild_id:
+            guild_id = self.get_guild_for_channel(str(payload.get("channel_id", "") or "")) or ""
         user = self.users.get(user_id, {})
         member = payload.get("member", {}) or {}
-        if user and member:
-            cached_member = user.setdefault("_member", {})
-            self._merge_dict(cached_member, member)
-        author = self.message_display_name(user) or member.get("nick") or "Someone"
+        if member and isinstance(member.get("user"), dict):
+            user = self.cache_user(member.get("user") or {}, member, guild_id=guild_id)
+        elif user and member:
+            user = self.cache_user(user, member, guild_id=guild_id)
+        author = self.message_display_name(user, guild_id=guild_id, member=member) or member.get("nick") or "Someone"
         return {
             "userId": user_id,
             "author": author,
@@ -937,16 +1054,66 @@ class DiscordState:
         return user.get("global_name") or user.get("username") or ""
 
     @staticmethod
-    def message_display_name(user: dict[str, Any] | None) -> str:
+    def guild_emoji_url(emoji_id: str, animated: bool = False) -> str:
+        if not emoji_id:
+            return ""
+        ext = "gif" if animated else "png"
+        return f"https://cdn.discordapp.com/emojis/{emoji_id}.{ext}?size=64&quality=lossless"
+
+    def guild_member_for_user(self, user: dict[str, Any] | None, guild_id: str = "") -> dict[str, Any]:
+        if not user:
+            return {}
+        members = user.get("_members") or {}
+        if guild_id and isinstance(members, dict):
+            member = members.get(guild_id)
+            if isinstance(member, dict):
+                return member
+        fallback = members.get("") if isinstance(members, dict) else None
+        return fallback if isinstance(fallback, dict) else {}
+
+    def has_guild_member(self, guild_id: str, user_id: str) -> bool:
+        if not guild_id or not user_id:
+            return False
+        user = self.users.get(str(user_id))
+        if not user:
+            return False
+        return bool(self.guild_member_for_user(user, guild_id))
+
+    def message_display_name(
+        self,
+        user: dict[str, Any] | None,
+        guild_id: str = "",
+        member: dict[str, Any] | None = None,
+    ) -> str:
         if not user:
             return ""
-        member = user.get("_member") or {}
+        guild_member = dict(self.guild_member_for_user(user, guild_id))
+        if member:
+            if "nick" in member:
+                guild_member["nick"] = member["nick"]  # may be None
+            self._merge_dict(guild_member, member)
         return (
-            member.get("nick")
+            guild_member.get("nick")
             or user.get("global_name")
             or user.get("username")
             or ""
         )
+
+    def apply_guild_members_chunk(self, payload: dict[str, Any]) -> str:
+        guild_id = str(payload.get("guild_id", "") or "")
+        if not guild_id:
+            return ""
+        for member in payload.get("members", []) or []:
+            if not isinstance(member, dict):
+                continue
+            user = member.get("user") or {}
+            if not isinstance(user, dict):
+                continue
+            self.cache_user(user, member, guild_id=guild_id)
+        for presence in payload.get("presences", []) or []:
+            if isinstance(presence, dict):
+                self.apply_presence(presence)
+        return guild_id
 
     @staticmethod
     def guild_icon_url(guild_id: str, icon_hash: str | None) -> str:
@@ -999,20 +1166,21 @@ class DiscordState:
         self,
         content: str,
         mentions: list[dict[str, Any]],
+        guild_id: str = "",
     ) -> str:
         if not content:
             return ""
 
         mention_names = {}
         for mention in mentions:
-            user_id = mention.get("id")
+            user_id = str(mention.get("id", "") or "")
             if not user_id:
                 continue
             # In guild messages the mentions array includes a partial `member`
             # object (with `nick`) embedded directly on each user entry.
             member = mention.get("member")
-            cached = self.cache_user(mention, member)
-            mention_names[user_id] = self.message_display_name(cached) or user_id
+            cached = self.cache_user(mention, member, guild_id=guild_id)
+            mention_names[user_id] = self.message_display_name(cached, guild_id=guild_id, member=member) or user_id
 
         def repl(match: re.Match[str]) -> str:
             user_id = match.group(1)
@@ -1032,10 +1200,13 @@ class DiscordState:
 
         author = referenced_message.get("author") or {}
         member = referenced_message.get("member") or {}
-        cached_user = self.cache_user(author, member)
-        content = self.replace_mentions(
+        guild_id = self.guild_id_for_message(referenced_message)
+        cached_user = self.cache_user(author, member, guild_id=guild_id)
+        content = self.render_message_content(
             referenced_message.get("content", ""),
             referenced_message.get("mentions", []) or [],
+            guild_id=guild_id,
+            rich=False,
         ).strip()
         attachments = referenced_message.get("attachments", []) or []
         media = self.format_media(attachments[0]) if attachments else self.format_media({})
@@ -1056,7 +1227,7 @@ class DiscordState:
             {
                 "hasReply": True,
                 "replyMessageId": referenced_message.get("id", ""),
-                "replyAuthor": self.message_display_name(cached_user) or "Unknown",
+                "replyAuthor": self.message_display_name(cached_user, guild_id=guild_id, member=member) or "Unknown",
                 "replyBody": content,
             }
         )
@@ -1075,13 +1246,16 @@ class DiscordState:
 
         message = (snapshots[0] or {}).get("message") or {}
         author = message.get("author") or {}
-        cached_user = self.cache_user(author, message.get("member") or {}) if author else {}
+        guild_id = self.guild_id_for_message(message)
+        cached_user = self.cache_user(author, message.get("member") or {}, guild_id=guild_id) if author else {}
         attachments = message.get("attachments", []) or []
         media = self.format_media(attachments[0]) if attachments else self.format_media({})
 
-        content = self.replace_mentions(
+        content = self.render_message_content(
             message.get("content", ""),
             message.get("mentions", []) or [],
+            guild_id=guild_id,
+            rich=False,
         ).strip()
         if not content:
             if media["messageType"] == "image":
@@ -1099,7 +1273,7 @@ class DiscordState:
             {
                 "hasForwarded": True,
                 "forwardedLabel": "Forwarded",
-                "forwardedAuthor": self.message_display_name(cached_user) or self.display_name(cached_user) or "",
+                "forwardedAuthor": self.message_display_name(cached_user, guild_id=guild_id) or self.display_name(cached_user) or "",
                 "forwardedBody": content,
                 "media": media,
             }
@@ -1112,11 +1286,14 @@ class DiscordState:
         user: dict[str, Any],
         message_type: int,
     ) -> str:
-        user_name = self.message_display_name(user) or "Someone"
+        guild_id = self.guild_id_for_message(message)
+        user_name = self.message_display_name(user, guild_id=guild_id, member=message.get("member") or {}) or "Someone"
         guild_name = ((message.get("guild") or {}).get("name")) or ""
-        content = self.replace_mentions(
+        content = self.render_message_content(
             message.get("content", ""),
             message.get("mentions", []) or [],
+            guild_id=guild_id,
+            rich=False,
         ).strip()
 
         if content == "[nudge]":
@@ -1306,7 +1483,7 @@ class DiscordState:
 
     def is_visible_guild_channel(self, guild_id: str, channel: dict[str, Any]) -> bool:
         channel_type = int(channel.get("type", -1))
-        if channel_type not in (0, 2, 5, 13, 15):
+        if channel_type not in (0, 2, 5, 10, 11, 12, 13, 15):
             return False
         return self.has_channel_access(guild_id, channel)
 
@@ -1402,6 +1579,9 @@ class DiscordState:
             0: "text",
             2: "voice",
             5: "announcement",
+            10: "announcement_thread",
+            11: "public_thread",
+            12: "private_thread",
             13: "stage",
             15: "forum",
         }.get(channel_type, "unknown")
@@ -1412,6 +1592,9 @@ class DiscordState:
             0: "#",
             2: "))",
             5: "!",
+            10: ">",
+            11: ">",
+            12: ">",
             13: "*",
             15: "@",
         }.get(channel_type, "#")
@@ -1424,6 +1607,148 @@ class DiscordState:
             13: "media-playback-start",
             15: "contact-group",
         }.get(channel_type, "")
+
+    @staticmethod
+    def channel_is_openable(channel: dict[str, Any]) -> bool:
+        return int(channel.get("type", -1)) in (0, 5, 10, 11, 12)
+
+    def channel_display_name(self, channel: dict[str, Any] | None, with_prefix: bool = True) -> str:
+        if not channel:
+            return "#unknown"
+        channel_type = int(channel.get("type", -1))
+        name = str(channel.get("name", "") or "")
+        if channel_type in (0, 5, 10, 11, 12):
+            return f"#{name}" if with_prefix and name else name
+        return name
+
+    def channel_label(self, channel_id: str, with_prefix: bool = True) -> str:
+        channel = self.get_channel(channel_id)
+        if channel:
+            return self.channel_display_name(channel, with_prefix=with_prefix)
+        return f"#{channel_id}" if with_prefix else channel_id
+
+    def role_name(self, guild_id: str, role_id: str) -> str:
+        if not guild_id or not role_id:
+            return role_id
+        return self.guild_role_names.get(guild_id, {}).get(role_id, role_id)
+
+    def render_message_content(
+        self,
+        content: str,
+        mentions: list[dict[str, Any]],
+        *,
+        guild_id: str = "",
+        rich: bool = False,
+    ) -> str:
+        if not content:
+            return ""
+
+        import html
+
+        mention_names: dict[str, str] = {}
+        for mention in mentions:
+            user_id = str(mention.get("id", "") or "")
+            if not user_id:
+                continue
+            member = mention.get("member")
+            cached = self.cache_user(mention, member, guild_id=guild_id)
+            mention_names[user_id] = self.message_display_name(cached, guild_id=guild_id, member=member) or user_id
+
+        emoji_size = 36 if rich and CUSTOM_EMOJI_RE.sub("", content).strip() == "" else 22
+        parts: list[str] = []
+        last_index = 0
+        for match in DISCORD_TOKEN_RE.finditer(content):
+            segment = content[last_index:match.start()]
+            parts.append(html.escape(segment) if rich else segment)
+            parts.append(self._render_discord_token(match, mention_names, guild_id, rich, emoji_size))
+            last_index = match.end()
+
+        tail = content[last_index:]
+        parts.append(html.escape(tail) if rich else tail)
+        rendered = "".join(parts)
+        if rich:
+            return rendered.replace("\n", "<br>")
+        return rendered
+
+    def _render_discord_token(
+        self,
+        match: re.Match[str],
+        mention_names: dict[str, str],
+        guild_id: str,
+        rich: bool,
+        emoji_size: int,
+    ) -> str:
+        import html
+
+        url = match.group("url")
+        if url:
+            escaped_url = html.escape(url, quote=True)
+            return f'<a href="{escaped_url}">{escaped_url}</a>' if rich else url
+
+        emoji_id = match.group("emoji_id")
+        if emoji_id:
+            emoji_name = match.group("emoji_name") or emoji_id
+            animated = (match.group("emoji_anim") or "") == "a"
+            if not rich:
+                return f":{emoji_name}:"
+            alt = html.escape(f":{emoji_name}:", quote=True)
+            src = html.escape(self.guild_emoji_url(emoji_id, animated), quote=True)
+            return f'<img src="{src}" alt="{alt}" width="{emoji_size}" height="{emoji_size}"/>'
+
+        user_id = match.group("user_id")
+        if user_id:
+            user_name = f"@{mention_names.get(user_id, user_id)}"
+            return html.escape(user_name) if rich else user_name
+
+        role_id = match.group("role_id")
+        if role_id:
+            role_name = f"@{self.role_name(guild_id, role_id)}"
+            return html.escape(role_name) if rich else role_name
+
+        channel_id = match.group("channel_id")
+        if channel_id:
+            label = self.channel_label(channel_id)
+            if not rich:
+                return label
+            href = html.escape(f"disports://channel/{channel_id}", quote=True)
+            return f'<a href="{href}">{html.escape(label)}</a>'
+
+        return html.escape(match.group(0)) if rich else match.group(0)
+
+    def format_guild_emoji_list(self, guild_id: str) -> list[dict[str, Any]]:
+        emojis = self.guild_emojis.get(guild_id, [])
+        formatted = []
+        for emoji in sorted(emojis, key=lambda entry: str(entry.get("name", "") or "").lower()):
+            emoji_id = str(emoji.get("id", "") or "")
+            name = str(emoji.get("name", "") or "")
+            animated = bool(emoji.get("animated"))
+            if not emoji_id or not name:
+                continue
+            formatted.append(
+                {
+                    "emojiId": emoji_id,
+                    "name": name,
+                    "animated": animated,
+                    "imageUrl": self.guild_emoji_url(emoji_id, animated),
+                    "code": f"<{'a' if animated else ''}:{name}:{emoji_id}>",
+                }
+            )
+        return formatted
+
+    def format_channel_reference(self, channel_id: str) -> dict[str, Any]:
+        channel = self.get_channel(channel_id)
+        guild_id = self.get_guild_for_channel(channel_id) or str((channel or {}).get("guild_id", "") or "")
+        name = self.channel_display_name(channel, with_prefix=False) if channel else ""
+        channel_type = int((channel or {}).get("type", -1))
+        return {
+            "channelId": channel_id,
+            "guildId": guild_id,
+            "guildName": self.guild_name(guild_id),
+            "name": name,
+            "label": self.channel_display_name(channel, with_prefix=True) if channel else f"#{channel_id}",
+            "openable": self.channel_is_openable(channel or {}),
+            "channelType": self.channel_type_name(channel_type),
+        }
 
     @staticmethod
     def _merge_dict(target: dict[str, Any], source: dict[str, Any]) -> None:

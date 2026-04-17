@@ -6,6 +6,8 @@ from .gateway import DiscordGateway
 from .http import DiscordHTTP, DiscordHTTPError
 from .remote_auth import DiscordRemoteAuth
 from .state import DiscordState
+from rich import _emoji_codes
+
 
 
 class DiscordClient:
@@ -16,6 +18,7 @@ class DiscordClient:
         self.gateway: DiscordGateway | None = None
         self.remote_auth: DiscordRemoteAuth | None = None
         self.active_channel_id = ""
+        self._unicode_emojis_cache: list[dict[str, Any]] | None = None
 
     def login(self, token: str) -> dict[str, Any]:
         self.stop_qr_login()
@@ -92,13 +95,63 @@ class DiscordClient:
                 member_data = None
 
         self.state.set_guild_context(guild_id, guild_data, member_data)
-        channels = self.http.request("GET", f"guilds/{guild_id}/channels")
-        self.state.set_guild_channels(guild_id, channels or [])
+        channels = self.http.request("GET", f"guilds/{guild_id}/channels") or []
+        try:
+            active_threads = self.http.request("GET", f"guilds/{guild_id}/threads/active") or {}
+        except DiscordHTTPError:
+            active_threads = {}
+        merged_channels = self._merge_guild_channels(
+            channels,
+            (active_threads.get("threads") or []) if isinstance(active_threads, dict) else [],
+        )
+        self.state.set_guild_channels(guild_id, merged_channels)
         self._emit(
             "guild_sidebar",
             {"guilds": self.state.format_sidebar_guild_rows()},
         )
         return self.state.format_guild_channel_list(guild_id)
+
+    def fetch_guild_emojis(self, guild_id: str) -> list[dict[str, Any]]:
+        if not guild_id:
+            return []
+        if guild_id not in self.state.guild_emojis:
+            try:
+                emojis = self.http.request("GET", f"guilds/{guild_id}/emojis") or []
+            except DiscordHTTPError:
+                return []
+            self.state.set_guild_emojis(guild_id, emojis)
+        return self.state.format_guild_emoji_list(guild_id)
+
+    def fetch_unicode_emojis(self) -> list[dict[str, Any]]:
+        if self._unicode_emojis_cache is None:
+            # Categories: faces, people, nature, food, activities, travel, objects, symbols, flags
+            rules = [
+                (["face", "smile", "grin", "laugh", "kiss", "tongue", "wink", "joy", "sweat", "pouting", "cry", "fear", "angry", "heart_eyes", "smirk", "unamused"], "faces"),
+                (["hand", "person", "man", "woman", "boy", "girl", "child", "baby", "adult", "beard", "hair", "body", "finger", "thumb", "gesturing", "frowning", "pouting"], "people"),
+                (["animal", "bug", "tree", "flower", "cat", "dog", "bear", "cow", "pig", "wolf", "bird", "fish", "plant", "leaf", "sun", "moon", "star", "cloud", "rain", "snow", "fire", "water"], "nature"),
+                (["food", "drink", "fruit", "veggie", "bread", "cake", "pizza", "meat", "sweet", "beer", "wine", "coffee", "tea", "cook", "eat"], "food"),
+                (["sport", "game", "ball", "music", "art", "theatre", "medal", "trophy", "hobby", "play"], "activities"),
+                (["travel", "place", "car", "plane", "ship", "map", "mountain", "beach", "city", "house", "building", "train", "bus", "bike"], "travel"),
+                (["tool", "office", "item", "light", "book", "pencil", "clock", "watch", "phone", "tv", "camera", "gift", "money", "bag"], "objects"),
+                (["flag"], "flags"),
+            ]
+            
+            results = []
+            for name, char in _emoji_codes.EMOJI.items():
+                category = "symbols"
+                for keywords, cat in rules:
+                    if any(kw in name for kw in keywords):
+                        category = cat
+                        break
+                
+                results.append({
+                    "char": char,
+                    "name": name,
+                    "label": name.replace("_", " "),
+                    "category": category
+                })
+            self._unicode_emojis_cache = results
+        return self._unicode_emojis_cache
 
     def fetch_private_channels(self) -> dict[str, Any]:
         return self.state.format_private_channel_payload()
@@ -112,6 +165,7 @@ class DiscordClient:
             f"channels/{channel_id}/messages",
             params=params,
         )
+        self._request_missing_members(channel_id, messages or [])
         return self.state.format_messages(messages or [])
 
     def send_message(
@@ -229,11 +283,48 @@ class DiscordClient:
             })
         return True
 
+    def resolve_channel(self, channel_id: str) -> dict[str, Any]:
+        if not channel_id:
+            return {"ok": False, "error": "Missing channel id."}
+
+        channel = self.state.get_channel(channel_id)
+        if not channel:
+            try:
+                channel = self.http.request("GET", f"channels/{channel_id}")
+            except DiscordHTTPError as exc:
+                return {"ok": False, "error": self._api_error(exc)}
+            guild_id = str((channel or {}).get("guild_id", "") or "")
+            if guild_id:
+                existing = list(self.state.guild_channels.get(guild_id, []))
+                if not any(str(entry.get("id", "") or "") == channel_id for entry in existing):
+                    existing.append(channel)
+                    self.state.set_guild_channels(guild_id, existing)
+
+        guild_id = str((channel or {}).get("guild_id", "") or "") or self.state.get_guild_for_channel(channel_id) or ""
+        if guild_id and not self.state.guild_name(guild_id):
+            try:
+                guild_data = self.http.request("GET", f"guilds/{guild_id}")
+            except DiscordHTTPError:
+                guild_data = None
+            if guild_data:
+                self.state.set_guild_context(guild_id, guild_data, self.state.guild_members.get(guild_id))
+
+        reference = self.state.format_channel_reference(channel_id)
+        if not reference.get("openable"):
+            return {"ok": False, "error": "This channel type is not openable yet.", "channel": reference}
+        return {"ok": True, "channel": reference}
+
     def reconnect(self) -> None:
         if self.gateway:
             self.gateway.reconnect()
 
     def _handle_gateway_event(self, event_type: str, data: dict[str, Any]) -> None:
+        if data is None:
+            data = {}
+        elif not isinstance(data, dict):
+            self._handle_gateway_log(f"Ignoring unexpected payload for {event_type}: {type(data).__name__}")
+            return
+
         if event_type == "READY":
             self.state.apply_ready(data)
             self._emit("ready", self.state.format_ready_payload())
@@ -273,6 +364,44 @@ class DiscordClient:
                     "status": data.get("status", "offline"),
                 },
             )
+            return
+
+        if event_type == "GUILD_MEMBERS_CHUNK":
+            guild_id = self.state.apply_guild_members_chunk(data)
+            if guild_id:
+                self._emit(
+                    "guild_member_chunk",
+                    {
+                        "guildId": guild_id,
+                    },
+                )
+            return
+
+        if event_type in ("CHANNEL_CREATE", "CHANNEL_UPDATE", "THREAD_CREATE", "THREAD_UPDATE"):
+            guild_id = self.state.upsert_guild_channel(data)
+            if guild_id:
+                self._emit(
+                    "guild_channels",
+                    {
+                        "guildId": guild_id,
+                        "list": self.state.format_guild_channel_list(guild_id),
+                    },
+                )
+            return
+
+        if event_type in ("CHANNEL_DELETE", "THREAD_DELETE"):
+            guild_id = self.state.remove_guild_channel(
+                str(data.get("id", "") or ""),
+                str(data.get("guild_id", "") or ""),
+            )
+            if guild_id:
+                self._emit(
+                    "guild_channels",
+                    {
+                        "guildId": guild_id,
+                        "list": self.state.format_guild_channel_list(guild_id),
+                    },
+                )
             return
 
         if event_type == "MESSAGE_CREATE":
@@ -378,6 +507,64 @@ class DiscordClient:
     def _emit(self, name: str, payload: dict[str, Any]) -> None:
         if self.emitter:
             self.emitter(name, payload)
+
+    def _request_missing_members(
+        self,
+        channel_id: str,
+        messages: list[dict[str, Any]],
+    ) -> None:
+        if not self.gateway or not messages:
+            return
+        guild_id = self.state.get_guild_for_channel(channel_id)
+        if not guild_id:
+            return
+
+        missing_ids: list[str] = []
+        seen_ids: set[str] = set()
+
+        def add_user_id(user_id: str) -> None:
+            sid = str(user_id or "")
+            if not sid or sid in seen_ids:
+                return
+            seen_ids.add(sid)
+            if self.state.has_guild_member(guild_id, sid):
+                return
+            missing_ids.append(sid)
+
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            add_user_id(str((message.get("author") or {}).get("id", "") or ""))
+            referenced = message.get("referenced_message") or {}
+            if isinstance(referenced, dict):
+                add_user_id(str((referenced.get("author") or {}).get("id", "") or ""))
+            for snapshot in message.get("message_snapshots") or []:
+                snap_msg = (snapshot or {}).get("message") or {}
+                if isinstance(snap_msg, dict):
+                    add_user_id(str((snap_msg.get("author") or {}).get("id", "") or ""))
+            for mention in message.get("mentions", []) or []:
+                if isinstance(mention, dict):
+                    add_user_id(str(mention.get("id", "") or ""))
+
+        if missing_ids:
+            self.gateway.request_guild_members(guild_id, missing_ids)
+
+    @staticmethod
+    def _merge_guild_channels(
+        channels: list[dict[str, Any]],
+        threads: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        merged: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        for channel in (channels or []) + (threads or []):
+            if not isinstance(channel, dict):
+                continue
+            channel_id = str(channel.get("id", "") or "")
+            if not channel_id or channel_id in seen_ids:
+                continue
+            seen_ids.add(channel_id)
+            merged.append(channel)
+        return merged
 
     @staticmethod
     def _api_error(exc: DiscordHTTPError) -> str:
