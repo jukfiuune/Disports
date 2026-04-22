@@ -157,6 +157,35 @@ QtObject {
         }
     }
 
+    function applyReactionUpdate(data) {
+        if (!data || !data.messageId || data.channelId !== appState.activeChannelId)
+            return
+        var json = data.reactionsJson || "[]"
+        for (var i = 0; i < chatMessageModel.count; i++) {
+            if (chatMessageModel.get(i).messageId === data.messageId) {
+                chatMessageModel.setProperty(i, "reactionsJson", json)
+                return
+            }
+        }
+    }
+
+    function toggleReaction(messageId, apiString, alreadyReacted) {
+        if (!appState.pythonReady || !messageId || !apiString || !appState.activeChannelId)
+            return
+        var channelId = appState.activeChannelId
+        if (alreadyReacted) {
+            python.call("discord_client.remove_reaction", [channelId, messageId, apiString], function(result) {
+                if (result && !result.ok)
+                    console.log("Remove reaction failed: " + result.error)
+            })
+        } else {
+            python.call("discord_client.add_reaction", [channelId, messageId, apiString], function(result) {
+                if (result && !result.ok)
+                    console.log("Add reaction failed: " + result.error)
+            })
+        }
+    }
+
     function setReplyTarget(messageId) {
         var message = null
         for (var i = 0; i < chatMessageModel.count; i++) {

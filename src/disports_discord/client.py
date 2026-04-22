@@ -230,6 +230,42 @@ class DiscordClient:
             return {"ok": False, "error": self._api_error(exc)}
         return {"ok": True}
 
+    def add_reaction(
+        self,
+        channel_id: str,
+        message_id: str,
+        emoji: str,
+    ) -> dict[str, Any]:
+        if not channel_id or not message_id or not emoji:
+            return {"ok": False, "error": "Missing required parameters."}
+        from urllib.parse import quote
+        try:
+            self.http.request(
+                "PUT",
+                f"channels/{channel_id}/messages/{message_id}/reactions/{quote(emoji, safe='')}/@me",
+            )
+        except DiscordHTTPError as exc:
+            return {"ok": False, "error": self._api_error(exc)}
+        return {"ok": True}
+
+    def remove_reaction(
+        self,
+        channel_id: str,
+        message_id: str,
+        emoji: str,
+    ) -> dict[str, Any]:
+        if not channel_id or not message_id or not emoji:
+            return {"ok": False, "error": "Missing required parameters."}
+        from urllib.parse import quote
+        try:
+            self.http.request(
+                "DELETE",
+                f"channels/{channel_id}/messages/{message_id}/reactions/{quote(emoji, safe='')}/@me",
+            )
+        except DiscordHTTPError as exc:
+            return {"ok": False, "error": self._api_error(exc)}
+        return {"ok": True}
+
     def ack_message(
         self,
         channel_id: str,
@@ -500,6 +536,28 @@ class DiscordClient:
 
         if event_type == "TYPING_START":
             self._emit("typing", self.state.format_typing(data))
+            return
+
+        if event_type in (
+            "MESSAGE_REACTION_ADD",
+            "MESSAGE_REACTION_REMOVE",
+            "MESSAGE_REACTION_REMOVE_ALL",
+            "MESSAGE_REACTION_REMOVE_EMOJI",
+        ):
+            message_id = str(data.get("message_id") or "")
+            channel_id = str(data.get("channel_id") or "")
+            my_id = str((self.state.me or {}).get("id") or "")
+            updated = self.state.update_message_reactions(
+                message_id, event_type, data, my_user_id=my_id
+            )
+            if updated is not None:
+                import json as _json
+                self._emit("message_reaction", {
+                    "messageId": message_id,
+                    "channelId": channel_id,
+                    "reactionsJson": _json.dumps(updated, separators=(",", ":")),
+                })
+            return
 
     def _handle_gateway_log(self, message: str) -> None:
         self._emit("gateway_log", {"message": message})

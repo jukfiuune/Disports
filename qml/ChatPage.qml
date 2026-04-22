@@ -41,6 +41,7 @@ Page {
     signal editRequested(string messageId, string newContent)
     signal deleteRequested(string messageId)
     signal channelMentionRequested(string channelId)
+    signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
 
     header: PageHeader {
         title: chatPage.channelName !== "" ? chatPage.channelName : i18n.tr("Chat")
@@ -95,6 +96,7 @@ Page {
         loadingOlder: chatPage.loadingOlder
         onLoadOlderRequested: chatPage.loadOlderRequested()
         isOnline: chatPage.isOnline
+        onReactionToggleRequested: function(mId, apiStr, already) { chatPage.reactionToggleRequested(mId, apiStr, already) }
         onMediaPreviewRequested: function(url, type) {
             chatPage.stack.push(Qt.resolvedUrl("MediaPreviewPage.qml"), {mediaUrl: url, mediaType: type})
         }

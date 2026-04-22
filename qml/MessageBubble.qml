@@ -19,6 +19,18 @@ ListItem {
     property string displayKind: "default"
     property string discordMessageType: "Default"
     property var medias: []
+    property string reactionsJson: "[]"
+    property var parsedReactions: []
+
+    onReactionsJsonChanged: {
+        try { parsedReactions = JSON.parse(reactionsJson) }
+        catch(e) { parsedReactions = [] }
+    }
+    Component.onCompleted: {
+        try { parsedReactions = JSON.parse(reactionsJson) }
+        catch(e) { parsedReactions = [] }
+    }
+
     property bool hasReply: false
     property string replyMessageId: ""
     property string replyAuthor: ""
@@ -35,13 +47,13 @@ ListItem {
     signal deleteRequested(string messageId)
     signal mediaClicked(string url, string type)
     signal channelMentionRequested(string channelId)
+    signal reactEmojiRequested(string messageId)
+    signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
 
     divider.visible: false
     height: inner.height + units.gu(displayKind === "system" ? 1 : 1.5)
 
-    // Leading actions (swipe right): edit + delete — own messages only.
-    // We assign via a Loader so that the swipe zone is completely absent
-    // for messages we didn't send (disabled Actions still show as greyed icons).
+    // Leading actions (swipe right): delete — own messages only.
     leadingActions: ownActionsLoader.item
 
     Loader {
@@ -58,15 +70,14 @@ ListItem {
         }
     }
 
-    // Trailing actions (swipe left): reply + edit (if own)
-    
+    // Trailing actions (swipe left): copy, edit (if own), reply, add reaction
     Action {
         id: replyAction
         iconName: "mail-reply"
         text: i18n.tr("Reply")
         onTriggered: bubble.replyRequested(bubble.messageId)
     }
-    
+
     Action {
         id: editAction
         iconName: "edit"
@@ -85,12 +96,20 @@ ListItem {
         }
     }
 
+    Action {
+        id: reactAction
+        iconName: "bot"
+        text: i18n.tr("React")
+        onTriggered: bubble.reactEmojiRequested(bubble.messageId)
+    }
+
     trailingActions: ListItemActions {
         actions: {
             var arr = [];
             if (bubble.body !== "") arr.push(copyAction);
             if (bubble.isOwn) arr.push(editAction);
             arr.push(replyAction);
+            arr.push(reactAction);
             return arr;
         }
     }
@@ -169,6 +188,87 @@ ListItem {
                 body: ""
                 onMediaClicked: function(url, type) {
                     bubble.mediaClicked(url, type)
+                }
+            }
+        }
+
+        // Reaction chips
+        Flow {
+            id: reactionsRow
+            width: parent.width
+            spacing: units.gu(0.5)
+            topPadding: bubble.parsedReactions.length > 0 ? units.gu(0.4) : 0
+            visible: bubble.parsedReactions.length > 0
+
+            Repeater {
+                model: bubble.parsedReactions.length
+                delegate: Item {
+                    id: chipRoot
+                    readonly property var reaction: bubble.parsedReactions[index] || null
+                    readonly property bool reacted: reaction ? !!reaction.me : false
+                    readonly property bool isCustom: reaction ? !!reaction.isCustom : false
+
+                    width: chipRow.width + units.gu(1.6)
+                    height: units.gu(3)
+
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: height / 2
+                        color: chipRoot.reacted
+                               ? theme.palette.highlighted.base
+                               : theme.palette.normal.base
+                        opacity: chipRoot.reacted ? 0.28 : 0.55
+                        border.width: chipRoot.reacted ? units.dp(1.2) : 0
+                        border.color: theme.palette.highlighted.base
+                    }
+
+                    Row {
+                        id: chipRow
+                        anchors.centerIn: parent
+                        spacing: units.gu(0.35)
+
+                        // Unicode emoji label
+                        Label {
+                            visible: !chipRoot.isCustom
+                            text: chipRoot.reaction ? (chipRoot.reaction.emojiName || "") : ""
+                            font.pixelSize: units.gu(1.7)
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        // Custom emoji image
+                        Image {
+                            visible: chipRoot.isCustom && chipRoot.reaction && (chipRoot.reaction.emojiUrl || "") !== ""
+                            source: (chipRoot.reaction && chipRoot.reaction.emojiUrl) ? chipRoot.reaction.emojiUrl : ""
+                            width: units.gu(2)
+                            height: units.gu(2)
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            cache: true
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Label {
+                            text: chipRoot.reaction ? String(chipRoot.reaction.count || 0) : "0"
+                            font.pixelSize: units.gu(1.4)
+                            font.bold: chipRoot.reacted
+                            color: chipRoot.reacted
+                                   ? theme.palette.highlighted.backgroundText
+                                   : theme.palette.normal.backgroundSecondaryText
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        onClicked: {
+                            if (!chipRoot.reaction) return
+                            bubble.reactionToggleRequested(
+                                bubble.messageId,
+                                chipRoot.reaction.apiString || "",
+                                chipRoot.reacted
+                            )
+                        }
+                    }
                 }
             }
         }

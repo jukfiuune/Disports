@@ -21,6 +21,7 @@ Python {
     signal guildChannels(var data)
     signal guildSidebar(var data)
     signal guildMemberChunk(var data)
+    signal messageReaction(var data)
     signal readyForInit()
 
     Component.onCompleted: {
@@ -47,6 +48,7 @@ Python {
         setHandler("guild_channels", function(data) { guildChannels(data) })
         setHandler("guild_sidebar", function(data) { guildSidebar(data) })
         setHandler("guild_member_chunk", function(data) { guildMemberChunk(data) })
+        setHandler("message_reaction", function(data) { messageReaction(data) })
     }
     
     onError: console.log("Python error: " + traceback)

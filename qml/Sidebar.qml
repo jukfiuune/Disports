@@ -118,6 +118,7 @@ Item {
         model: sidebar.servers
         spacing: 0
         clip: true
+        cacheBuffer: units.gu(80)
         Component.onCompleted: Qt.callLater(function() { railList.contentY = 0 })
         onModelChanged: Qt.callLater(function() { railList.contentY = 0 })
 
@@ -217,25 +218,38 @@ Item {
             readonly property string fk: model.folderKey || ""
             readonly property bool srvInFolder: isSrv && fk !== ""
             readonly property bool srvVisible: isSrv && (!srvInFolder || sidebar.isFolderOpen(fk))
-            readonly property var previewUrls: {
-                var s = model.previewIconUrls || ""
-                return s !== "" ? s.split("\n") : []
+
+            // Computed lazily to avoid recreating arrays on every binding re-eval
+            property var previewUrls:  []
+            property var previewAbbrs: []
+            property int previewN:     0
+            property bool hasFolderColor: false
+
+            function _recompute() {
+                var us = model.previewIconUrls || ""
+                var ps = us !== "" ? us.split("\n") : []
+                previewUrls = ps
+                var as_ = model.previewAbbrs || ""
+                var pa = as_ !== "" ? as_.split("\n") : []
+                previewAbbrs = pa
+                var n = Math.min(4, Math.max(ps.length, pa.length))
+                previewN = n > 0 ? n : 0
+                hasFolderColor = !!(model.folderColorHex && String(model.folderColorHex).length > 1)
             }
-            readonly property var previewAbbrs: {
-                var s = model.previewAbbrs || ""
-                return s !== "" ? s.split("\n") : []
-            }
-            readonly property int previewN: {
-                var n = Math.min(4, Math.max(previewUrls.length, previewAbbrs.length))
-                return (n > 0) ? n : 0
-            }
-            readonly property bool hasFolderColor: (model.folderColorHex && String(model.folderColorHex).length > 1)
+            Component.onCompleted: _recompute()
+            // Watch model roles so _recompute fires when data changes (e.g. after icon download)
+            property string watchUrls:  model.previewIconUrls || ""
+            property string watchAbbrs: model.previewAbbrs    || ""
+            property string watchColor: model.folderColorHex  || ""
+            onWatchUrlsChanged:  _recompute()
+            onWatchAbbrsChanged: _recompute()
+            onWatchColorChanged: _recompute()
 
             height: {
                 if (isFH) {
-                    if (sidebar.isFolderOpen(model.folderKey))
-                        return units.gu(2.2)
-                    return sidebar.width
+                    // Read folderExpanded directly for granular tracking
+                    var open = sidebar.folderExpanded[model.folderKey]
+                    return (open === true) ? units.gu(2.2) : sidebar.width
                 }
                 if (isSrv && !srvVisible)
                     return 0
@@ -281,12 +295,33 @@ Item {
                                 width: (previewGrid.width - previewGrid.spacing) / 2
                                 height: (previewGrid.height - previewGrid.spacing) / 2
 
-                                SidebarIcon {
-                                    anchors.centerIn: parent
-                                    width: Math.min(parent.width, parent.height) * 0.9
-                                    height: width
-                                    imageSource: (index < del.previewUrls.length) ? (del.previewUrls[index] || "") : ""
-                                    label: (index < del.previewAbbrs.length) ? (del.previewAbbrs[index] || "") : ""
+                                readonly property string previewUrl:  (index < del.previewUrls.length)  ? (del.previewUrls[index]  || "") : ""
+                                readonly property string previewAbbr: (index < del.previewAbbrs.length) ? (del.previewAbbrs[index] || "") : ""
+
+                                // Fast path: custom icon image (no shader effects)
+                                Image {
+                                    id: prevImg
+                                    anchors.fill: parent
+                                    source: parent.previewUrl
+                                    fillMode: Image.PreserveAspectCrop
+                                    visible: parent.previewUrl !== ""
+                                    cache: true
+                                    asynchronous: true
+                                    clip: true
+                                }
+
+                                // Fallback: colored tile with initials
+                                Rectangle {
+                                    anchors.fill: parent
+                                    color: theme.palette.highlighted.base
+                                    visible: parent.previewUrl === ""
+                                    Label {
+                                        anchors.centerIn: parent
+                                        text: parent.parent.previewAbbr
+                                        font.pixelSize: Math.round(parent.height * 0.45)
+                                        font.bold: true
+                                        color: "white"
+                                    }
                                 }
                             }
                         }

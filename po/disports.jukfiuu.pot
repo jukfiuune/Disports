@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-04-17 10:19+0000\n"
+"POT-Creation-Date: 2026-04-22 18:55+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,47 +17,47 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:46 ../qml/ChatPanel.qml:94
+#: ../qml/ChatPage.qml:47 ../qml/ChatPanel.qml:96
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:51 ../qml/SettingsPage.qml:41
+#: ../qml/ChatPage.qml:52 ../qml/SettingsPage.qml:41
 msgid "Back"
 msgstr ""
 
-#: ../qml/ChatPage.qml:59
+#: ../qml/ChatPage.qml:60
 msgid "Info"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:124
+#: ../qml/ChatPanel.qml:126
 msgid "Load older messages"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:124 ../qml/components/EmojiPickerContent.qml:290
+#: ../qml/ChatPanel.qml:126 ../qml/components/EmojiPickerContent.qml:290
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:263
+#: ../qml/ChatPanel.qml:273
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:263 ../qml/ChatPanel.qml:333
+#: ../qml/ChatPanel.qml:273 ../qml/ChatPanel.qml:354
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:272
+#: ../qml/ChatPanel.qml:282
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:331
+#: ../qml/ChatPanel.qml:352
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:333
+#: ../qml/ChatPanel.qml:354
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:334
+#: ../qml/ChatPanel.qml:355
 msgid "Type a message..."
 msgstr ""
 
@@ -109,31 +109,31 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/Main.qml:104
+#: ../qml/Main.qml:99
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:107
+#: ../qml/Main.qml:102
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:113
+#: ../qml/Main.qml:108
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:265 disports.desktop.in.h:1
+#: ../qml/Main.qml:260 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:269 ../qml/SettingsPage.qml:37
+#: ../qml/Main.qml:264 ../qml/SettingsPage.qml:37
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:367
+#: ../qml/Main.qml:363
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:372
+#: ../qml/Main.qml:368
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -145,20 +145,24 @@ msgstr ""
 msgid "Open Externally"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:54 ../qml/components/DeleteDialog.qml:14
+#: ../qml/MessageBubble.qml:66 ../qml/components/DeleteDialog.qml:14
 msgid "Delete"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:66
+#: ../qml/MessageBubble.qml:77
 msgid "Reply"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:73
+#: ../qml/MessageBubble.qml:84
 msgid "Edit"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:80
+#: ../qml/MessageBubble.qml:91
 msgid "Copy"
+msgstr ""
+
+#: ../qml/MessageBubble.qml:102
+msgid "React"
 msgstr ""
 
 #: ../qml/MessageMedia.qml:118
@@ -209,7 +213,7 @@ msgstr ""
 msgid "Disports — a Discord client for Ubuntu Touch"
 msgstr ""
 
-#: ../qml/Sidebar.qml:142
+#: ../qml/Sidebar.qml:143
 msgid "DMs"
 msgstr ""
 
@@ -330,18 +334,18 @@ msgstr ""
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:175
+#: ../qml/logic/ChatLogic.qml:204
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:177
+#: ../qml/logic/ChatLogic.qml:206
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:179
+#: ../qml/logic/ChatLogic.qml:208
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:183
+#: ../qml/logic/ChatLogic.qml:212
 msgid "Message"
 msgstr ""

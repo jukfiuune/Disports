@@ -157,3 +157,11 @@ def set_active_channel(channel_id: str) -> bool:
 
 def resolve_channel(channel_id: str) -> dict:
     return _client.resolve_channel(channel_id)
+
+
+def add_reaction(channel_id: str, message_id: str, emoji: str) -> dict:
+    return _client.add_reaction(channel_id, message_id, emoji)
+
+
+def remove_reaction(channel_id: str, message_id: str, emoji: str) -> dict:
+    return _client.remove_reaction(channel_id, message_id, emoji)

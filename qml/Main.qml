@@ -70,13 +70,7 @@ MainView {
         onGuildSidebar: function(data) {
             chatLogic.replaceModel(serverModel, data.guilds || [])
         }
-        onGuildMemberChunk: function(data) {
-            if (!data)
-                return
-            var activeGuildId = appState.mode === "server" ? (appState.activeServerId || "") : ""
-            if ((data.guildId || "") === activeGuildId)
-                chatLogic.refreshActiveChannel()
-        }
+        onGuildMemberChunk: function(data) {}
         onMessageCreate: function(msg) {
             appState.typingNotice = ""
             chatLogic.upsertMessage(msg)
@@ -95,6 +89,7 @@ MainView {
         }
         onTyping: function(data) { if (data.channelId === appState.activeChannelId) appState.typingNotice = data.author + " is typing..." }
         onPresence: function(data) { dmLogic.updateContactStatus(data.userId, data.status) }
+        onMessageReaction: function(data) { chatLogic.applyReactionUpdate(data) }
         onGatewayLog: function(data) {
             var message = (data && data.message) ? String(data.message) : ""
             console.log("Gateway: " + message)
@@ -353,6 +348,7 @@ MainView {
                                 onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
                                 loadingOlder: appState.loadingOlderMessages
                                 onLoadOlderRequested: chatLogic.fetchOlderMessages()
+                                onReactionToggleRequested: function(mId, apiStr, already) { chatLogic.toggleReaction(mId, apiStr, already) }
                                 onMediaPreviewRequested: function(url, type) {
                                     pageStack.push(Qt.resolvedUrl("MediaPreviewPage.qml"), {mediaUrl: url, mediaType: type})
                                 }
@@ -408,6 +404,7 @@ MainView {
                 onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
                 loadingOlder: appState.loadingOlderMessages
                 onLoadOlderRequested: chatLogic.fetchOlderMessages()
+                onReactionToggleRequested: function(mId, apiStr, already) { chatLogic.toggleReaction(mId, apiStr, already) }
             }
         }
         Component {

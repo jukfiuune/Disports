@@ -1,19 +1,3 @@
-/*
- * SidebarIcon.qml
- *
- * One tappable slot in the Sidebar. Three display modes, checked in order:
- *   1. imageSource is set  →  show the image (server has a custom icon)
- *   2. iconName is set     →  show a Suru system icon (e.g. the DM button)
- *   3. fallback            →  show the two-letter abbr label
- *
- * Properties:
- *   imageSource  url     Path or URL to a server icon image. Can be a local
- *                        file:// path (downloaded to app's data dir by Python)
- *                        or an https:// URL if networking is allowed.
- *   iconName     string  Suru icon name, e.g. "contact". Used for DM button.
- *   label        string  Two-letter abbreviation shown when no image/icon.
- */
-
 import QtQuick 2.7
 import QtGraphicalEffects 1.0
 import Lomiri.Components 1.3
@@ -28,13 +12,25 @@ Item {
     property string label:       ""
     property bool   showTileBackground: false
 
+    // Re-render the FBO when any visible property changes.
+    // Using callLater to coalesce rapid successive changes (e.g. image load sequence).
+    onImageSourceChanged:     Qt.callLater(function() { effectSource.scheduleUpdate() })
+    onIconNameChanged:        Qt.callLater(function() { effectSource.scheduleUpdate() })
+    onLabelChanged:           Qt.callLater(function() { effectSource.scheduleUpdate() })
+    onShowTileBackgroundChanged: Qt.callLater(function() { effectSource.scheduleUpdate() })
+
     ShaderEffectSource {
         id: effectSource
         anchors.centerIn: parent
         width: 0
         height: 0
         sourceItem: imageContent
+        // Don't re-render the FBO every frame — only when content actually changes.
+        // This eliminates N × (FBO render + DropShadow blur) per frame for static icons.
+        live: false
     }
+
+    Component.onCompleted: effectSource.scheduleUpdate()
 
     Item {
         id: imageContent
@@ -55,7 +51,13 @@ Item {
             source: iconItem.imageSource
             fillMode: Image.PreserveAspectCrop
             visible: iconItem.imageSource != ""
-            onStatusChanged: if (status === Image.Error) source = ""
+            asynchronous: true
+            // Re-render FBO when image finishes loading (or fails)
+            onStatusChanged: {
+                if (status === Image.Ready || status === Image.Error)
+                    effectSource.scheduleUpdate()
+            }
+            onSourceChanged: effectSource.scheduleUpdate()
         }
 
         // 2. Suru system icon (used for DM button)

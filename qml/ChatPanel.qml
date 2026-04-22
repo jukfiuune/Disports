@@ -55,6 +55,7 @@ Item {
     property bool loadingOlder: false
     property bool isOnline: true
     readonly property bool listInteracting: messageList.dragging || messageList.flicking
+    property string pendingReactMessageId: ""
 
     signal loadOlderRequested()
     signal sendRequested(string content, string replyMessageId)
@@ -66,6 +67,7 @@ Item {
     signal mediaPreviewRequested(string url, string type)
     signal channelMentionRequested(string channelId)
     signal emojiInserted(var emojiData)
+    signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
 
     onChannelIdChanged: {
         initialScrollPending = channelId !== ""
@@ -174,6 +176,7 @@ Item {
             displayKind: model.displayKind || "default"
             discordMessageType: model.discordMessageType || "Default"
             medias: model.medias || []
+            reactionsJson: model.reactionsJson || "[]"
             hasReply: !!model.hasReply
             replyMessageId: model.replyMessageId || ""
             replyAuthor: model.replyAuthor || ""
@@ -200,6 +203,13 @@ Item {
                 } else {
                     Qt.openUrlExternally(url);
                 }
+            }
+            onReactEmojiRequested: function(msgId) {
+                chatPanel.pendingReactMessageId = msgId
+                chatPanel.openEmojiDialog("unicode")
+            }
+            onReactionToggleRequested: function(msgId, apiString, alreadyReacted) {
+                chatPanel.reactionToggleRequested(msgId, apiString, alreadyReacted)
             }
         }
     }
@@ -289,10 +299,21 @@ Item {
                     Layout.preferredHeight: composerButtonSize
                     Layout.alignment: Qt.AlignBottom
 
-                    Icon {
+                    Image {
+                        id: emojiIconSource
                         anchors.fill: parent
-                        visible: !emojiPanel.visible
+                        visible: false
                         source: Qt.resolvedUrl("../assets/emoji.svg")
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
+                        sourceSize.width: width * 2
+                        sourceSize.height: height * 2
+                    }
+
+                    ColorOverlay {
+                        anchors.fill: emojiIconSource
+                        source: emojiIconSource
+                        visible: !emojiPanel.visible
                         color: theme.palette.normal.backgroundText
                     }
 
@@ -418,13 +439,26 @@ Item {
             serverEmojis: chatPanel.serverEmojis || []
             unicodeEmojis: chatPanel.unicodeEmojis || []
             onEmojiChosen: function(text, emojiData) {
-                chatPanel.insertEmoji(text, emojiData)
+                if (chatPanel.pendingReactMessageId !== "") {
+                    // Called from a 'React' swipe action
+                    var apiStr = ""
+                    if (emojiData.kind === "custom") {
+                        apiStr = (emojiData.name || "") + ":" + (emojiData.emojiId || "")
+                    } else {
+                        apiStr = emojiData.text || text
+                    }
+                    chatPanel.reactionToggleRequested(chatPanel.pendingReactMessageId, apiStr, false)
+                    chatPanel.pendingReactMessageId = ""
+                } else {
+                    chatPanel.insertEmoji(text, emojiData)
+                }
                 Popups.PopupUtils.close(emojiDialog)
             }
         }
     }
 
     function submit() {
+        Qt.inputMethod.commit()
         var content = msgInput.text
         if (content.trim() === "")
             return
