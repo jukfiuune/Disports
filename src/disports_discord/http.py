@@ -26,7 +26,7 @@ class DiscordHTTP:
         )
         self._default_headers = {
             "Accept": "*/*",
-            "Accept-Encoding": "identity",
+            "Accept-Encoding": "gzip, deflate",
             "Content-Type": "application/json",
             "User-Agent": USER_AGENT,
             "X-Super-Properties": build_super_properties(),
@@ -90,14 +90,16 @@ class DiscordHTTP:
             url,
             body=body,
             headers=self._headers(headers),
+            decode_content=True,
         )
-        text = response.data.decode("utf-8", errors="replace")
 
         if response.status < 400:
             self._respect_rate_limit(response)
-            if not text:
+            if not response.data:
                 return None
-            return json.loads(text)
+            return json.loads(response.data)
+
+        text = response.data.decode("utf-8", errors="replace")
 
         if response.status == 429 and _429_attempts > 0:
             retry_after = response.headers.get("Retry-After")

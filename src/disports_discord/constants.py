@@ -3,10 +3,31 @@ from __future__ import annotations
 import base64
 import json
 import platform
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 API_VERSION = 9
 API_BASE = f"https://discord.com/api/v{API_VERSION}"
-GATEWAY_URL = f"wss://gateway.discord.gg/?encoding=json&v={API_VERSION}&compress=zlib-stream"
+GATEWAY_ENCODING = "json"
+GATEWAY_COMPRESSION = "zlib-stream"
+
+
+def build_gateway_url(base_url: str = "wss://gateway.discord.gg/") -> str:
+    """Return a Discord Gateway URL with this client's negotiated options."""
+    parts = urlsplit(base_url)
+    query = dict(parse_qsl(parts.query, keep_blank_values=True))
+    query.update(
+        {
+            "encoding": GATEWAY_ENCODING,
+            "v": str(API_VERSION),
+            "compress": GATEWAY_COMPRESSION,
+        }
+    )
+    return urlunsplit(
+        (parts.scheme, parts.netloc, parts.path or "/", urlencode(query), parts.fragment)
+    )
+
+
+GATEWAY_URL = build_gateway_url()
 
 USER_AGENT = (
     "Mozilla/5.0 (X11; Linux x86_64; rv:115.0) "

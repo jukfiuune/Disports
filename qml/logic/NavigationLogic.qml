@@ -28,7 +28,7 @@ QtObject {
     function checkInitialState() {
         if (!appState.pythonReady) return;
 
-        if (!appState.ignoreConnectivityGate && Connectivity.status !== Connectivity.Online) {
+        if (!appState.runningUnderClickableDesktop && Connectivity.status !== Connectivity.Online) {
             appState.startupPhase = "offline";
             return;
         }

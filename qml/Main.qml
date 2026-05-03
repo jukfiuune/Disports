@@ -43,6 +43,17 @@ MainView {
         })
     }
 
+    function applyLaunchModeFromArguments() {
+        var args = Qt.application.arguments || []
+        for (var i = 0; i < args.length; i++) {
+            var p = String(args[i])
+            if (p.indexOf("install/qml/") >= 0) {
+                appState.runningUnderClickableDesktop = true
+                return
+            }
+        }
+    }
+
     // Logic & State
     AppState { id: appState; isWideLayout: root.width >= units.gu(90) }
     
@@ -110,9 +121,10 @@ MainView {
         onReadyForInit: {
             appState.pythonReady = true
             root.refreshUnicodeEmojis()
+            root.applyLaunchModeFromArguments()
             pythonBridge.call("discord_client.dev_flags", [], function(flags) {
-                if (flags && flags.force === true)
-                    appState.ignoreConnectivityGate = !!flags.ignoreConnectivityGate
+                if (flags && flags.clickableDesktopMode === true)
+                    appState.runningUnderClickableDesktop = true
                 navigationLogic.checkInitialState()
             })
         }
@@ -225,7 +237,7 @@ MainView {
 
         OfflineBanner {
             id: offlineBanner
-            isOnline: appState.ignoreConnectivityGate || appState.isOnline
+            isOnline: appState.runningUnderClickableDesktop || appState.isOnline
         }
 
         Item {
@@ -429,24 +441,7 @@ MainView {
 
     Component.onCompleted: {
         chatLogic.unreadLogic = unreadLogic
-        var args = Qt.application.arguments || []
-        var i
-        for (i = 0; i < args.length; i++) {
-            if (args[i] === "--disports-ignore-connectivity") {
-                appState.ignoreConnectivityGate = true
-                break
-            }
-        }
-        // CMake install tree (clickable desktop / local qmlscene): Connectivity often lies here too.
-        if (!appState.ignoreConnectivityGate) {
-            for (i = 0; i < args.length; i++) {
-                var p = String(args[i])
-                if (p.indexOf("install/qml/") >= 0) {
-                    appState.ignoreConnectivityGate = true
-                    break
-                }
-            }
-        }
+        root.applyLaunchModeFromArguments()
     }
 
 }

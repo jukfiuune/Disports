@@ -72,8 +72,10 @@ class DiscordState:
     def __init__(self) -> None:
         self.me: dict[str, Any] | None = None
         self.guilds: list[dict[str, Any]] = []
+        self.guild_by_id: dict[str, dict[str, Any]] = {}
         self.private_channels: list[dict[str, Any]] = []
         self.guild_channels: dict[str, list[dict[str, Any]]] = {}
+        self.channel_by_id: dict[str, dict[str, Any]] = {}
         self.guild_roles: dict[str, dict[str, int]] = {}
         self.guild_role_names: dict[str, dict[str, str]] = {}
         self.guild_members: dict[str, dict[str, Any]] = {}
@@ -102,9 +104,9 @@ class DiscordState:
     def guild_name(self, guild_id: str) -> str:
         if not guild_id:
             return ""
-        for guild in self.guilds:
-            if str(guild.get("id", "") or "") == guild_id:
-                return str(guild.get("name", "") or "")
+        guild = self.guild_by_id.get(guild_id)
+        if guild:
+            return str(guild.get("name", "") or "")
         return str((self.guild_details.get(guild_id) or {}).get("name", "") or "")
 
     def _normalize_guild_folders_value(self, raw: Any) -> list[dict[str, Any]]:
@@ -336,7 +338,13 @@ class DiscordState:
             self.set_me(user)
 
         self.guilds = payload.get("guilds", []) or []
+        self.guild_by_id = {
+            str(guild.get("id", "") or ""): guild
+            for guild in self.guilds
+            if isinstance(guild, dict) and str(guild.get("id", "") or "")
+        }
         self.private_channels = payload.get("private_channels", []) or []
+        self._index_private_channels()
 
         rs_data = payload.get("read_state")
         entries = []
@@ -385,11 +393,7 @@ class DiscordState:
                 self.set_guild_context(guild_id, guild, member_data if isinstance(member_data, dict) else None)
             if guild_id and channels:
                 if guild_id not in self.guild_channels:
-                    self.guild_channels[guild_id] = channels
-                for ch in channels:
-                    ch_id = str(ch.get("id", "") or "")
-                    if ch_id:
-                        self.channel_to_guild[ch_id] = guild_id
+                    self.set_guild_channels(guild_id, channels)
 
     def apply_presence(self, payload: dict[str, Any]) -> None:
         user = payload.get("user") or {}
@@ -426,11 +430,24 @@ class DiscordState:
         return cached
 
     def set_guild_channels(self, guild_id: str, channels: list[dict[str, Any]]) -> None:
+        for old_channel in self.guild_channels.get(guild_id, []):
+            old_id = str(old_channel.get("id", "") or "")
+            if old_id and self.channel_to_guild.get(old_id) == guild_id:
+                self.channel_to_guild.pop(old_id, None)
+                if self.channel_by_id.get(old_id) is old_channel:
+                    self.channel_by_id.pop(old_id, None)
         self.guild_channels[guild_id] = channels
         for ch in channels:
             ch_id = str(ch.get("id", "") or "")
             if ch_id:
                 self.channel_to_guild[ch_id] = guild_id
+                self.channel_by_id[ch_id] = ch
+
+    def _index_private_channels(self) -> None:
+        for channel in self.private_channels:
+            channel_id = str(channel.get("id", "") or "")
+            if channel_id:
+                self.channel_by_id[channel_id] = channel
 
     def upsert_guild_channel(self, channel: dict[str, Any]) -> str | None:
         if not isinstance(channel, dict):
@@ -464,6 +481,7 @@ class DiscordState:
         ]
         self.guild_channels[resolved_guild_id] = channels
         self.channel_to_guild.pop(channel_id, None)
+        self.channel_by_id.pop(channel_id, None)
         return resolved_guild_id
 
     def set_guild_emojis(self, guild_id: str, emojis: list[dict[str, Any]]) -> None:
@@ -478,6 +496,8 @@ class DiscordState:
         if guild_data:
             cached_guild = self.guild_details.setdefault(guild_id, {})
             self._merge_dict(cached_guild, guild_data)
+            if guild_id in self.guild_by_id:
+                self._merge_dict(self.guild_by_id[guild_id], guild_data)
         roles: dict[str, int] = {}
         role_names: dict[str, str] = {}
         for role in (guild_data or {}).get("roles", []) or []:
@@ -510,29 +530,28 @@ class DiscordState:
         is_own_message = author_id != "" and author_id == str((self.me or {}).get("id", ""))
         is_active = channel_id == self.active_channel_id
 
-        for channel in self.private_channels:
-            if channel.get("id") != channel_id:
-                continue
+        channel = self.channel_by_id.get(channel_id)
+        if channel not in self.private_channels:
+            return False
 
-            message_id = message.get("id")
-            if message_id:
-                channel["last_message_id"] = message_id
+        message_id = message.get("id")
+        if message_id:
+            channel["last_message_id"] = message_id
 
-            state = self._read_state(channel_id)
-            state["last_message_id"] = str(message_id or state.get("last_message_id", ""))
+        state = self._read_state(channel_id)
+        state["last_message_id"] = str(message_id or state.get("last_message_id", ""))
 
-            if is_own_message or is_active:
-                state["badge_count"] = 0
-                state["mention_count"] = 0
-            else:
-                state["badge_count"] = max(0, int(state.get("badge_count") or 0)) + 1
-                state["mention_count"] = 0
+        if is_own_message or is_active:
+            state["badge_count"] = 0
+            state["mention_count"] = 0
+        else:
+            state["badge_count"] = max(0, int(state.get("badge_count") or 0)) + 1
+            state["mention_count"] = 0
 
-            self.read_states[channel_id] = state
-            self._save_read_states()
+        self.read_states[channel_id] = state
+        self._save_read_states()
 
-            return True
-        return False
+        return True
 
     def get_guild_unread_count(self, guild_id: str) -> int:
         mentions = self.get_guild_mention_count(guild_id)
@@ -563,22 +582,22 @@ class DiscordState:
         is_own_message = author_id != "" and author_id == str((self.me or {}).get("id", ""))
         is_active = channel_id == self.active_channel_id
         mentioned = self.message_mentions_me(message)
-        for guild_id, channels in self.guild_channels.items():
-            for channel in channels:
-                if channel.get("id") == channel_id:
-                    message_id = message.get("id")
-                    if message_id:
-                        channel["last_message_id"] = message_id
-                    state = self._read_state(channel_id)
-                    state["last_message_id"] = str(message_id or state.get("last_message_id", ""))
-                    if is_own_message or is_active:
-                        state["mention_count"] = 0
-                    elif mentioned:
-                        state["mention_count"] = max(0, int(state.get("mention_count") or 0)) + 1
-                    self.read_states[channel_id] = state
-                    self._save_read_states()
-                    return guild_id
-        return None
+        guild_id = self.get_guild_for_channel(channel_id)
+        channel = self.channel_by_id.get(channel_id)
+        if not guild_id or not channel:
+            return None
+        message_id = message.get("id")
+        if message_id:
+            channel["last_message_id"] = message_id
+        state = self._read_state(channel_id)
+        state["last_message_id"] = str(message_id or state.get("last_message_id", ""))
+        if is_own_message or is_active:
+            state["mention_count"] = 0
+        elif mentioned:
+            state["mention_count"] = max(0, int(state.get("mention_count") or 0)) + 1
+        self.read_states[channel_id] = state
+        self._save_read_states()
+        return guild_id
 
     def get_guild_for_channel(self, channel_id: str) -> str | None:
         if not channel_id:
@@ -597,14 +616,7 @@ class DiscordState:
     def get_channel(self, channel_id: str) -> dict[str, Any] | None:
         if not channel_id:
             return None
-        for channel in self.private_channels:
-            if channel.get("id") == channel_id:
-                return channel
-        for channels in self.guild_channels.values():
-            for channel in channels:
-                if channel.get("id") == channel_id:
-                    return channel
-        return None
+        return self.channel_by_id.get(channel_id)
 
     def format_ready_payload(self) -> dict[str, Any]:
         return {
@@ -663,12 +675,7 @@ class DiscordState:
         definitions in order, then append guilds not listed in any folder sorted by join time.
         If guild_folders is empty, use guild_positions; else alphabetical / join fallback.
         """
-        by_id: dict[str, dict[str, Any]] = {}
-        for guild in self.guilds:
-            gid = guild.get("id")
-            if gid is None:
-                continue
-            by_id[str(gid)] = guild
+        by_id = self.guild_by_id
 
         rows: list[dict[str, Any]] = []
         seen: set[str] = set()

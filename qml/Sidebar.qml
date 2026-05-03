@@ -281,50 +281,13 @@ Item {
                     anchors.leftMargin: fhStripe.width
                     visible: isFH && !sidebar.isFolderOpen(model.folderKey)
 
-                    Grid {
-                        id: previewGrid
+                    FolderPreviewIcon {
                         anchors.centerIn: parent
                         width: Math.min(parent.width, parent.height) - units.gu(0.5)
                         height: width
-                        spacing: units.dp(2)
-                        columns: 2
-
-                        Repeater {
-                            model: del.previewN
-                            delegate: Item {
-                                width: (previewGrid.width - previewGrid.spacing) / 2
-                                height: (previewGrid.height - previewGrid.spacing) / 2
-
-                                readonly property string previewUrl:  (index < del.previewUrls.length)  ? (del.previewUrls[index]  || "") : ""
-                                readonly property string previewAbbr: (index < del.previewAbbrs.length) ? (del.previewAbbrs[index] || "") : ""
-
-                                // Fast path: custom icon image (no shader effects)
-                                Image {
-                                    id: prevImg
-                                    anchors.fill: parent
-                                    source: parent.previewUrl
-                                    fillMode: Image.PreserveAspectCrop
-                                    visible: parent.previewUrl !== ""
-                                    cache: true
-                                    asynchronous: true
-                                    clip: true
-                                }
-
-                                // Fallback: colored tile with initials
-                                Rectangle {
-                                    anchors.fill: parent
-                                    color: theme.palette.highlighted.base
-                                    visible: parent.previewUrl === ""
-                                    Label {
-                                        anchors.centerIn: parent
-                                        text: parent.parent.previewAbbr
-                                        font.pixelSize: Math.round(parent.height * 0.45)
-                                        font.bold: true
-                                        color: "white"
-                                    }
-                                }
-                            }
-                        }
+                        previewUrls: del.previewUrls
+                        previewAbbrs: del.previewAbbrs
+                        previewCount: del.previewN
                     }
 
                     UnreadBadge {
@@ -441,6 +404,7 @@ Item {
             anchors { left: parent.left; right: parent.right; bottom: parent.bottom }
             height: units.gu(3)
             visible: railList.contentHeight > railList.height
+                     && railList.visibleArea.yPosition + railList.visibleArea.heightRatio < 0.995
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "transparent" }
                 GradientStop { position: 1.0; color: theme.palette.normal.background }

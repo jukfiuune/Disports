@@ -64,24 +64,10 @@ def clear_token() -> dict:
 
 
 def dev_flags() -> dict:
-    """QML reads this after Python loads; see NavigationLogic connectivity gate.
-
-    Returns {} when nothing overrides QML heuristics. Use ``force: true`` when Python should
-    set ``ignoreConnectivityGate`` explicitly.
-
-    - DISPORTS_IGNORE_CONNECTIVITY: force on (1/true/yes/on) or force off (0/false/no/off).
-    - CLICKABLE_DESKTOP_MODE: Clickable sets this for ``clickable desktop`` (yaml ``env_vars``
-      often do not reach qmlscene, but this variable usually does).
-    """
-    v = os.environ.get("DISPORTS_IGNORE_CONNECTIVITY", "").strip().lower()
-    if v in ("0", "false", "no", "off"):
-        return {"ignoreConnectivityGate": False, "force": True}
-    if v in ("1", "true", "yes", "on"):
-        return {"ignoreConnectivityGate": True, "force": True}
-
     dm = os.environ.get("CLICKABLE_DESKTOP_MODE", "").strip().lower()
+
     if dm in ("1", "true", "yes", "on"):
-        return {"ignoreConnectivityGate": True, "force": True}
+        return {"clickableDesktopMode": True}
 
     return {}
 

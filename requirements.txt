@@ -1,4 +1,3 @@
 qrcode
 pypng
 websocket-client
-rich

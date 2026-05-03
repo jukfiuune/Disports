@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from typing import Any, Callable
+from urllib.parse import quote
 
+from .emoji_catalog import unicode_emoji_catalog
 from .gateway import DiscordGateway
 from .http import DiscordHTTP, DiscordHTTPError
 from .remote_auth import DiscordRemoteAuth
 from .state import DiscordState
-from rich import _emoji_codes
-
 
 
 class DiscordClient:
@@ -18,7 +18,6 @@ class DiscordClient:
         self.gateway: DiscordGateway | None = None
         self.remote_auth: DiscordRemoteAuth | None = None
         self.active_channel_id = ""
-        self._unicode_emojis_cache: list[dict[str, Any]] | None = None
 
     def login(self, token: str) -> dict[str, Any]:
         self.stop_qr_login()
@@ -123,35 +122,7 @@ class DiscordClient:
         return self.state.format_guild_emoji_list(guild_id)
 
     def fetch_unicode_emojis(self) -> list[dict[str, Any]]:
-        if self._unicode_emojis_cache is None:
-            # Categories: faces, people, nature, food, activities, travel, objects, symbols, flags
-            rules = [
-                (["face", "smile", "grin", "laugh", "kiss", "tongue", "wink", "joy", "sweat", "pouting", "cry", "fear", "angry", "heart_eyes", "smirk", "unamused"], "faces"),
-                (["hand", "person", "man", "woman", "boy", "girl", "child", "baby", "adult", "beard", "hair", "body", "finger", "thumb", "gesturing", "frowning", "pouting"], "people"),
-                (["animal", "bug", "tree", "flower", "cat", "dog", "bear", "cow", "pig", "wolf", "bird", "fish", "plant", "leaf", "sun", "moon", "star", "cloud", "rain", "snow", "fire", "water"], "nature"),
-                (["food", "drink", "fruit", "veggie", "bread", "cake", "pizza", "meat", "sweet", "beer", "wine", "coffee", "tea", "cook", "eat"], "food"),
-                (["sport", "game", "ball", "music", "art", "theatre", "medal", "trophy", "hobby", "play"], "activities"),
-                (["travel", "place", "car", "plane", "ship", "map", "mountain", "beach", "city", "house", "building", "train", "bus", "bike"], "travel"),
-                (["tool", "office", "item", "light", "book", "pencil", "clock", "watch", "phone", "tv", "camera", "gift", "money", "bag"], "objects"),
-                (["flag"], "flags"),
-            ]
-            
-            results = []
-            for name, char in _emoji_codes.EMOJI.items():
-                category = "symbols"
-                for keywords, cat in rules:
-                    if any(kw in name for kw in keywords):
-                        category = cat
-                        break
-                
-                results.append({
-                    "char": char,
-                    "name": name,
-                    "label": name.replace("_", " "),
-                    "category": category
-                })
-            self._unicode_emojis_cache = results
-        return self._unicode_emojis_cache
+        return [dict(emoji) for emoji in unicode_emoji_catalog()]
 
     def fetch_private_channels(self) -> dict[str, Any]:
         return self.state.format_private_channel_payload()
@@ -238,7 +209,6 @@ class DiscordClient:
     ) -> dict[str, Any]:
         if not channel_id or not message_id or not emoji:
             return {"ok": False, "error": "Missing required parameters."}
-        from urllib.parse import quote
         try:
             self.http.request(
                 "PUT",
@@ -256,7 +226,6 @@ class DiscordClient:
     ) -> dict[str, Any]:
         if not channel_id or not message_id or not emoji:
             return {"ok": False, "error": "Missing required parameters."}
-        from urllib.parse import quote
         try:
             self.http.request(
                 "DELETE",

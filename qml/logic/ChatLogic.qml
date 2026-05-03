@@ -11,6 +11,7 @@ QtObject {
     property var channelModel
     
     property var chatPageComp
+    property var _messageIndexById: ({})
     
     signal deleteConfirmRequested(string messageId)
 
@@ -24,6 +25,7 @@ QtObject {
         clearReplyTarget()
         python.call("discord_client.set_active_channel", [channelId], function() {})
         python.call("discord_client.fetch_messages", [channelId, 50, ""], function(messages) {
+            messages = messages || []
             replaceModel(chatMessageModel, messages)
             if (!appState.isWideLayout && pageStack.currentPage.objectName !== "chatPage")
                 pageStack.push(chatPageComp)
@@ -77,6 +79,7 @@ QtObject {
                 for (var i = 0; i < messages.length; i++) {
                     chatMessageModel.append(messages[i]);
                 }
+                rebuildMessageIndex()
             }
             appState.loadingOlderMessages = false;
         });
@@ -130,30 +133,55 @@ QtObject {
         model.clear()
         for (var i = 0; i < items.length; i++)
             model.append(items[i])
+        if (model === chatMessageModel)
+            rebuildMessageIndex()
         if (unreadLogic)
             unreadLogic.notifyListReplaced(model)
+    }
+
+    function rebuildMessageIndex() {
+        var map = {}
+        if (chatMessageModel) {
+            for (var i = 0; i < chatMessageModel.count; i++) {
+                var id = chatMessageModel.get(i).messageId || ""
+                if (id !== "")
+                    map[id] = i
+            }
+        }
+        _messageIndexById = map
+    }
+
+    function messageIndex(messageId) {
+        if (!chatMessageModel || !messageId)
+            return -1
+        var idx = _messageIndexById[messageId]
+        if (idx !== undefined && idx < chatMessageModel.count) {
+            if ((chatMessageModel.get(idx).messageId || "") === messageId)
+                return idx
+        }
+        rebuildMessageIndex()
+        idx = _messageIndexById[messageId]
+        return idx !== undefined ? idx : -1
     }
 
     function upsertMessage(message) {
         if (!message || message.channelId !== appState.activeChannelId)
             return
 
-        for (var i = 0; i < chatMessageModel.count; i++) {
-            var existing = chatMessageModel.get(i)
-            if (existing.messageId === message.messageId) {
-                chatMessageModel.set(i, message)
-                return
-            }
+        var idx = messageIndex(message.messageId)
+        if (idx >= 0) {
+            chatMessageModel.set(idx, message)
+            return
         }
         chatMessageModel.insert(0, message)
+        rebuildMessageIndex()
     }
 
     function removeMessage(messageId) {
-        for (var i = 0; i < chatMessageModel.count; i++) {
-            if (chatMessageModel.get(i).messageId === messageId) {
-                chatMessageModel.remove(i)
-                return
-            }
+        var idx = messageIndex(messageId)
+        if (idx >= 0) {
+            chatMessageModel.remove(idx)
+            rebuildMessageIndex()
         }
     }
 
@@ -161,12 +189,9 @@ QtObject {
         if (!data || !data.messageId || data.channelId !== appState.activeChannelId)
             return
         var json = data.reactionsJson || "[]"
-        for (var i = 0; i < chatMessageModel.count; i++) {
-            if (chatMessageModel.get(i).messageId === data.messageId) {
-                chatMessageModel.setProperty(i, "reactionsJson", json)
-                return
-            }
-        }
+        var idx = messageIndex(data.messageId)
+        if (idx >= 0)
+            chatMessageModel.setProperty(idx, "reactionsJson", json)
     }
 
     function toggleReaction(messageId, apiString, alreadyReacted) {
@@ -187,13 +212,8 @@ QtObject {
     }
 
     function setReplyTarget(messageId) {
-        var message = null
-        for (var i = 0; i < chatMessageModel.count; i++) {
-            if (chatMessageModel.get(i).messageId === messageId) {
-                message = chatMessageModel.get(i)
-                break
-            }
-        }
+        var idx = messageIndex(messageId)
+        var message = idx >= 0 ? chatMessageModel.get(idx) : null
         if (!message) return
 
         appState.replyMessageId = message.messageId || ""

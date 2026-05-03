@@ -30,6 +30,6 @@ QtObject {
     property string startupPhase:      "initializing" // initializing | checking | syncing | offline | loaded
     property bool isWideLayout:        false
     property int sidebarRevision:      0
-    // When true, skip Lomiri Connectivity offline gate (clickable desktop / DISPORTS_IGNORE_CONNECTIVITY).
-    property bool ignoreConnectivityGate: false
+    // True when launched by `clickable desktop` or from its local install tree.
+    property bool runningUnderClickableDesktop: false
 }

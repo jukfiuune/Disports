@@ -11,8 +11,10 @@ from typing import Callable
 import websocket
 from websocket import ABNF, WebSocketException
 
-from .constants import GATEWAY_URL, USER_AGENT
+from .constants import GATEWAY_URL, USER_AGENT, build_gateway_url
 from .errors import GatewayClosed, ReconnectRequested
+
+ZLIB_SUFFIX = b"\x00\x00\xff\xff"
 
 
 class DiscordWsClient:
@@ -44,7 +46,7 @@ class DiscordWsClient:
         with self._send_lock:
             self._ws.send(data)
 
-    def recv_data(self) -> tuple[int, bytes]:
+    def recv_data(self) -> tuple[int, bytes | str]:
         if not self._ws:
             raise GatewayClosed("WebSocket not connected")
         try:
@@ -161,7 +163,11 @@ class DiscordGateway:
 
     def _run_connection(self) -> None:
         self._reconnect_event.clear()
-        gateway_url = self.resume_gateway_url or GATEWAY_URL
+        gateway_url = (
+            build_gateway_url(self.resume_gateway_url)
+            if self.resume_gateway_url
+            else GATEWAY_URL
+        )
         self._ws = DiscordWsClient(gateway_url)
         self._ws.connect()
         self._inflater = zlib.decompressobj()
@@ -188,14 +194,14 @@ class DiscordGateway:
         while not self._stop.is_set():
             opcode, payload = self._ws.recv_data()
             if opcode == ABNF.OPCODE_TEXT:
-                return json.loads(payload.decode("utf-8"))
+                return json.loads(payload)
             if opcode == ABNF.OPCODE_BINARY:
                 self._compressed_buffer.extend(payload)
-                if self._compressed_buffer[-4:] != b"\x00\x00\xff\xff":
+                if len(payload) < 4 or payload[-4:] != ZLIB_SUFFIX:
                     continue
-                decoded = self._inflater.decompress(bytes(self._compressed_buffer))
+                decoded = self._inflater.decompress(self._compressed_buffer)
                 self._compressed_buffer.clear()
-                return json.loads(decoded.decode("utf-8"))
+                return json.loads(decoded)
         raise GatewayClosed("Gateway receive loop stopped")
 
     def _handle_payload(self, payload: dict) -> None:
