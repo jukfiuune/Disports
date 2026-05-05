@@ -5,8 +5,13 @@ from typing import Any
 
 class ReactionsMixin:
     def __init__(self) -> None:
-        self._reaction_cache: dict[str, list[dict[str, Any]]] = {}
+        self._reset_state()
         super().__init__()
+
+    def _reset_state(self) -> None:
+        self._reaction_cache: dict[str, list[dict[str, Any]]] = {}
+        if hasattr(super(), "_reset_state"):
+            super()._reset_state()
 
     # ------------------------------------------------------------------
     # Emoji string helper

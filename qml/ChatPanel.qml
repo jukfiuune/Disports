@@ -520,16 +520,13 @@ Item {
         if (!messageId)
             return
 
-        for (var i = 0; i < messageList.count; i++) {
-            var item = messageList.model.get(i)
-            if (item.messageId !== messageId)
-                continue
-
-            highlightedMessageId = messageId
-            messageList.positionViewAtIndex(i, ListView.Center)
-            highlightReset.restart()
+        var idx = chatLogic.messageIndex(messageId)
+        if (idx < 0)
             return
-        }
+
+        highlightedMessageId = messageId
+        messageList.positionViewAtIndex(idx, ListView.Center)
+        highlightReset.restart()
     }
 
     Timer {

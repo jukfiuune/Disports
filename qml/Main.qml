@@ -19,29 +19,6 @@ MainView {
     width:  units.gu(45)
     height: units.gu(75)
 
-    function refreshActiveServerEmojis() {
-        if (!appState.pythonReady) {
-            appState.activeServerEmojis = []
-            return
-        }
-        if ((appState.activeServerId || "") === "") {
-            appState.activeServerEmojis = []
-            return
-        }
-        pythonBridge.call("discord_client.fetch_guild_emojis", [appState.activeServerId], function(emojis) {
-            appState.activeServerEmojis = emojis || []
-        })
-    }
-
-    function refreshUnicodeEmojis() {
-        if (!appState.pythonReady) {
-            appState.unicodeEmojis = []
-            return
-        }
-        pythonBridge.call("discord_client.fetch_unicode_emojis", [], function(emojis) {
-            appState.unicodeEmojis = emojis || []
-        })
-    }
 
     function applyLaunchModeFromArguments() {
         var args = Qt.application.arguments || []
@@ -120,7 +97,7 @@ MainView {
         }
         onReadyForInit: {
             appState.pythonReady = true
-            root.refreshUnicodeEmojis()
+            navigationLogic.refreshUnicodeEmojis()
             root.applyLaunchModeFromArguments()
             pythonBridge.call("discord_client.dev_flags", [], function(flags) {
                 if (flags && flags.clickableDesktopMode === true)
@@ -174,7 +151,7 @@ MainView {
 
     Connections {
         target: appState
-        onActiveServerIdChanged: root.refreshActiveServerEmojis()
+        onActiveServerIdChanged: navigationLogic.refreshActiveServerEmojis()
     }
 
     Connections {
@@ -333,37 +310,9 @@ MainView {
                         sourceComponent: Item {
                             Rectangle { anchors.fill: parent; color: theme.palette.normal.background }
 
-                            ChatPanel {
+                            ActiveChatPanel {
                                 anchors.fill: parent
                                 visible: appState.activeChannelId !== ""
-                                channelId: appState.activeChannelId
-                                channelName: appState.activeChannelName
-                                serverName: appState.mode === "server" ? appState.activeServerName : ""
-                                activeServerId: appState.mode === "server" ? appState.activeServerId : ""
-                                activeServerIcon: appState.mode === "server" ? appState.activeServerIcon : ""
-                                serverEmojis: appState.mode === "server" ? appState.activeServerEmojis : []
-                                unicodeEmojis: appState.unicodeEmojis
-                                inlineGifPlayback: appSettings.inlineGifPlayback
-                                messagesModel: chatMessageModel
-                                myUserId: appState.myUserId
-                                typingNotice: appState.typingNotice
-                                draftText: appState.draftText
-                                replyMessageId: appState.replyMessageId
-                                replyAuthor: appState.replyAuthor
-                                replyBody: appState.replyBody
-                                onSendRequested: function(content, replyId) { chatLogic.postMessage(content, replyId) }
-                                onReplyRequested: function(mId) { chatLogic.setReplyTarget(mId) }
-                                onClearReplyRequested: chatLogic.clearReplyTarget()
-                                onDraftEdited: function(text) { appState.draftText = text }
-                                onEditRequested: function(mId, content) { chatLogic.editMessage(mId, content) }
-                                onDeleteRequested: function(mId) { chatLogic.confirmDeleteMessage(mId) }
-                                onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
-                                loadingOlder: appState.loadingOlderMessages
-                                onLoadOlderRequested: chatLogic.fetchOlderMessages()
-                                onReactionToggleRequested: function(mId, apiStr, already) { chatLogic.toggleReaction(mId, apiStr, already) }
-                                onMediaPreviewRequested: function(url, type) {
-                                    pageStack.push(Qt.resolvedUrl("MediaPreviewPage.qml"), {mediaUrl: url, mediaType: type})
-                                }
                             }
 
                             Column {
@@ -392,31 +341,6 @@ MainView {
             id: chatPageComp
             ChatPage {
                 stack: pageStack
-                channelId: appState.activeChannelId
-                channelName: appState.activeChannelName
-                serverName: appState.mode === "server" ? appState.activeServerName : ""
-                activeServerId: appState.mode === "server" ? appState.activeServerId : ""
-                activeServerIcon: appState.mode === "server" ? appState.activeServerIcon : ""
-                serverEmojis: appState.mode === "server" ? appState.activeServerEmojis : []
-                unicodeEmojis: appState.unicodeEmojis
-                inlineGifPlayback: appSettings.inlineGifPlayback
-                messagesModel: chatMessageModel
-                myUserId: appState.myUserId
-                typingNotice: appState.typingNotice
-                draftText: appState.draftText
-                replyMessageId: appState.replyMessageId
-                replyAuthor: appState.replyAuthor
-                replyBody: appState.replyBody
-                onSendRequested: function(content, replyId) { chatLogic.postMessage(content, replyId) }
-                onReplyRequested: function(mId) { chatLogic.setReplyTarget(mId) }
-                onClearReplyRequested: chatLogic.clearReplyTarget()
-                onDraftEdited: function(text) { appState.draftText = text }
-                onEditRequested: function(mId, content) { chatLogic.editMessage(mId, content) }
-                onDeleteRequested: function(mId) { chatLogic.confirmDeleteMessage(mId) }
-                onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
-                loadingOlder: appState.loadingOlderMessages
-                onLoadOlderRequested: chatLogic.fetchOlderMessages()
-                onReactionToggleRequested: function(mId, apiStr, already) { chatLogic.toggleReaction(mId, apiStr, already) }
             }
         }
         Component {

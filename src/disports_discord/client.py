@@ -17,7 +17,6 @@ class DiscordClient:
         self.emitter = emitter
         self.gateway: DiscordGateway | None = None
         self.remote_auth: DiscordRemoteAuth | None = None
-        self.active_channel_id = ""
 
     def login(self, token: str) -> dict[str, Any]:
         self.stop_qr_login()
@@ -56,14 +55,13 @@ class DiscordClient:
         if self.gateway:
             self.gateway.stop()
             self.gateway = None
-        self.active_channel_id = ""
         self.stop_qr_login()
         self.http.set_token(None)
         return True
 
     def start_qr_login(self) -> dict[str, Any]:
         self.stop_qr_login()
-        self.remote_auth = DiscordRemoteAuth(emitter=self._emit)
+        self.remote_auth = DiscordRemoteAuth(http=self.http, emitter=self._emit)
         try:
             self.remote_auth.start()
         except Exception as exc:
@@ -240,6 +238,7 @@ class DiscordClient:
         channel_id: str,
         message_id: str,
     ) -> dict[str, Any]:
+        """Send a message acknowledgment to the Discord API."""
         try:
             self.http.request(
                 "POST",
@@ -255,37 +254,19 @@ class DiscordClient:
         channel_id: str,
         message_id: str,
     ) -> dict[str, Any]:
+        """Update local read state for a channel without sending an API acknowledgment."""
         if not channel_id:
             return {"ok": False, "error": "Missing channel id."}
         self.state.mark_channel_read(channel_id, message_id or None)
-        guild_id = self.state.get_guild_for_channel(channel_id)
-        channel = self.state.get_channel(channel_id)
-        self._emit("channel_unread", {
-            "channelId": channel_id,
-            "unread": self.state.channel_badge_count(channel) if channel else 0,
-            "unreadKind": self.state.channel_unread_kind(channel) if channel else "none",
-            "guildId": guild_id,
-            "guildUnread": self.state.get_guild_unread_count(guild_id) if guild_id else 0,
-            "guildUnreadKind": self.state.guild_unread_kind(guild_id) if guild_id else "none",
-            "dmUnread": self.state.get_dm_unread_count() if not guild_id else 0
-        })
+        self._emit_channel_unread(channel_id)
         return {"ok": True}
 
     def set_active_channel(self, channel_id: str) -> bool:
-        self.active_channel_id = channel_id
         if channel_id:
-            guild_id = self.state.get_guild_for_channel(channel_id)
-            channel = self.state.get_channel(channel_id)
             self.state.set_active_channel(channel_id)
-            self._emit("channel_unread", {
-                "channelId": channel_id, 
-                "unread": self.state.channel_badge_count(channel) if channel else 0,
-                "unreadKind": self.state.channel_unread_kind(channel) if channel else "none",
-                "guildId": guild_id,
-                "guildUnread": self.state.get_guild_unread_count(guild_id) if guild_id else 0,
-                "guildUnreadKind": self.state.guild_unread_kind(guild_id) if guild_id else "none",
-                "dmUnread": self.state.get_dm_unread_count() if not guild_id else 0
-            })
+            self._emit_channel_unread(channel_id)
+        else:
+            self.state.set_active_channel("")
         return True
 
     def resolve_channel(self, channel_id: str) -> dict[str, Any]:
@@ -347,13 +328,7 @@ class DiscordClient:
             if self.state.merge_user_guild_settings_update(data):
                 guild_id = str(data.get("guild_id", "") or "")
                 if guild_id:
-                    self._emit(
-                        "guild_channels",
-                        {
-                            "guildId": guild_id,
-                            "list": self.state.format_guild_channel_list(guild_id),
-                        },
-                    )
+                    self._emit_guild_channels(guild_id)
                 self._emit(
                     "guild_sidebar",
                     {"guilds": self.state.format_sidebar_guild_rows()},
@@ -385,13 +360,7 @@ class DiscordClient:
         if event_type in ("CHANNEL_CREATE", "CHANNEL_UPDATE", "THREAD_CREATE", "THREAD_UPDATE"):
             guild_id = self.state.upsert_guild_channel(data)
             if guild_id:
-                self._emit(
-                    "guild_channels",
-                    {
-                        "guildId": guild_id,
-                        "list": self.state.format_guild_channel_list(guild_id),
-                    },
-                )
+                self._emit_guild_channels(guild_id)
             return
 
         if event_type in ("CHANNEL_DELETE", "THREAD_DELETE"):
@@ -400,13 +369,7 @@ class DiscordClient:
                 str(data.get("guild_id", "") or ""),
             )
             if guild_id:
-                self._emit(
-                    "guild_channels",
-                    {
-                        "guildId": guild_id,
-                        "list": self.state.format_guild_channel_list(guild_id),
-                    },
-                )
+                self._emit_guild_channels(guild_id)
             return
 
         if event_type == "MESSAGE_CREATE":
@@ -417,26 +380,12 @@ class DiscordClient:
                 guild_id = self.state.apply_guild_channel_activity(data)
 
             channel = self.state.get_channel(channel_id)
-            self._emit("channel_unread", {
-                "channelId": channel_id,
-                "unread": self.state.channel_badge_count(channel) if channel else 0,
-                "unreadKind": self.state.channel_unread_kind(channel) if channel else "none",
-                "guildId": guild_id,
-                "guildUnread": self.state.get_guild_unread_count(guild_id) if guild_id else 0,
-                "guildUnreadKind": self.state.guild_unread_kind(guild_id) if guild_id else "none",
-                "dmUnread": self.state.get_dm_unread_count() if not guild_id else 0
-            })
+            self._emit_channel_unread(channel_id)
 
             if is_private:
                 self._emit("private_channels", self.state.format_private_channel_payload())
             elif guild_id:
-                self._emit(
-                    "guild_channels",
-                    {
-                        "guildId": guild_id,
-                        "list": self.state.format_guild_channel_list(guild_id),
-                    },
-                )
+                self._emit_guild_channels(guild_id)
                 
             self._emit("message_create", self.state.format_message(data))
             return
@@ -469,18 +418,8 @@ class DiscordClient:
             channel_id = data.get("channel_id")
             message_id = data.get("message_id")
             if channel_id and message_id:
-                guild_id = self.state.get_guild_for_channel(channel_id)
                 self.state.mark_channel_read(channel_id, message_id)
-                channel = self.state.get_channel(channel_id)
-                self._emit("channel_unread", {
-                    "channelId": channel_id,
-                    "unread": self.state.channel_badge_count(channel) if channel else 0,
-                    "unreadKind": self.state.channel_unread_kind(channel) if channel else "none",
-                    "guildId": guild_id,
-                    "guildUnread": self.state.get_guild_unread_count(guild_id) if guild_id else 0,
-                    "guildUnreadKind": self.state.guild_unread_kind(guild_id) if guild_id else "none",
-                    "dmUnread": self.state.get_dm_unread_count() if not guild_id else 0,
-                })
+                self._emit_channel_unread(channel_id)
             return
 
         if event_type == "CHANNEL_UNREAD_UPDATE":
@@ -489,18 +428,8 @@ class DiscordClient:
                 message_id = str(entry.get("last_message_id") or "")
                 if not channel_id or not message_id:
                     continue
-                guild_id = self.state.get_guild_for_channel(channel_id)
                 self.state.mark_channel_read(channel_id, message_id)
-                channel = self.state.get_channel(channel_id)
-                self._emit("channel_unread", {
-                    "channelId": channel_id,
-                    "unread": self.state.channel_badge_count(channel) if channel else 0,
-                    "unreadKind": self.state.channel_unread_kind(channel) if channel else "none",
-                    "guildId": guild_id,
-                    "guildUnread": self.state.get_guild_unread_count(guild_id) if guild_id else 0,
-                    "guildUnreadKind": self.state.guild_unread_kind(guild_id) if guild_id else "none",
-                    "dmUnread": self.state.get_dm_unread_count() if not guild_id else 0,
-                })
+                self._emit_channel_unread(channel_id)
             return
 
         if event_type == "TYPING_START":
@@ -520,11 +449,11 @@ class DiscordClient:
                 message_id, event_type, data, my_user_id=my_id
             )
             if updated is not None:
-                import json as _json
+                import json
                 self._emit("message_reaction", {
                     "messageId": message_id,
                     "channelId": channel_id,
-                    "reactionsJson": _json.dumps(updated, separators=(",", ":")),
+                    "reactionsJson": json.dumps(updated, separators=(",", ":")),
                 })
             return
 
@@ -534,6 +463,28 @@ class DiscordClient:
     def _emit(self, name: str, payload: dict[str, Any]) -> None:
         if self.emitter:
             self.emitter(name, payload)
+
+    def _emit_channel_unread(self, channel_id: str) -> None:
+        guild_id = self.state.get_guild_for_channel(channel_id)
+        channel = self.state.get_channel(channel_id)
+        self._emit("channel_unread", {
+            "channelId": channel_id,
+            "unread": self.state.channel_badge_count(channel) if channel else 0,
+            "unreadKind": self.state.channel_unread_kind(channel) if channel else "none",
+            "guildId": guild_id,
+            "guildUnread": self.state.get_guild_unread_count(guild_id) if guild_id else 0,
+            "guildUnreadKind": self.state.guild_unread_kind(guild_id) if guild_id else "none",
+            "dmUnread": self.state.get_dm_unread_count() if not guild_id else 0
+        })
+
+    def _emit_guild_channels(self, guild_id: str) -> None:
+        self._emit(
+            "guild_channels",
+            {
+                "guildId": guild_id,
+                "list": self.state.format_guild_channel_list(guild_id),
+            },
+        )
 
     def _request_missing_members(
         self,

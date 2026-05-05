@@ -52,3 +52,10 @@ def build_super_properties() -> str:
     }
     raw = json.dumps(payload, separators=(",", ":")).encode("utf-8")
     return base64.b64encode(raw).decode("ascii")
+
+
+GATEWAY_PROPERTIES = {
+    "os": "Linux",
+    "browser": "Firefox",
+    "device": "",
+}

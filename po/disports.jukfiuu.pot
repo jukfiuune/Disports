@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-04 09:48+0000\n"
+"POT-Creation-Date: 2026-05-05 16:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,15 +17,15 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:47 ../qml/ChatPanel.qml:96
+#: ../qml/ChatPage.qml:20 ../qml/ChatPanel.qml:96
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:52 ../qml/SettingsPage.qml:41
+#: ../qml/ChatPage.qml:25 ../qml/SettingsPage.qml:41
 msgid "Back"
 msgstr ""
 
-#: ../qml/ChatPage.qml:60
+#: ../qml/ChatPage.qml:33
 msgid "Info"
 msgstr ""
 
@@ -33,7 +33,7 @@ msgstr ""
 msgid "Load older messages"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:126 ../qml/components/EmojiPickerContent.qml:290
+#: ../qml/ChatPanel.qml:126 ../qml/components/EmojiPickerContent.qml:278
 msgid "Loading…"
 msgstr ""
 
@@ -109,31 +109,31 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/Main.qml:110
+#: ../qml/Main.qml:87
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:113
+#: ../qml/Main.qml:90
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:119
+#: ../qml/Main.qml:96
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:272 disports.desktop.in.h:1
+#: ../qml/Main.qml:249 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:276 ../qml/SettingsPage.qml:37
+#: ../qml/Main.qml:253 ../qml/SettingsPage.qml:37
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:375
+#: ../qml/Main.qml:324
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:380
+#: ../qml/Main.qml:329
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -141,7 +141,7 @@ msgstr ""
 msgid "Media Preview"
 msgstr ""
 
-#: ../qml/MediaPreviewPage.qml:18
+#: ../qml/MediaPreviewPage.qml:19
 msgid "Open Externally"
 msgstr ""
 
@@ -213,7 +213,7 @@ msgstr ""
 msgid "Disports — a Discord client for Ubuntu Touch"
 msgstr ""
 
-#: ../qml/Sidebar.qml:143
+#: ../qml/Sidebar.qml:170
 msgid "DMs"
 msgstr ""
 
@@ -270,15 +270,15 @@ msgstr ""
 msgid "Server"
 msgstr ""
 
-#: ../qml/components/EmojiPickerContent.qml:304
+#: ../qml/components/EmojiPickerContent.qml:292
 msgid "This server has no custom emoji."
 msgstr ""
 
-#: ../qml/components/EmojiPickerContent.qml:305
+#: ../qml/components/EmojiPickerContent.qml:293
 msgid "Server emoji are for server channels."
 msgstr ""
 
-#: ../qml/components/EmojiPickerContent.qml:306
+#: ../qml/components/EmojiPickerContent.qml:294
 msgid "Empty."
 msgstr ""
 

@@ -83,4 +83,28 @@ QtObject {
             chatLogic.replaceModel(channelModel, channels)
         })
     }
+
+    function refreshActiveServerEmojis() {
+        if (!appState.pythonReady) {
+            appState.activeServerEmojis = []
+            return
+        }
+        if ((appState.activeServerId || "") === "") {
+            appState.activeServerEmojis = []
+            return
+        }
+        python.call("discord_client.fetch_guild_emojis", [appState.activeServerId], function(emojis) {
+            appState.activeServerEmojis = emojis || []
+        })
+    }
+
+    function refreshUnicodeEmojis() {
+        if (!appState.pythonReady) {
+            appState.unicodeEmojis = []
+            return
+        }
+        python.call("discord_client.fetch_unicode_emojis", [], function(emojis) {
+            appState.unicodeEmojis = emojis || []
+        })
+    }
 }

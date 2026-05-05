@@ -59,10 +59,11 @@ def _url_to_data_uri(url: str) -> str:
 class DiscordRemoteAuth:
     def __init__(
         self,
+        http: DiscordHTTP | None = None,
         emitter: Callable[[str, dict], None] | None = None,
     ) -> None:
         self.emitter = emitter
-        self.http = DiscordHTTP()
+        self.http = http or DiscordHTTP()
         self._ws: DiscordWsClient | None = None
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()

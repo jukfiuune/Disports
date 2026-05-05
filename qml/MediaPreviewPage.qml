@@ -9,6 +9,7 @@ Page {
     // Properties filled by page caller
     property string mediaUrl: ""
     property string mediaType: "" // "image" or "video"
+    readonly property bool isGif: (mediaType === "image" && mediaUrl.toLowerCase().split('?')[0].endsWith(".gif"))
 
     header: PageHeader {
         title: previewPage.title
@@ -91,19 +92,19 @@ Page {
                     Image {
                         id: image
                         anchors.fill: parent
-                        source: previewPage.mediaType === "image" && !previewPage.mediaUrl.toLowerCase().split('?')[0].endsWith(".gif") ? previewPage.mediaUrl : ""
+                        source: (previewPage.mediaType === "image" && !previewPage.isGif) ? previewPage.mediaUrl : ""
                         fillMode: Image.PreserveAspectFit
                         asynchronous: true
-                        visible: !previewPage.mediaUrl.toLowerCase().split('?')[0].endsWith(".gif")
+                        visible: !previewPage.isGif
                     }
 
                     AnimatedImage {
                         id: animatedImage
                         anchors.fill: parent
-                        source: previewPage.mediaType === "image" && previewPage.mediaUrl.toLowerCase().split('?')[0].endsWith(".gif") ? previewPage.mediaUrl : ""
+                        source: previewPage.isGif ? previewPage.mediaUrl : ""
                         fillMode: Image.PreserveAspectFit
                         asynchronous: true
-                        visible: previewPage.mediaUrl.toLowerCase().split('?')[0].endsWith(".gif")
+                        visible: previewPage.isGif
                         playing: visible
                     }
                 }

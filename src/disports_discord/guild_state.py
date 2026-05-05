@@ -8,6 +8,10 @@ from ._utils import merge_dict
 
 class GuildStateMixin:
     def __init__(self) -> None:
+        self._reset_state()
+        super().__init__()
+
+    def _reset_state(self) -> None:
         self.me: dict[str, Any] | None = None
         self.guilds: list[dict[str, Any]] = []
         self.guild_by_id: dict[str, dict[str, Any]] = {}
@@ -27,14 +31,15 @@ class GuildStateMixin:
         self.user_guild_settings: dict[str, dict[str, Any]] = {}
         self.channel_overrides: dict[str, dict[str, Any]] = {}
         self.channel_to_guild: dict[str, str] = {}
-        super().__init__()
+        if hasattr(super(), "_reset_state"):
+            super()._reset_state()
 
     # ------------------------------------------------------------------
     # Reset
     # ------------------------------------------------------------------
 
     def reset(self) -> None:
-        self.__init__()  # type: ignore[misc]
+        self._reset_state()
 
     # ------------------------------------------------------------------
     # Current user
@@ -421,34 +426,3 @@ class GuildStateMixin:
             or ""
         )
 
-    # ------------------------------------------------------------------
-    # Shared static helpers
-    # ------------------------------------------------------------------
-
-    @staticmethod
-    def _merge_dict(target: dict[str, Any], source: dict[str, Any]) -> None:
-        merge_dict(target, source)
-
-    @staticmethod
-    def _int_value(raw_value: Any) -> int:
-        from ._utils import int_value as _iv
-        return _iv(raw_value)
-
-    @staticmethod
-    def _snowflake_ge(lhs: str, rhs: str) -> bool:
-        return snowflake_ge(lhs, rhs)  # type: ignore[name-defined]
-
-    @staticmethod
-    def _last_message_sort_value(last_message_id: str | None) -> int:
-        from ._utils import last_message_sort_value as _lmsv
-        return _lmsv(last_message_id)
-
-    @staticmethod
-    def _message_type_value(raw_value: Any) -> int:
-        from ._utils import message_type_value as _mtv
-        return _mtv(raw_value)
-
-
-def snowflake_ge(lhs: str, rhs: str) -> bool:
-    from ._utils import snowflake_ge as _sge
-    return _sge(lhs, rhs)

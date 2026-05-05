@@ -5,6 +5,8 @@ import re
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from ._utils import message_type_value
+
 MENTION_RE = re.compile(r"<@!?(\d+)>")
 ROLE_MENTION_RE = re.compile(r"<@&(\d+)>")
 CHANNEL_MENTION_RE = re.compile(r"<#(\d+)>")
@@ -118,7 +120,7 @@ class MessageFormatterMixin:
             if not temp_content.strip():
                 content = ""
 
-        message_type = self._message_type_value(message.get("type"))  # type: ignore[attr-defined]
+        message_type = message_type_value(message.get("type"))
         reply = self.format_reply(message.get("referenced_message"))
         forwarded = self.format_forwarded(message.get("message_snapshots") or [])
         system_text = self.format_system_message(message, cached_user, message_type)

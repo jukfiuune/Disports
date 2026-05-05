@@ -29,18 +29,6 @@ Item {
     readonly property var modeLabels: allowServerEmojis
                                       ? [i18n.tr("Emoji"), i18n.tr("Server")]
                                       : [i18n.tr("Emoji")]
-    readonly property var categoryLabels: [
-        unicodeCategories[0].label,
-        unicodeCategories[1].label,
-        unicodeCategories[2].label,
-        unicodeCategories[3].label,
-        unicodeCategories[4].label,
-        unicodeCategories[5].label,
-        unicodeCategories[6].label,
-        unicodeCategories[7].label,
-        unicodeCategories[8].label
-    ]
-
     signal emojiChosen(string text, var emojiData)
 
     function categoryIndexForKey(key) {

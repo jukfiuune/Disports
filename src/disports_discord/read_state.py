@@ -11,6 +11,11 @@ from ._utils import int_value, snowflake_ge
 
 class ReadStateMixin:
     def __init__(self) -> None:
+        self._reset_state()
+        self._load_read_states()
+        super().__init__()
+
+    def _reset_state(self) -> None:
         self.active_channel_id: str | None = None
         self.read_states: dict[str, dict[str, Any]] = {}
         self.session_start_id: str = str(int((time.time() * 1000) - 1420070400000) << 22)
@@ -19,8 +24,8 @@ class ReadStateMixin:
             "disports",
             "read_states.json",
         )
-        self._load_read_states()
-        super().__init__()
+        if hasattr(super(), "_reset_state"):
+            super()._reset_state()
 
     # ------------------------------------------------------------------
     # Persistence

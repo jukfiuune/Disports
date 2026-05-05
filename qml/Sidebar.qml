@@ -50,6 +50,28 @@ Item {
         sidebar.folderExpanded = o
     }
 
+    function _pruneFolderExpanded() {
+        if (!servers) return
+        var activeKeys = {}
+        for (var i = 0; i < servers.count; i++) {
+            var row = servers.get(i)
+            if (row.itemType === "folderHeader" && row.folderKey)
+                activeKeys[row.folderKey] = true
+        }
+        var o = {}
+        var k
+        var changed = false
+        for (k in folderExpanded) {
+            if (activeKeys[k]) {
+                o[k] = folderExpanded[k]
+            } else {
+                changed = true
+            }
+        }
+        if (changed)
+            folderExpanded = o
+    }
+
     function rebuildUnreadDmItems() {
         _savedHeaderHeight = railList.headerItem ? Math.round(railList.headerItem.height) : 0
         var items = []
@@ -102,6 +124,11 @@ Item {
     Connections {
         target: sidebar.dmChannels
         function onCountChanged() { sidebar.rebuildUnreadDmItems() }
+    }
+
+    Connections {
+        target: sidebar.servers
+        function onCountChanged() { sidebar._pruneFolderExpanded() }
     }
 
     Rectangle {

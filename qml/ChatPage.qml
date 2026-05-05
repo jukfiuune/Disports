@@ -15,36 +15,9 @@ Page {
     id: chatPage
     objectName: "chatPage"
     property var stack
-    property string channelId: ""
-    property string channelName: ""
-    property string serverName: ""
-    property string activeServerId: ""
-    property url activeServerIcon: ""
-    property var serverEmojis: []
-    property var unicodeEmojis: []
-    property bool inlineGifPlayback: false
-    property var messagesModel
-    property string myUserId: ""
-    property string typingNotice: ""
-    property string draftText: ""
-    property string replyMessageId: ""
-    property string replyAuthor: ""
-    property string replyBody: ""
-    property bool loadingOlder: false
-    property bool isOnline: true
-
-    signal loadOlderRequested()
-    signal sendRequested(string content, string replyMessageId)
-    signal replyRequested(string messageId)
-    signal clearReplyRequested()
-    signal draftEdited(string text)
-    signal editRequested(string messageId, string newContent)
-    signal deleteRequested(string messageId)
-    signal channelMentionRequested(string channelId)
-    signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
-
+    
     header: PageHeader {
-        title: chatPage.channelName !== "" ? chatPage.channelName : i18n.tr("Chat")
+        title: appState.activeChannelName !== "" ? appState.activeChannelName : i18n.tr("Chat")
 
         leadingActionBar.actions: [
             Action {
@@ -63,7 +36,7 @@ Page {
         ]
     }
 
-    ChatPanel {
+    ActiveChatPanel {
         anchors {
             top: chatPage.header.bottom
             left: parent.left
@@ -71,34 +44,5 @@ Page {
             bottom: parent.bottom
         }
         showHeader: false
-        channelId: chatPage.channelId
-        channelName: chatPage.channelName
-        serverName: chatPage.serverName
-        activeServerId: chatPage.activeServerId
-        activeServerIcon: chatPage.activeServerIcon
-        serverEmojis: chatPage.serverEmojis
-        unicodeEmojis: chatPage.unicodeEmojis
-        inlineGifPlayback: chatPage.inlineGifPlayback
-        messagesModel: chatPage.messagesModel
-        myUserId: chatPage.myUserId
-        typingNotice: chatPage.typingNotice
-        draftText: chatPage.draftText
-        replyMessageId: chatPage.replyMessageId
-        replyAuthor: chatPage.replyAuthor
-        replyBody: chatPage.replyBody
-        onSendRequested: function(content, replyMessageId) { chatPage.sendRequested(content, replyMessageId) }
-        onReplyRequested: function(messageId) { chatPage.replyRequested(messageId) }
-        onClearReplyRequested: chatPage.clearReplyRequested()
-        onDraftEdited: function(text) { chatPage.draftEdited(text) }
-        onEditRequested: function(messageId, newContent) { chatPage.editRequested(messageId, newContent) }
-        onDeleteRequested: function(messageId) { chatPage.deleteRequested(messageId) }
-        onChannelMentionRequested: function(channelId) { chatPage.channelMentionRequested(channelId) }
-        loadingOlder: chatPage.loadingOlder
-        onLoadOlderRequested: chatPage.loadOlderRequested()
-        isOnline: chatPage.isOnline
-        onReactionToggleRequested: function(mId, apiStr, already) { chatPage.reactionToggleRequested(mId, apiStr, already) }
-        onMediaPreviewRequested: function(url, type) {
-            chatPage.stack.push(Qt.resolvedUrl("MediaPreviewPage.qml"), {mediaUrl: url, mediaType: type})
-        }
     }
 }
