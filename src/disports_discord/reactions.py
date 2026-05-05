@@ -12,11 +12,7 @@ class ReactionsMixin:
         self._reaction_cache: dict[str, list[dict[str, Any]]] = {}
         if hasattr(super(), "_reset_state"):
             super()._reset_state()
-
-    # ------------------------------------------------------------------
     # Emoji string helper
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _emoji_api_string(emoji: dict[str, Any]) -> str:
         """Return the Discord API emoji string for use in URLs (name or name:id)."""
@@ -25,11 +21,7 @@ class ReactionsMixin:
         if emoji_id and emoji_id != "None":
             return f"{name}:{emoji_id}"
         return name
-
-    # ------------------------------------------------------------------
     # Format
-    # ------------------------------------------------------------------
-
     def format_reactions(self, raw_reactions: list[dict[str, Any]]) -> list[dict[str, Any]]:
         result = []
         for r in (raw_reactions or []):
@@ -53,11 +45,7 @@ class ReactionsMixin:
                 "apiString": api_string,
             })
         return result
-
-    # ------------------------------------------------------------------
     # Gateway updates
-    # ------------------------------------------------------------------
-
     def update_message_reactions(
         self,
         message_id: str,

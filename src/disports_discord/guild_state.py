@@ -33,26 +33,14 @@ class GuildStateMixin:
         self.channel_to_guild: dict[str, str] = {}
         if hasattr(super(), "_reset_state"):
             super()._reset_state()
-
-    # ------------------------------------------------------------------
     # Reset
-    # ------------------------------------------------------------------
-
     def reset(self) -> None:
         self._reset_state()
-
-    # ------------------------------------------------------------------
     # Current user
-    # ------------------------------------------------------------------
-
     def set_me(self, me: dict[str, Any]) -> None:
         self.me = me
         self.cache_user(me)
-
-    # ------------------------------------------------------------------
     # User cache
-    # ------------------------------------------------------------------
-
     def cache_user(
         self,
         user: dict[str, Any] | None,
@@ -76,11 +64,7 @@ class GuildStateMixin:
             if normalized_guild_id:
                 cached_member["guild_id"] = normalized_guild_id
         return cached
-
-    # ------------------------------------------------------------------
     # Guild layout helpers
-    # ------------------------------------------------------------------
-
     def guild_name(self, guild_id: str) -> str:
         if not guild_id:
             return ""
@@ -179,11 +163,7 @@ class GuildStateMixin:
             if channel_id:
                 self.channel_overrides[channel_id] = dict(override)
         return True
-
-    # ------------------------------------------------------------------
     # READY payload
-    # ------------------------------------------------------------------
-
     def apply_ready(self, payload: dict[str, Any]) -> None:
         self._reset_state()
         user = payload.get("user")
@@ -250,11 +230,7 @@ class GuildStateMixin:
         user_id = user.get("id")
         if user_id:
             self.presences[user_id] = payload.get("status", "offline")
-
-    # ------------------------------------------------------------------
     # Guild channels
-    # ------------------------------------------------------------------
-
     def set_guild_channels(self, guild_id: str, channels: list[dict[str, Any]]) -> None:
         for old_channel in self.guild_channels.get(guild_id, []):
             old_id = str(old_channel.get("id", "") or "")
@@ -326,11 +302,7 @@ class GuildStateMixin:
         if not channel_id:
             return None
         return self.channel_by_id.get(channel_id)
-
-    # ------------------------------------------------------------------
     # Guild context (roles, members, emojis)
-    # ------------------------------------------------------------------
-
     def set_guild_emojis(self, guild_id: str, emojis: list[dict[str, Any]]) -> None:
         self.guild_emojis[guild_id] = [dict(emoji) for emoji in (emojis or []) if isinstance(emoji, dict)]
 
@@ -383,11 +355,7 @@ class GuildStateMixin:
             if isinstance(presence, dict):
                 self.apply_presence(presence)
         return guild_id
-
-    # ------------------------------------------------------------------
     # Member helpers
-    # ------------------------------------------------------------------
-
     def guild_member_for_user(self, user: dict[str, Any] | None, guild_id: str = "") -> dict[str, Any]:
         if not user:
             return {}

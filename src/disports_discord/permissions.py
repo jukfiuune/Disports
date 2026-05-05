@@ -17,9 +17,6 @@ class PermissionsMixin:
         if hasattr(super(), "_reset_state"):
             super()._reset_state()
 
-    # ------------------------------------------------------------------
-    # Channel visibility
-    # ------------------------------------------------------------------
 
     @classmethod
     def can_access_channel(cls, channel: dict[str, Any]) -> bool:
@@ -108,10 +105,6 @@ class PermissionsMixin:
         if channel_id:
             self._permission_cache[cache_key] = permissions
         return permissions
-
-    # ------------------------------------------------------------------
-    # Overwrite helpers
-    # ------------------------------------------------------------------
 
     @staticmethod
     def _find_overwrite(overwrites: list[dict[str, Any]], target_id: str) -> dict[str, Any] | None:

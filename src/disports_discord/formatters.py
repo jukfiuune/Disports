@@ -9,10 +9,7 @@ from ._utils import last_message_sort_value
 
 
 class FormattersMixin:
-    # ------------------------------------------------------------------
     # Top-level view-model builders
-    # ------------------------------------------------------------------
-
     def format_ready_payload(self) -> dict[str, Any]:
         return {
             "me": self.format_current_user(),
@@ -34,11 +31,7 @@ class FormattersMixin:
             "dmContacts": self.format_dm_contacts(),
             "dmGroups": self.format_dm_groups(),
         }
-
-    # ------------------------------------------------------------------
     # Sidebar guild rows
-    # ------------------------------------------------------------------
-
     @staticmethod
     def _folder_color_hex(color_val: Any) -> str:
         try:
@@ -166,11 +159,7 @@ class FormattersMixin:
         guild_list = list(by_id.values())
         self._sort_guilds_by_join(guild_list)
         return [self._guild_sidebar_entry(g) for g in guild_list]
-
-    # ------------------------------------------------------------------
     # DM contacts and groups
-    # ------------------------------------------------------------------
-
     def _sorted_private_channels(self) -> list[dict[str, Any]]:
         return sorted(
             self.private_channels,  # type: ignore[attr-defined]
@@ -222,11 +211,7 @@ class FormattersMixin:
                 "sortKey": last_message_sort_value(channel.get("last_message_id")),
             })
         return groups
-
-    # ------------------------------------------------------------------
     # Guild channel list
-    # ------------------------------------------------------------------
-
     def format_guild_channel_list(self, guild_id: str) -> list[dict[str, Any]]:
         channels = self.guild_channels.get(guild_id, [])  # type: ignore[attr-defined]
         channel_index = {
@@ -299,11 +284,7 @@ class FormattersMixin:
                 "parentName": str((parent or {}).get("name", "") or ""),
             })
         return formatted
-
-    # ------------------------------------------------------------------
     # Guild emoji list
-    # ------------------------------------------------------------------
-
     def format_guild_emoji_list(self, guild_id: str) -> list[dict[str, Any]]:
         emojis = self.guild_emojis.get(guild_id, [])  # type: ignore[attr-defined]
         formatted = []
@@ -336,11 +317,7 @@ class FormattersMixin:
             "openable": self.channel_is_openable(channel or {}),
             "channelType": self.channel_type_name(channel_type),
         }
-
-    # ------------------------------------------------------------------
     # Pure display / static helpers
-    # ------------------------------------------------------------------
-
     @staticmethod
     def abbr(name: str, length: int = 2) -> str:
         parts = [part for part in re.split(r"[^A-Za-z0-9]+", name or "") if part]

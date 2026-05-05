@@ -21,10 +21,7 @@ DISCORD_TOKEN_RE = re.compile(
 
 
 class MessageFormatterMixin:
-    # ------------------------------------------------------------------
     # Public entry points
-    # ------------------------------------------------------------------
-
     def format_messages(self, messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
         return [self.format_message(message) for message in messages]
 
@@ -165,11 +162,7 @@ class MessageFormatterMixin:
             "hasForwarded": forwarded["hasForwarded"],
             "reactionsJson": json.dumps(self.format_reactions(raw_reactions), separators=(",", ":")),  # type: ignore[attr-defined]
         }
-
-    # ------------------------------------------------------------------
     # Media
-    # ------------------------------------------------------------------
-
     @staticmethod
     def format_media(attachment: dict[str, Any]) -> dict[str, Any]:
         result = {
@@ -262,11 +255,7 @@ class MessageFormatterMixin:
             urlencode(query),
             parts.fragment,
         ))
-
-    # ------------------------------------------------------------------
     # Reply / forwarded
-    # ------------------------------------------------------------------
-
     def format_reply(self, referenced_message: dict[str, Any] | None) -> dict[str, Any]:
         result = {
             "hasReply": False,
@@ -354,11 +343,7 @@ class MessageFormatterMixin:
             "media": media,
         })
         return result
-
-    # ------------------------------------------------------------------
     # System messages
-    # ------------------------------------------------------------------
-
     def format_system_message(
         self,
         message: dict[str, Any],
@@ -418,11 +403,7 @@ class MessageFormatterMixin:
             46: "A poll result was posted.",
         }
         return system_messages.get(message_type, "")
-
-    # ------------------------------------------------------------------
     # Typing
-    # ------------------------------------------------------------------
-
     def format_typing(self, payload: dict[str, Any]) -> dict[str, Any]:
         user_id = str(payload.get("user_id", "") or "")
         guild_id = str(payload.get("guild_id", "") or "")
@@ -440,11 +421,7 @@ class MessageFormatterMixin:
             "author": author,
             "channelId": payload.get("channel_id", ""),
         }
-
-    # ------------------------------------------------------------------
     # Mention resolution
-    # ------------------------------------------------------------------
-
     def replace_mentions(
         self,
         content: str,
@@ -468,11 +445,7 @@ class MessageFormatterMixin:
             return f"@{mention_names.get(user_id, user_id)}"
 
         return MENTION_RE.sub(repl, content)
-
-    # ------------------------------------------------------------------
     # Rich content renderer
-    # ------------------------------------------------------------------
-
     def render_message_content(
         self,
         content: str,
@@ -555,11 +528,7 @@ class MessageFormatterMixin:
             return f'<a href="{href}">{html.escape(label)}</a>'
 
         return html.escape(match.group(0)) if rich else match.group(0)
-
-    # ------------------------------------------------------------------
     # Mentions-me check
-    # ------------------------------------------------------------------
-
     def message_mentions_me(self, message: dict[str, Any]) -> bool:
         me_id = str((self.me or {}).get("id", "") or "")  # type: ignore[attr-defined]
         if not me_id:

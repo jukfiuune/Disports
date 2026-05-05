@@ -28,11 +28,7 @@ class ReadStateMixin:
         self._guild_mention_cache: dict[str, int] = {}
         if hasattr(super(), "_reset_state"):
             super()._reset_state()
-
-    # ------------------------------------------------------------------
     # Persistence
-    # ------------------------------------------------------------------
-
     def _load_read_states(self) -> None:
         try:
             if os.path.exists(self.read_states_file):
@@ -56,11 +52,7 @@ class ReadStateMixin:
                 json.dump(self.read_states, f)
         except Exception:
             pass
-
-    # ------------------------------------------------------------------
     # Read-state helpers
-    # ------------------------------------------------------------------
-
     def _normalize_read_state_entry(self, entry: Any) -> dict[str, Any]:
         if isinstance(entry, str):
             return {
@@ -103,20 +95,12 @@ class ReadStateMixin:
             "badge_count": int_value(existing.get("badge_count")),
             "mention_count": int_value(existing.get("mention_count")),
         }
-
-    # ------------------------------------------------------------------
     # Active channel
-    # ------------------------------------------------------------------
-
     def set_active_channel(self, channel_id: str) -> None:
         self.active_channel_id = channel_id
         if channel_id:
             self.mark_channel_read(channel_id)
-
-    # ------------------------------------------------------------------
     # Mark / query read state
-    # ------------------------------------------------------------------
-
     def mark_channel_read(self, channel_id: str, message_id: str | None = None) -> None:
         if not channel_id:
             return
@@ -186,11 +170,7 @@ class ReadStateMixin:
         if self.is_channel_unread(channel):
             return "dot"
         return "none"
-
-    # ------------------------------------------------------------------
     # Guild / DM unread aggregates
-    # ------------------------------------------------------------------
-
     def get_dm_unread_count(self) -> int:
         count = 0
         for channel in self.private_channels:  # type: ignore[attr-defined]
@@ -250,11 +230,7 @@ class ReadStateMixin:
         if self.guild_has_unread(guild_id):
             return "dot"
         return "none"
-
-    # ------------------------------------------------------------------
     # Activity handlers (gateway MESSAGE_CREATE)
-    # ------------------------------------------------------------------
-
     def apply_private_channel_activity(self, message: dict[str, Any]) -> bool:
         channel_id = message.get("channel_id", "")
         if not channel_id:
@@ -311,11 +287,7 @@ class ReadStateMixin:
         self._save_read_states()
         self._invalidate_guild_cache(guild_id)
         return guild_id
-
-    # ------------------------------------------------------------------
     # Mute helpers
-    # ------------------------------------------------------------------
-
     def _is_muted(self, raw: dict[str, Any] | None) -> bool:
         if not isinstance(raw, dict):
             return False
