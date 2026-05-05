@@ -1,8 +1,3 @@
-/*
- * MessageBubble.qml
- * One message row: bold author + muted timestamp, then body below.
- */
-
 import QtQuick 2.7
 import Lomiri.Components 1.3
 
@@ -53,7 +48,7 @@ ListItem {
     divider.visible: false
     height: inner.height + units.gu(displayKind === "system" ? 1 : 1.5)
 
-    // Leading actions (swipe right): delete — own messages only.
+    // Leading actions (swipe right): delete - own messages only.
     leadingActions: ownActionsLoader.item
 
     Loader {

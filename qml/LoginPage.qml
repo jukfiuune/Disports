@@ -7,7 +7,7 @@ Page {
 
     property bool busy: false
     property string errorText: ""
-    property string qrImageSource: ""   // data URI from Python, e.g. "data:image/png;base64,..."
+    property string qrImageSource: ""
     property string qrStatusText: ""
 
     signal tokenLoginRequested(string token)
@@ -56,7 +56,7 @@ Page {
                     Image {
                         anchors.fill: parent
                         anchors.margins: units.gu(1)
-                        source: loginPage.qrImageSource   // data URI set by Python
+                        source: loginPage.qrImageSource
                         fillMode: Image.PreserveAspectFit
                         smooth: true
                         cache: false
@@ -110,7 +110,7 @@ Page {
             }
         }
     }
-    
+
     // Quick popups utility
     Item { id: __popups; function open(comp) { return Popups.PopupUtils.open(comp) } }
 
@@ -132,7 +132,7 @@ Page {
                 text: i18n.tr("Cancel")
                 onClicked: Popups.PopupUtils.close(tokenDialog)
             }
-            
+
             Button {
                 text: i18n.tr("Sign In")
                 color: theme.palette.normal.positive

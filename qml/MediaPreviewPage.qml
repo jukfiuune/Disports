@@ -5,7 +5,7 @@ import Lomiri.Components 1.3
 Page {
     id: previewPage
     title: i18n.tr("Media Preview")
-    
+
     // Properties filled by page caller
     property string mediaUrl: ""
     property string mediaType: "" // "image" or "video"
@@ -61,7 +61,7 @@ Page {
                 var zoomFactor = initialZoom * pinch.scale
                 if (zoomFactor < minimumZoom) zoomFactor = minimumZoom
                 if (zoomFactor > maximumZoom) zoomFactor = maximumZoom
-                
+
                 if(zoomFactor > flickable.sizeScale + 0.1 || zoomFactor < flickable.sizeScale - 0.1) {
                     flickable.sizeScale = zoomFactor;
                 }
@@ -126,8 +126,6 @@ Page {
         Item {
             anchors.fill: parent
             visible: previewPage.mediaType === "video"
-
-
 
             MediaPlayer {
                 id: videoPlayer

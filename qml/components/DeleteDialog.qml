@@ -6,10 +6,10 @@ Dialog {
     id: deleteDialogInstance
     property string messageId: ""
     signal deleteConfirmed(string msgId)
-    
+
     title: i18n.tr("Delete message")
     text: i18n.tr("Are you sure you want to permanently delete this message?")
-    
+
     Button {
         text: i18n.tr("Delete")
         color: "#ED3146"

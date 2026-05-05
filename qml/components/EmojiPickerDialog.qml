@@ -7,7 +7,7 @@ Dialog {
 
     property string serverName: ""
     property string activeServerId: ""
-    property url    activeServerIcon: ""
+    property url activeServerIcon: ""
     property var serverEmojis: []
     property var unicodeEmojis: []
     property string initialMode: "unicode"

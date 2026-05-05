@@ -254,7 +254,6 @@ Item {
                             cache: true
                         }
 
-
                     }
 
                     MouseArea {

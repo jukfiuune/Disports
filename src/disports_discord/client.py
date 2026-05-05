@@ -76,27 +76,48 @@ class DiscordClient:
         return True
 
     def fetch_guild_channels(self, guild_id: str) -> list[dict[str, Any]]:
-        guild_data = None
-        member_data = None
-        if self.state.me and self.state.me.get("id"):
+        from concurrent.futures import ThreadPoolExecutor
+
+        me_id = (self.state.me or {}).get("id", "")
+
+        def fetch_guild():
             try:
-                guild_data = self.http.request("GET", f"guilds/{guild_id}")
+                return self.http.request("GET", f"guilds/{guild_id}")
             except DiscordHTTPError:
-                guild_data = None
+                return None
+
+        def fetch_member():
+            if not me_id:
+                return None
             try:
-                member_data = self.http.request(
-                    "GET",
-                    f"guilds/{guild_id}/members/{self.state.me.get('id', '')}",
-                )
+                return self.http.request("GET", f"guilds/{guild_id}/members/{me_id}")
             except DiscordHTTPError:
-                member_data = None
+                return None
+
+        def fetch_channels():
+            try:
+                return self.http.request("GET", f"guilds/{guild_id}/channels") or []
+            except DiscordHTTPError:
+                return []
+
+        def fetch_threads():
+            try:
+                return self.http.request("GET", f"guilds/{guild_id}/threads/active") or {}
+            except DiscordHTTPError:
+                return {}
+
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            fut_guild = executor.submit(fetch_guild)
+            fut_member = executor.submit(fetch_member)
+            fut_channels = executor.submit(fetch_channels)
+            fut_threads = executor.submit(fetch_threads)
+
+            guild_data = fut_guild.result()
+            member_data = fut_member.result()
+            channels = fut_channels.result()
+            active_threads = fut_threads.result()
 
         self.state.set_guild_context(guild_id, guild_data, member_data)
-        channels = self.http.request("GET", f"guilds/{guild_id}/channels") or []
-        try:
-            active_threads = self.http.request("GET", f"guilds/{guild_id}/threads/active") or {}
-        except DiscordHTTPError:
-            active_threads = {}
         merged_channels = self._merge_guild_channels(
             channels,
             (active_threads.get("threads") or []) if isinstance(active_threads, dict) else [],

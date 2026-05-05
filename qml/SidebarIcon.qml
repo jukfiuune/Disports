@@ -7,10 +7,10 @@ Item {
     width:  units.gu(5)
     height: units.gu(5)
 
-    property url    imageSource: ""
-    property string iconName:    ""
-    property string label:       ""
-    property bool   showTileBackground: false
+    property url imageSource: ""
+    property string iconName: ""
+    property string label: ""
+    property bool showTileBackground: false
 
     // Re-render the FBO when any visible property changes.
     // Using callLater to coalesce rapid successive changes (e.g. image load sequence).
@@ -25,7 +25,7 @@ Item {
         width: 0
         height: 0
         sourceItem: imageContent
-        // Don't re-render the FBO every frame — only when content actually changes.
+        // Don't re-render the FBO every frame - only when content actually changes.
         // This eliminates N × (FBO render + DropShadow blur) per frame for static icons.
         live: false
     }

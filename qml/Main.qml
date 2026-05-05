@@ -19,7 +19,6 @@ MainView {
     width:  units.gu(45)
     height: units.gu(75)
 
-
     function applyLaunchModeFromArguments() {
         var args = Qt.application.arguments || []
         for (var i = 0; i < args.length; i++) {
@@ -33,7 +32,7 @@ MainView {
 
     // Logic & State
     AppState { id: appState; isWideLayout: root.width >= units.gu(90) }
-    
+
     PythonBridge {
         id: pythonBridge
         onReady: function(data) {
@@ -191,7 +190,7 @@ MainView {
         id: dmChannelModel
     }
 
-    ListModel { id: channelModel }   // rebuilt by selectServer()
+    ListModel { id: channelModel } // rebuilt by selectServer()
 
     ListModel {
         id: chatMessageModel

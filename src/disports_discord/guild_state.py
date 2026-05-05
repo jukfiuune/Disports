@@ -185,6 +185,7 @@ class GuildStateMixin:
     # ------------------------------------------------------------------
 
     def apply_ready(self, payload: dict[str, Any]) -> None:
+        self._reset_state()
         user = payload.get("user")
         if user:
             self.set_me(user)

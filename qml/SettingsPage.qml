@@ -1,10 +1,3 @@
-/*
- * SettingsPage.qml
- *
- * Pushed from the main page header's settings action.
- * Houses token input and other app preferences.
- */
-
 import QtQuick 2.7
 import Lomiri.Components 1.3
 import Qt.labs.settings 1.0
@@ -139,7 +132,7 @@ Page {
             }
 
             Label {
-                text: i18n.tr("Disports — a Discord client for Ubuntu Touch")
+                text: i18n.tr("Disports - a Discord client for Ubuntu Touch")
                 font.pixelSize: units.gu(1.5)
                 color: theme.palette.normal.backgroundSecondaryText
                 wrapMode: Text.WordWrap

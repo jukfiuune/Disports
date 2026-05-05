@@ -4,13 +4,13 @@ import "./"
 
 ChatPanel {
     id: activeChatPanel
-    
+
     // Bind to shared models and settings
     messagesModel: chatMessageModel
     unicodeEmojis: appState.unicodeEmojis
     inlineGifPlayback: appSettings.inlineGifPlayback
     myUserId: appState.myUserId
-    
+
     // Bind to transient appState
     channelId: appState.activeChannelId
     channelName: appState.activeChannelName
@@ -35,7 +35,7 @@ ChatPanel {
     onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
     onLoadOlderRequested: chatLogic.fetchOlderMessages()
     onReactionToggleRequested: function(mId, apiStr, already) { chatLogic.toggleReaction(mId, apiStr, already) }
-    
+
     // Navigation
     onMediaPreviewRequested: function(url, type) {
         pageStack.push(Qt.resolvedUrl("MediaPreviewPage.qml"), {mediaUrl: url, mediaType: type})

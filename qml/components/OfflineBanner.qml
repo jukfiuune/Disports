@@ -14,7 +14,7 @@ Rectangle {
     Layout.preferredHeight: isOnline ? 0 : units.gu(4)
     color: theme.palette.normal.negative
     clip: true
-    
+
     Behavior on Layout.preferredHeight {
         NumberAnimation { duration: 250; easing.type: Easing.InOutQuad }
     }

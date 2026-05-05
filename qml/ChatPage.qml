@@ -1,12 +1,3 @@
-/*
- * ChatPage.qml
- *
- * Full-screen conversation view, pushed when the user opens any
- * contact, group, or channel from the panels.
- *
- * The back button (auto-provided by PageStack) returns to the main page.
- */
-
 import QtQuick 2.7
 import Lomiri.Components 1.3
 import "./"
@@ -15,7 +6,7 @@ Page {
     id: chatPage
     objectName: "chatPage"
     property var stack
-    
+
     header: PageHeader {
         title: appState.activeChannelName !== "" ? appState.activeChannelName : i18n.tr("Chat")
 

@@ -19,11 +19,13 @@ class DiscordHTTPError(Exception):
 
 class DiscordHTTP:
     def __init__(self) -> None:
+        import threading
         self.token: str | None = None
         self._pool = urllib3.PoolManager(
             timeout=urllib3.Timeout(connect=10.0, read=30.0),
             retries=False,
         )
+        self._lock = threading.Lock()
         self._default_headers = {
             "Accept": "*/*",
             "Accept-Encoding": "gzip, deflate",
@@ -53,17 +55,20 @@ class DiscordHTTP:
             if int(remaining) <= 0:
                 wait = float(reset_after)
                 if wait > 0:
-                    self._rate_limit_until = max(
-                        self._rate_limit_until,
-                        time.monotonic() + min(wait, 30.0),
-                    )
+                    with self._lock:
+                        self._rate_limit_until = max(
+                            self._rate_limit_until,
+                            time.monotonic() + min(wait, 30.0),
+                        )
         except (ValueError, TypeError):
             return
 
     def _wait_if_needed(self) -> None:
-        now = time.monotonic()
-        if now < self._rate_limit_until:
-            time.sleep(self._rate_limit_until - now)
+        with self._lock:
+            now = time.monotonic()
+            wait_time = self._rate_limit_until - now
+        if wait_time > 0:
+            time.sleep(wait_time)
 
     def request(
         self,

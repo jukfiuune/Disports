@@ -3,7 +3,7 @@ import io.thp.pyotherside 1.4
 
 Python {
     id: python
-    
+
     signal ready(var data)
     signal privateChannels(var data)
     signal messageCreate(var msg)
@@ -30,7 +30,7 @@ Python {
             console.log("discord_client loaded")
             readyForInit()
         })
-        
+
         setHandler("ready", ready)
         setHandler("private_channels", privateChannels)
         setHandler("message_create", messageCreate)
@@ -50,6 +50,6 @@ Python {
         setHandler("guild_member_chunk", guildMemberChunk)
         setHandler("message_reaction", messageReaction)
     }
-    
+
     onError: console.log("Python error: " + traceback)
 }

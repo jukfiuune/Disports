@@ -8,6 +8,15 @@ class PermissionsMixin:
     VIEW_CHANNEL_PERMISSION = 1 << 10
     CONNECT_PERMISSION = 1 << 20
 
+    def __init__(self) -> None:
+        self._permission_cache: dict[tuple[str, str], int | None] = {}
+        super().__init__()
+
+    def _reset_state(self) -> None:
+        self._permission_cache = {}
+        if hasattr(super(), "_reset_state"):
+            super()._reset_state()
+
     # ------------------------------------------------------------------
     # Channel visibility
     # ------------------------------------------------------------------
@@ -56,6 +65,11 @@ class PermissionsMixin:
         if not self.me:  # type: ignore[attr-defined]
             return None
 
+        channel_id = str(channel.get("id", "") or "")
+        cache_key = (guild_id, channel_id)
+        if channel_id and cache_key in self._permission_cache:
+            return self._permission_cache[cache_key]
+
         role_permissions = self.guild_roles.get(guild_id)  # type: ignore[attr-defined]
         member = self.guild_members.get(guild_id)  # type: ignore[attr-defined]
         if not role_permissions or not member:
@@ -91,6 +105,8 @@ class PermissionsMixin:
 
         member_overwrite = self._find_overwrite(overwrites, me_id)
         permissions = self._apply_overwrite(permissions, member_overwrite)
+        if channel_id:
+            self._permission_cache[cache_key] = permissions
         return permissions
 
     # ------------------------------------------------------------------

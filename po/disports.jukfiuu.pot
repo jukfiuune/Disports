@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-05 16:37+0000\n"
+"POT-Creation-Date: 2026-05-05 17:25+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,51 +17,51 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:20 ../qml/ChatPanel.qml:96
+#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:90
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:25 ../qml/SettingsPage.qml:41
+#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:34
 msgid "Back"
 msgstr ""
 
-#: ../qml/ChatPage.qml:33
+#: ../qml/ChatPage.qml:24
 msgid "Info"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:126
+#: ../qml/ChatPanel.qml:120
 msgid "Load older messages"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:126 ../qml/components/EmojiPickerContent.qml:278
+#: ../qml/ChatPanel.qml:120 ../qml/components/EmojiPickerContent.qml:277
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:273
+#: ../qml/ChatPanel.qml:267
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:273 ../qml/ChatPanel.qml:354
+#: ../qml/ChatPanel.qml:267 ../qml/ChatPanel.qml:348
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:282
+#: ../qml/ChatPanel.qml:276
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:352
+#: ../qml/ChatPanel.qml:346
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:354
+#: ../qml/ChatPanel.qml:348
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:355
+#: ../qml/ChatPanel.qml:349
 msgid "Type a message..."
 msgstr ""
 
-#: ../qml/DmPanel.qml:29
+#: ../qml/DmPanel.qml:18
 msgid "Direct Messages"
 msgstr ""
 
@@ -109,31 +109,31 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/Main.qml:87
+#: ../qml/Main.qml:86
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:90
+#: ../qml/Main.qml:89
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:96
+#: ../qml/Main.qml:95
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:249 disports.desktop.in.h:1
+#: ../qml/Main.qml:248 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:253 ../qml/SettingsPage.qml:37
+#: ../qml/Main.qml:252 ../qml/SettingsPage.qml:30
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:324
+#: ../qml/Main.qml:323
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:329
+#: ../qml/Main.qml:328
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -145,23 +145,23 @@ msgstr ""
 msgid "Open Externally"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:66 ../qml/components/DeleteDialog.qml:14
+#: ../qml/MessageBubble.qml:61 ../qml/components/DeleteDialog.qml:14
 msgid "Delete"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:77
+#: ../qml/MessageBubble.qml:72
 msgid "Reply"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:84
+#: ../qml/MessageBubble.qml:79
 msgid "Edit"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:91
+#: ../qml/MessageBubble.qml:86
 msgid "Copy"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:102
+#: ../qml/MessageBubble.qml:97
 msgid "React"
 msgstr ""
 
@@ -185,35 +185,35 @@ msgstr ""
 msgid "Audio attachment"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:22
+#: ../qml/SettingsPage.qml:15
 msgid "Follow system"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:23
+#: ../qml/SettingsPage.qml:16
 msgid "Light"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:24
+#: ../qml/SettingsPage.qml:17
 msgid "Dark"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:62
+#: ../qml/SettingsPage.qml:55
 msgid "Theme"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:107
+#: ../qml/SettingsPage.qml:100
 msgid "Autoplay GIFs"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:128
+#: ../qml/SettingsPage.qml:121
 msgid "Log out"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:142
-msgid "Disports — a Discord client for Ubuntu Touch"
+#: ../qml/SettingsPage.qml:135
+msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 
-#: ../qml/Sidebar.qml:170
+#: ../qml/Sidebar.qml:160
 msgid "DMs"
 msgstr ""
 
@@ -270,15 +270,15 @@ msgstr ""
 msgid "Server"
 msgstr ""
 
-#: ../qml/components/EmojiPickerContent.qml:292
+#: ../qml/components/EmojiPickerContent.qml:291
 msgid "This server has no custom emoji."
 msgstr ""
 
-#: ../qml/components/EmojiPickerContent.qml:293
+#: ../qml/components/EmojiPickerContent.qml:292
 msgid "Server emoji are for server channels."
 msgstr ""
 
-#: ../qml/components/EmojiPickerContent.qml:294
+#: ../qml/components/EmojiPickerContent.qml:293
 msgid "Empty."
 msgstr ""
 
@@ -334,18 +334,18 @@ msgstr ""
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:224
+#: ../qml/logic/ChatLogic.qml:226
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:226
+#: ../qml/logic/ChatLogic.qml:228
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:228
+#: ../qml/logic/ChatLogic.qml:230
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:232
+#: ../qml/logic/ChatLogic.qml:234
 msgid "Message"
 msgstr ""

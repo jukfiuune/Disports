@@ -1,14 +1,3 @@
-/*
- * DmPanel.qml
- *
- * Discord-like DM list with a fixed header and a single mixed conversation list.
- * The channel model has:
- * { channelId, name, unread, itemType, status, iconName }
- *
- * Signal:
- *   channelOpened(string channelId, string name)
- */
-
 import QtQuick 2.7
 import Lomiri.Components 1.3
 

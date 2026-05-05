@@ -1,9 +1,3 @@
-/*
- * ChatPanel.qml
- *
- * Reusable chat surface for both stacked and wide/convergent layouts.
- */
-
 import QtQuick 2.7
 import QtQuick.Layouts 1.3
 import QtGraphicalEffects 1.0
@@ -110,12 +104,12 @@ Item {
         bottomMargin: typingLabel.visible ? units.gu(3.5) : units.gu(0.5)
         verticalLayoutDirection: ListView.BottomToTop
         highlightRangeMode: ListView.ApplyRange
-        
+
         // Prevents fast-scrolling from asynchronous height jiggle
         cacheBuffer: units.gu(100)
         displayMarginBeginning: units.gu(40)
         displayMarginEnd: units.gu(40)
-        
+
         footer: Item {
             width: messageList.width
             height: units.gu(6)
@@ -128,7 +122,7 @@ Item {
                 onClicked: chatPanel.loadOlderRequested()
             }
         }
-        
+
         onCountChanged: {
             var countIncreased = count > chatPanel.lastMessageCount
             var shouldScroll = countIncreased
@@ -462,10 +456,10 @@ Item {
         var content = msgInput.text
         if (content.trim() === "")
             return
-        
+
         msgInput.text = ""
         chatPanel.draftEdited("")
-        
+
         if (chatPanel.editMessageId !== "") {
             chatPanel.editRequested(chatPanel.editMessageId, content)
             chatPanel.editMessageId = ""

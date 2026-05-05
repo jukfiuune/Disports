@@ -24,6 +24,8 @@ class ReadStateMixin:
             "disports",
             "read_states.json",
         )
+        self._guild_unread_cache: dict[str, int] = {}
+        self._guild_mention_cache: dict[str, int] = {}
         if hasattr(super(), "_reset_state"):
             super()._reset_state()
 
@@ -123,26 +125,21 @@ class ReadStateMixin:
         state["mention_count"] = 0
         if message_id:
             state["last_message_id"] = str(message_id)
-            self.read_states[channel_id] = state
-            self._save_read_states()
         else:
-            last_id = None
-            for ch in self.private_channels:  # type: ignore[attr-defined]
-                if ch.get("id") == channel_id:
-                    last_id = ch.get("last_message_id")
-                    break
-            if not last_id:
-                for channels in self.guild_channels.values():  # type: ignore[attr-defined]
-                    for ch in channels:
-                        if ch.get("id") == channel_id:
-                            last_id = ch.get("last_message_id")
-                            break
-                    if last_id:
-                        break
+            channel = self.get_channel(channel_id)  # type: ignore[attr-defined]
+            last_id = channel.get("last_message_id") if channel else None
             if last_id:
                 state["last_message_id"] = str(last_id)
-            self.read_states[channel_id] = state
-            self._save_read_states()
+
+        self.read_states[channel_id] = state
+        self._save_read_states()
+        self._invalidate_guild_cache(self.get_guild_for_channel(channel_id))  # type: ignore[attr-defined]
+
+    def _invalidate_guild_cache(self, guild_id: str | None) -> None:
+        if not guild_id:
+            return
+        self._guild_unread_cache.pop(guild_id, None)
+        self._guild_mention_cache.pop(guild_id, None)
 
     def is_channel_unread(self, channel: dict[str, Any]) -> int:
         channel_id = channel.get("id")
@@ -201,25 +198,42 @@ class ReadStateMixin:
         return count
 
     def get_guild_mention_count(self, guild_id: str) -> int:
+        if not guild_id:
+            return 0
+        if guild_id in self._guild_mention_cache:
+            return self._guild_mention_cache[guild_id]
+
         count = 0
         for channel in self.iter_visible_guild_channels(guild_id):  # type: ignore[attr-defined]
             channel_id = str(channel.get("id", "") or "")
             if not channel_id:
                 continue
             count += int_value(self._read_state(channel_id).get("mention_count"))
+
+        self._guild_mention_cache[guild_id] = count
         return count
 
     def get_guild_unread_count(self, guild_id: str) -> int:
+        if not guild_id:
+            return 0
+        if guild_id in self._guild_unread_cache:
+            return self._guild_unread_cache[guild_id]
+
         mentions = self.get_guild_mention_count(guild_id)
         if mentions > 0:
+            self._guild_unread_cache[guild_id] = mentions
             return mentions
         if self.is_guild_muted(guild_id):  # type: ignore[attr-defined]
+            self._guild_unread_cache[guild_id] = 0
             return 0
+
         count = 0
         for channel in self.iter_visible_guild_channels(guild_id):  # type: ignore[attr-defined]
             if self.is_channel_muted(channel):  # type: ignore[attr-defined]
                 continue
             count += self.is_channel_unread(channel)
+
+        self._guild_unread_cache[guild_id] = count
         return count
 
     def guild_has_unread(self, guild_id: str) -> bool:
@@ -295,6 +309,7 @@ class ReadStateMixin:
             state["mention_count"] = max(0, int(state.get("mention_count") or 0)) + 1
         self.read_states[channel_id] = state
         self._save_read_states()
+        self._invalidate_guild_cache(guild_id)
         return guild_id
 
     # ------------------------------------------------------------------

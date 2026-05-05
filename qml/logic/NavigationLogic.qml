@@ -6,15 +6,15 @@ QtObject {
     property var python
     property var appSettings
     property var pageStack
-    
+
     property var chatPageComp
-    
+
     property var channelModel
     property var serverModel
-    
+
     property var authLogic
     property var chatLogic
-    
+
     property int rootWidth: 0
     onRootWidthChanged: {
         appState.isWideLayout = rootWidth >= units.gu(90)
@@ -67,6 +67,13 @@ QtObject {
         appState.mode            = "server"
         appState.activeServerId   = id
         appState.activeServerName = name
+
+        if (channelModel)
+            chatLogic.replaceModel(channelModel, [])
+        appState.activeChannelId = ""
+        appState.activeChannelName = ""
+        if (chatLogic && chatLogic.chatMessageModel)
+            chatLogic.replaceModel(chatLogic.chatMessageModel, [])
 
         // Find icon in serverModel
         if (serverModel) {

@@ -1,13 +1,3 @@
-/*
- * Sidebar.qml
- *
- * Single scrollable rail for:
- *   1. DM home button
- *   2. unread DM avatars/groups
- *   3. divider
- *   4. servers / folders
- */
-
 import QtQuick 2.7
 import Lomiri.Components 1.3
 
@@ -247,9 +237,9 @@ Item {
             readonly property bool srvVisible: isSrv && (!srvInFolder || sidebar.isFolderOpen(fk))
 
             // Computed lazily to avoid recreating arrays on every binding re-eval
-            property var previewUrls:  []
+            property var previewUrls: []
             property var previewAbbrs: []
-            property int previewN:     0
+            property int previewN: 0
             property bool hasFolderColor: false
 
             function _recompute() {
@@ -265,7 +255,7 @@ Item {
             }
             Component.onCompleted: _recompute()
             // Watch model roles so _recompute fires when data changes (e.g. after icon download)
-            property string watchUrls:  model.previewIconUrls || ""
+            property string watchUrls: model.previewIconUrls || ""
             property string watchAbbrs: model.previewAbbrs    || ""
             property string watchColor: model.folderColorHex  || ""
             onWatchUrlsChanged:  _recompute()

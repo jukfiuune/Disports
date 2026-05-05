@@ -1,23 +1,11 @@
-/*
- * ServerPanel.qml
- *
- * Right panel shown when a server is active.
- * Renders channels grouped by category, just like Discord's sidebar.
- * The channel model has:
- * { channelId, categoryId, category, name, unread, channelType, channelGlyph, channelIconName, openable, indentLevel }
- *
- * Signal:
- *   channelOpened(string channelId, string name)
- */
-
 import QtQuick 2.7
 import Lomiri.Components 1.3
 
 Item {
     id: serverPanel
 
-    property string     serverName: ""
-    property alias      channels:   channelList.model
+    property string serverName: ""
+    property alias channels: channelList.model
 
     signal channelOpened(string channelId, string name)
 

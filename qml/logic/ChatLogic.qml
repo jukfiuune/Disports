@@ -6,13 +6,13 @@ QtObject {
     property var appSettings
     property var pageStack
     property var unreadLogic
-    
+
     property var chatMessageModel
     property var channelModel
-    
+
     property var chatPageComp
     property var _messageIndexById: ({})
-    
+
     signal deleteConfirmRequested(string messageId)
 
     function openChat(channelId, name) {
@@ -23,6 +23,7 @@ QtObject {
         appState.typingNotice = ""
         appState.draftText = ""
         clearReplyTarget()
+        replaceModel(chatMessageModel, [])
         python.call("discord_client.set_active_channel", [channelId], function() {})
         python.call("discord_client.fetch_messages", [channelId, 50, ""], function(messages) {
             messages = messages || []
@@ -56,6 +57,7 @@ QtObject {
                 appState.mode = "server"
                 appState.activeServerId = guildId
                 appState.activeServerName = channel.guildName || appState.activeServerName
+                replaceModel(channelModel, []) // Clear stale channels immediately
                 python.call("discord_client.fetch_guild_channels", [guildId], function(channels) {
                     replaceModel(channelModel, channels || [])
                     openChat(channelId, channelName)
@@ -70,10 +72,10 @@ QtObject {
 
     function fetchOlderMessages() {
         if (!appState.pythonReady || appState.loadingOlderMessages || chatMessageModel.count === 0 || appState.activeChannelId === "") return;
-        
+
         appState.loadingOlderMessages = true;
         var oldestId = chatMessageModel.get(chatMessageModel.count - 1).messageId || "";
-        
+
         python.call("discord_client.fetch_messages", [appState.activeChannelId, 50, oldestId], function(messages) {
             if (messages && messages.length > 0) {
                 for (var i = 0; i < messages.length; i++) {

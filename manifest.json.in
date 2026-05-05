@@ -10,7 +10,7 @@
             "desktop":  "disports.desktop"
         }
     },
-    "version": "0.8.3",
+    "version": "0.8.4",
     "maintainer": "Martin Filipov <jukfiuune@gmail.com>",
     "framework" : "$ENV{CLICK_FRAMEWORK}"
 }

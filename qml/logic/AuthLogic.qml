@@ -5,7 +5,7 @@ QtObject {
     property var python
     property var appSettings
     property var pageStack
-    
+
     // models to clear on logout
     property var serverModel
     property var dmContactModel
@@ -85,12 +85,12 @@ QtObject {
         appState.myUsername = ""
         appState.typingNotice = ""
         appState.draftText = ""
-        
+
         appState.replyMessageId = ""
         appState.replyAuthor = ""
         appState.replyBody = ""
         appState.sidebarRevision += 1
-        
+
         serverModel.clear()
         dmContactModel.clear()
         dmGroupModel.clear()

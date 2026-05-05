@@ -12,7 +12,7 @@ Rectangle {
     Column {
         anchors.centerIn: parent
         spacing: units.gu(4)
-        
+
         Image {
             source: "../../assets/splash.svg"
             width: units.gu(20)
@@ -24,7 +24,7 @@ Rectangle {
         Column {
             spacing: units.gu(1)
             anchors.horizontalCenter: parent.horizontalCenter
-            
+
             ActivityIndicator {
                 anchors.horizontalCenter: parent.horizontalCenter
                 running: splashView.visible

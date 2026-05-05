@@ -13,7 +13,7 @@ Rectangle {
     property color accentColor: "#335280"
     property string title: ""
     property string subtitle: ""
-    
+
     signal dismissed()
 
     Rectangle {
