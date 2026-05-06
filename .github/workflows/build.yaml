@@ -5,6 +5,23 @@ on:
     branches:
       - main
       - master
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.github/workflows/release.yaml'
+  pull_request:
+    branches:
+      - main
+      - master
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.gitignore'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -16,13 +33,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Pull Clickable
-        run: |
-          docker pull clickable/ci-ut24.04-1.x-arm64:latest
+      - name: Cache Clickable
+        uses: actions/cache@v4
+        with:
+          path: |
+            .clickable
+            build
+          key: ${{ runner.os }}-clickable-${{ hashFiles('clickable.yaml', 'requirements.txt', 'CMakeLists.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-clickable-
 
       - name: Build
         run: |
           docker run \
+            --rm \
             --env UV_INSTALL_DIR=/usr/local \
             --volume ./:/app \
             clickable/ci-ut24.04-1.x-arm64:latest \
@@ -31,6 +55,6 @@ jobs:
       - name: Upload click package
         uses: actions/upload-artifact@v4
         with:
-          name: disports-${{ github.sha }}
+          name: disports-${{ github.ref_name }}-${{ github.sha }}
           path: build/all/app/*.click
           retention-days: 30
