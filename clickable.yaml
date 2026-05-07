@@ -11,10 +11,33 @@ dependencies_target:
   - gstreamer1.0-plugins-ugly
   - gstreamer1.0-libav
   - gstreamer1.0-pulseaudio
+  - libssl-dev
+dependencies_host:
+  - ninja-build
+  - extra-cmake-modules
+  - libssl-dev
+libraries:
+  libdave:
+    builder: cmake
+    src_dir: 3rdparty/libdave/cpp
+    make_jobs: 2
+    prebuild: grep -q "CMAKE_TOOLCHAIN_FILE:UNINITIALIZED" CMakeCache.txt 2>/dev/null && rm -rf ./* ; test -f ../../../3rdparty/libdave/cpp/vcpkg/vcpkg || (cd ../../../3rdparty/libdave/cpp && ./vcpkg/bootstrap-vcpkg.sh -disableMetrics)
+    build_args:
+      - "-DCMAKE_BUILD_TYPE=Release"
+      - "-DBUILD_SHARED_LIBS=ON"
+      - "-DREQUIRE_BORINGSSL=OFF"
+      - "-DCMAKE_CXX_FLAGS=-Wno-error=pedantic"
+      - "-DVCPKG_MANIFEST_DIR=../../../3rdparty/libdave/cpp/vcpkg-alts/openssl_1.1"
+      - "-DCMAKE_TOOLCHAIN_FILE=../../../3rdparty/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake"
 env_vars:
   UV_INSTALL_DIR: /usr/local
 image_setup:
   run:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
+    - apt-get install -y zip unzip pkg-config curl
 postbuild:
+  - rm -rf install/src install/lib
+  - mkdir -p install/lib && cp -v ../libdave/install/lib/libdave.so install/lib/
+  - mkdir -p install/src && cp -rv ../../../src/* install/src/
+  - find install -name "__pycache__" -type d -exec rm -rf {} +
   - /usr/bin/bash install/build-python-deps.sh

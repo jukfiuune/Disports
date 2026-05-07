@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import os
 from pathlib import Path
 
@@ -151,3 +153,15 @@ def add_reaction(channel_id: str, message_id: str, emoji: str) -> dict:
 
 def remove_reaction(channel_id: str, message_id: str, emoji: str) -> dict:
     return _client.remove_reaction(channel_id, message_id, emoji)
+
+
+def join_voice_channel(guild_id: str | None, channel_id: str | None) -> None:
+    _client.join_voice_channel(guild_id, channel_id)
+
+
+def leave_voice_channel(guild_id: str | None) -> None:
+    _client.leave_voice_channel(guild_id)
+
+
+def set_speakerphone(enabled: bool) -> None:
+    _client.set_speakerphone(enabled)

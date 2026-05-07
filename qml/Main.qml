@@ -81,6 +81,18 @@ MainView {
             var message = (data && data.message) ? String(data.message) : ""
             console.log("Gateway: " + message)
         }
+        onCallUpdate: function(data) {
+            if (data && data.call) {
+                appState.activeCall = data.call
+                appState.activeCallChannelId = data.channelId
+            }
+        }
+        onCallDelete: function(data) {
+            if (data && data.channelId === appState.activeCallChannelId) {
+                appState.activeCall = null
+                appState.activeCallChannelId = ""
+            }
+        }
         onQrLoginImage: function(data) {
             appState.qrImageSource = data.dataUri || ""
             appState.qrStatusText = i18n.tr("Scan with the Discord mobile app.")
@@ -295,7 +307,13 @@ MainView {
                             visible:    appState.mode === "server"
                             serverName: appState.activeServerName
                             channels:   channelModel
-                            onChannelOpened: function(channelId, name) { chatLogic.openChat(channelId, name) }
+                            onChannelOpened: function(channelId, name, channelType) {
+                                if (channelType === "voice") {
+                                    chatLogic.joinVoiceChannel(channelId)
+                                } else {
+                                    chatLogic.openChat(channelId, name)
+                                }
+                            }
                         }
                     }
 
@@ -360,6 +378,17 @@ MainView {
     OfflineView {
         visibleState: appState.startupPhase === "offline"
         onRetryRequested: navigationLogic.checkInitialState()
+    }
+
+    CallScreen {
+        id: callScreenOverlay
+        activeCall: appState.activeCall
+        onHangupRequested: function(guildId) {
+            pythonBridge.call("discord_client.leave_voice_channel", [guildId], function(){})
+        }
+        onSpeakerphoneToggled: function(enabled) {
+            pythonBridge.call("discord_client.set_speakerphone", [enabled], function(){})
+        }
     }
 
     Component.onCompleted: {

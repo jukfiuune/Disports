@@ -27,6 +27,7 @@ Item {
     property string editOriginalBody: ""
     property bool inlineGifPlayback: false
     property bool showHeader: true
+    property bool showCallButton: false
     property bool initialScrollPending: channelId !== ""
     property bool anchoredToBottom: true
     property bool userHasScrolled: false
@@ -62,6 +63,7 @@ Item {
     signal channelMentionRequested(string channelId)
     signal emojiInserted(var emojiData)
     signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
+    signal startCallRequested()
 
     onChannelIdChanged: {
         initialScrollPending = channelId !== ""
@@ -88,6 +90,23 @@ Item {
         }
         shown: showHeader
         title: chatPanel.channelName !== "" ? chatPanel.channelName : i18n.tr("Chat")
+        trailingReservedWidth: showCallButton ? units.gu(4) : 0
+    }
+
+    Icon {
+        visible: chatPanel.showCallButton && chatPanel.showHeader
+        anchors.right: headerBackground.right
+        anchors.rightMargin: units.gu(1)
+        anchors.verticalCenter: headerBackground.verticalCenter
+        name: "call-start"
+        width: units.gu(3)
+        height: units.gu(3)
+        color: theme.palette.normal.baseText
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: chatPanel.startCallRequested()
+        }
     }
 
     ListView {

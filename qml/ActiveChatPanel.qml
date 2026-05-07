@@ -16,6 +16,7 @@ ChatPanel {
     channelName: appState.activeChannelName
     serverName: appState.mode === "server" ? appState.activeServerName : ""
     activeServerId: appState.mode === "server" ? appState.activeServerId : ""
+    showCallButton: appState.mode === "dm"
     activeServerIcon: appState.mode === "server" ? appState.activeServerIcon : ""
     serverEmojis: appState.mode === "server" ? appState.activeServerEmojis : []
     typingNotice: appState.typingNotice
@@ -35,6 +36,7 @@ ChatPanel {
     onChannelMentionRequested: function(channelId) { chatLogic.openChannelById(channelId) }
     onLoadOlderRequested: chatLogic.fetchOlderMessages()
     onReactionToggleRequested: function(mId, apiStr, already) { chatLogic.toggleReaction(mId, apiStr, already) }
+    onStartCallRequested: chatLogic.joinVoiceChannel(appState.activeChannelId)
 
     // Navigation
     onMediaPreviewRequested: function(url, type) {

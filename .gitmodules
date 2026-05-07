@@ -1,0 +1,3 @@
+[submodule "3rdparty/libdave"]
+	path = 3rdparty/libdave
+	url = https://github.com/discord/libdave

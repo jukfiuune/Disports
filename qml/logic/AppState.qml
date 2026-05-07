@@ -31,4 +31,6 @@ QtObject {
     property bool isWideLayout: false
     property int sidebarRevision: 0
     property bool runningUnderClickableDesktop: false
+    property var activeCall: null
+    property string activeCallChannelId: ""
 }

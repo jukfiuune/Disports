@@ -6,6 +6,7 @@ from .message_formatter import MessageFormatterMixin
 from .reactions import ReactionsMixin
 from .permissions import PermissionsMixin
 from .formatters import FormattersMixin
+from .voice_state import VoiceStateMixin
 
 class DiscordState(
     ReadStateMixin,
@@ -14,6 +15,7 @@ class DiscordState(
     ReactionsMixin,
     PermissionsMixin,
     FormattersMixin,
+    VoiceStateMixin,
 ):
     MESSAGE_TYPE_NAMES = {
         0: "Default",

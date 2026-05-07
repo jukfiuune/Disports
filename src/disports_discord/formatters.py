@@ -423,7 +423,7 @@ class FormattersMixin:
 
     @staticmethod
     def channel_is_openable(channel: dict[str, Any]) -> bool:
-        return int(channel.get("type", -1)) in (0, 5, 10, 11, 12)
+        return int(channel.get("type", -1)) in (0, 2, 5, 10, 11, 12)
 
     def channel_display_name(self, channel: dict[str, Any] | None, with_prefix: bool = True) -> str:
         if not channel:

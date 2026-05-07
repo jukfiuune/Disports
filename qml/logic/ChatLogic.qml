@@ -110,6 +110,11 @@ QtObject {
         })
     }
 
+    function joinVoiceChannel(channelId) {
+        var guildId = appState.activeServerId ? appState.activeServerId : null
+        python.call("discord_client.join_voice_channel", [guildId, channelId], function(result) {})
+    }
+
     function editMessage(messageId, newContent) {
         if (!appState.pythonReady || messageId === "" || newContent.trim() === "" || appState.activeChannelId === "")
             return

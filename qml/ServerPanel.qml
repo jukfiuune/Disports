@@ -7,7 +7,7 @@ Item {
     property string serverName: ""
     property alias channels: channelList.model
 
-    signal channelOpened(string channelId, string name)
+    signal channelOpened(string channelId, string name, string channelType)
 
     // Server name header
     // Sits above the channel list, styled like a sub-header inside the panel.
@@ -96,7 +96,7 @@ Item {
                 onClicked: {
                     if (model.openable === false)
                         return
-                    serverPanel.channelOpened(model.channelId, model.name)
+                    serverPanel.channelOpened(model.channelId, model.name, model.channelType || "text")
                 }
             }
         }

@@ -23,6 +23,9 @@ Python {
     signal guildMemberChunk(var data)
     signal messageReaction(var data)
     signal readyForInit()
+    signal callUpdate(var data)
+    signal callDelete(var data)
+    signal voiceStateUpdate(var data)
 
     Component.onCompleted: {
         addImportPath(Qt.resolvedUrl("../../src/"))
@@ -49,6 +52,9 @@ Python {
         setHandler("guild_sidebar", guildSidebar)
         setHandler("guild_member_chunk", guildMemberChunk)
         setHandler("message_reaction", messageReaction)
+        setHandler("call_update", callUpdate)
+        setHandler("call_delete", callDelete)
+        setHandler("voice_state_update", voiceStateUpdate)
     }
 
     onError: console.log("Python error: " + traceback)

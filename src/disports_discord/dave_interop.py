@@ -1,0 +1,367 @@
+from __future__ import annotations
+
+import ctypes
+import os
+import sys
+from ctypes import c_void_p, c_char_p, c_uint16, c_uint32, c_uint64, c_size_t, c_bool, POINTER, CFUNCTYPE, c_int, c_byte
+from typing import Optional
+
+# Define ENUMs
+class DAVEMediaType:
+    Audio = 0
+    Video = 1
+
+class DAVEEncryptorResultCode:
+    Success = 0
+    EncryptionFailure = 1
+    MissingKeyRatchet = 2
+    MissingCryptor = 3
+    TooManyAttempts = 4
+
+class DAVEDecryptorResultCode:
+    Success = 0
+    DecryptionFailure = 1
+    MissingKeyRatchet = 2
+    InvalidNonce = 3
+    MissingCryptor = 4
+
+# Load library
+_lib = None
+_lib_paths = [
+    "libdave.so",
+    os.path.join(os.path.dirname(__file__), "..", "..", "lib", "libdave.so"),
+    os.path.join(os.environ.get("APP_DIR", ""), "lib", "libdave.so"),
+]
+
+for path in _lib_paths:
+    try:
+        _lib = ctypes.CDLL(path)
+        print(f"Successfully loaded libdave from {path}")
+        break
+    except OSError:
+        continue
+
+if not _lib:
+    print("Warning: Failed to load libdave.so from any expected location", file=sys.stderr)
+
+# Define callback types
+DAVEMLSFailureCallback = CFUNCTYPE(None, c_char_p, c_char_p, c_void_p)
+
+if _lib:
+    # Function Signatures
+    
+    _lib.daveFree.argtypes = [c_void_p]
+    _lib.daveFree.restype = None
+
+    _lib.daveSessionCreate.argtypes = [c_void_p, c_char_p, DAVEMLSFailureCallback, c_void_p]
+    _lib.daveSessionCreate.restype = c_void_p
+
+    _lib.daveSessionDestroy.argtypes = [c_void_p]
+    _lib.daveSessionDestroy.restype = None
+
+    _lib.daveSessionInit.argtypes = [c_void_p, c_uint16, c_uint64, c_char_p]
+    _lib.daveSessionInit.restype = None
+
+    _lib.daveSessionReset.argtypes = [c_void_p]
+    _lib.daveSessionReset.restype = None
+
+    _lib.daveSessionSetProtocolVersion.argtypes = [c_void_p, c_uint16]
+    _lib.daveSessionSetProtocolVersion.restype = None
+
+    _lib.daveSessionSetExternalSender.argtypes = [c_void_p, POINTER(c_byte), c_size_t]
+    _lib.daveSessionSetExternalSender.restype = None
+
+    _lib.daveSessionProcessProposals.argtypes = [
+        c_void_p, POINTER(c_byte), c_size_t, c_void_p, c_size_t, POINTER(c_void_p), POINTER(c_size_t)
+    ]
+    _lib.daveSessionProcessProposals.restype = None
+
+    _lib.daveSessionProcessCommit.argtypes = [c_void_p, POINTER(c_byte), c_size_t]
+    _lib.daveSessionProcessCommit.restype = c_void_p
+
+    _lib.daveSessionProcessWelcome.argtypes = [c_void_p, POINTER(c_byte), c_size_t, c_void_p, c_size_t]
+    _lib.daveSessionProcessWelcome.restype = c_void_p
+
+    _lib.daveSessionGetMarshalledKeyPackage.argtypes = [c_void_p, POINTER(c_void_p), POINTER(c_size_t)]
+    _lib.daveSessionGetMarshalledKeyPackage.restype = None
+
+    _lib.daveSessionGetKeyRatchet.argtypes = [c_void_p, c_char_p]
+    _lib.daveSessionGetKeyRatchet.restype = c_void_p
+
+    _lib.daveCommitResultIsFailed.argtypes = [c_void_p]
+    _lib.daveCommitResultIsFailed.restype = c_bool
+
+    _lib.daveCommitResultIsIgnored.argtypes = [c_void_p]
+    _lib.daveCommitResultIsIgnored.restype = c_bool
+
+    _lib.daveCommitResultGetRosterMemberIds.argtypes = [c_void_p, POINTER(c_void_p), POINTER(c_size_t)]
+    _lib.daveCommitResultGetRosterMemberIds.restype = None
+
+    _lib.daveCommitResultDestroy.argtypes = [c_void_p]
+    _lib.daveCommitResultDestroy.restype = None
+
+    _lib.daveWelcomeResultGetRosterMemberIds.argtypes = [c_void_p, POINTER(c_void_p), POINTER(c_size_t)]
+    _lib.daveWelcomeResultGetRosterMemberIds.restype = None
+
+    _lib.daveWelcomeResultDestroy.argtypes = [c_void_p]
+    _lib.daveWelcomeResultDestroy.restype = None
+
+    _lib.daveDecryptorCreate.argtypes = []
+    _lib.daveDecryptorCreate.restype = c_void_p
+
+    _lib.daveDecryptorDestroy.argtypes = [c_void_p]
+    _lib.daveDecryptorDestroy.restype = None
+
+    _lib.daveDecryptorTransitionToKeyRatchet.argtypes = [c_void_p, c_void_p]
+    _lib.daveDecryptorTransitionToKeyRatchet.restype = None
+
+    _lib.daveDecryptorDecrypt.argtypes = [
+        c_void_p, c_int, POINTER(c_byte), c_size_t, POINTER(c_byte), c_size_t, POINTER(c_size_t)
+    ]
+    _lib.daveDecryptorDecrypt.restype = c_int
+
+    _lib.daveDecryptorGetMaxPlaintextByteSize.argtypes = [c_void_p, c_int, c_size_t]
+    _lib.daveDecryptorGetMaxPlaintextByteSize.restype = c_size_t
+
+    _lib.daveEncryptorCreate.argtypes = []
+    _lib.daveEncryptorCreate.restype = c_void_p
+
+    _lib.daveEncryptorDestroy.argtypes = [c_void_p]
+    _lib.daveEncryptorDestroy.restype = None
+
+    _lib.daveEncryptorSetKeyRatchet.argtypes = [c_void_p, c_void_p]
+    _lib.daveEncryptorSetKeyRatchet.restype = None
+
+    _lib.daveEncryptorGetMaxCiphertextByteSize.argtypes = [c_void_p, c_int, c_size_t]
+    _lib.daveEncryptorGetMaxCiphertextByteSize.restype = c_size_t
+
+    _lib.daveEncryptorEncrypt.argtypes = [
+        c_void_p, c_int, c_uint32, POINTER(c_byte), c_size_t, POINTER(c_byte), c_size_t, POINTER(c_size_t)
+    ]
+    _lib.daveEncryptorEncrypt.restype = c_int
+
+def free(ptr):
+    if _lib and ptr:
+        _lib.daveFree(ptr)
+
+def session_create(auth_session_id: str, callback: DAVEMLSFailureCallback) -> c_void_p:
+    if not _lib: return None
+    return _lib.daveSessionCreate(None, auth_session_id.encode('utf-8'), callback, None)
+
+def session_destroy(session: c_void_p):
+    if _lib and session:
+        _lib.daveSessionDestroy(session)
+
+def _on_mls_failure(source: bytes, reason: bytes, user_data: c_void_p):
+    src = source.decode('utf-8', errors='replace') if source else "unknown"
+    rsn = reason.decode('utf-8', errors='replace') if reason else "unknown"
+    print(f"[DAVE] MLS failure — source={src}, reason={rsn}")
+
+_mls_failure_cb_instance = DAVEMLSFailureCallback(_on_mls_failure)
+
+class DaveSession:
+    def __init__(self):
+        self._session = session_create("", _mls_failure_cb_instance)
+        self._encryptor = c_void_p(None)
+        self._decryptors = {}
+        self._ssrc_to_user_id = {}
+        self._last_external_sender = None
+        self._self_user_id = ""
+        self._disposed = False
+        if not self._session:
+            print("[DAVE] Warning: daveSessionCreate returned None.")
+
+    def init(self, protocol_version: int, channel_id: str, self_user_id: str):
+        self._self_user_id = self_user_id
+        try:
+            group_id = int(channel_id)
+        except ValueError:
+            group_id = 0
+        if _lib and self._session:
+            _lib.daveSessionInit(self._session, protocol_version, group_id, self_user_id.encode('utf-8'))
+
+    def set_external_sender(self, payload: bytes):
+        self._last_external_sender = payload
+        if _lib and self._session:
+            payload_ptr = ctypes.cast(payload, POINTER(c_byte))
+            _lib.daveSessionSetExternalSender(self._session, payload_ptr, len(payload))
+
+    def process_proposals(self, payload: bytes) -> Optional[bytes]:
+        if not _lib or not self._session: return None
+        ids = list(set(list(self._ssrc_to_user_id.values()) + [self._self_user_id]))
+        ids_c = [s.encode('utf-8') for s in ids]
+        arr_type = c_char_p * len(ids_c)
+        ids_arr = arr_type(*ids_c)
+        
+        payload_ptr = ctypes.cast(payload, POINTER(c_byte))
+        
+        out_ptr = c_void_p()
+        out_len = c_size_t()
+        
+        _lib.daveSessionProcessProposals(
+            self._session, payload_ptr, len(payload),
+            ctypes.cast(ids_arr, c_void_p), len(ids_c),
+            ctypes.byref(out_ptr), ctypes.byref(out_len)
+        )
+        return self._read_and_free(out_ptr, out_len)
+
+    def process_welcome(self, welcome_payload: bytes) -> bool:
+        if not _lib or not self._session: return False
+        ids = list(set(list(self._ssrc_to_user_id.values()) + [self._self_user_id]))
+        ids_c = [s.encode('utf-8') for s in ids]
+        arr_type = c_char_p * len(ids_c)
+        ids_arr = arr_type(*ids_c)
+        
+        payload_ptr = ctypes.cast(welcome_payload, POINTER(c_byte))
+        result = _lib.daveSessionProcessWelcome(
+            self._session, payload_ptr, len(welcome_payload),
+            ctypes.cast(ids_arr, c_void_p), len(ids_c)
+        )
+        if not result:
+            print("[DAVE] ProcessWelcome returned None.")
+            return False
+            
+        self._update_decryptors_from_welcome(result)
+        _lib.daveWelcomeResultDestroy(result)
+        
+        if not self._decryptors:
+            for uid in set(self._ssrc_to_user_id.values()):
+                self._try_create_decryptor(uid)
+                
+        self._init_self_encryptor()
+        return True
+
+    def process_commit(self, commit_payload: bytes) -> bool:
+        if not _lib or not self._session: return False
+        payload_ptr = ctypes.cast(commit_payload, POINTER(c_byte))
+        result = _lib.daveSessionProcessCommit(self._session, payload_ptr, len(commit_payload))
+        if not result:
+            print("[DAVE] ProcessCommit returned None.")
+            return False
+            
+        failed = _lib.daveCommitResultIsFailed(result)
+        ignored = _lib.daveCommitResultIsIgnored(result)
+        
+        if not failed and not ignored:
+            self._update_decryptors_from_commit(result)
+            self._init_self_encryptor()
+        else:
+            print(f"[DAVE] Commit skipped: failed={failed}, ignored={ignored}")
+            
+        _lib.daveCommitResultDestroy(result)
+        return not failed and not ignored
+
+    def get_key_package(self) -> Optional[bytes]:
+        if not _lib or not self._session: return None
+        out_ptr = c_void_p()
+        out_len = c_size_t()
+        _lib.daveSessionGetMarshalledKeyPackage(self._session, ctypes.byref(out_ptr), ctypes.byref(out_len))
+        return self._read_and_free(out_ptr, out_len)
+
+    def reset_and_get_key_package(self, protocol_version: int) -> Optional[bytes]:
+        if not _lib or not self._session: return None
+        _lib.daveSessionReset(self._session)
+        _lib.daveSessionSetProtocolVersion(self._session, protocol_version)
+        if self._last_external_sender:
+            self.set_external_sender(self._last_external_sender)
+        return self.get_key_package()
+
+    def register_ssrc(self, ssrc: int, user_id: str):
+        self._ssrc_to_user_id[ssrc] = user_id
+
+    def decrypt_audio_frame(self, ssrc: int, encrypted_frame: bytes) -> Optional[bytes]:
+        if not _lib: return None
+        user_id = self._ssrc_to_user_id.get(ssrc)
+        if not user_id: return None
+        decryptor = self._decryptors.get(user_id)
+        if not decryptor: return None
+        
+        max_out = _lib.daveDecryptorGetMaxPlaintextByteSize(decryptor, DAVEMediaType.Audio, len(encrypted_frame))
+        out_buf = (c_byte * max_out)()
+        written = c_size_t()
+        
+        frame_ptr = ctypes.cast(encrypted_frame, POINTER(c_byte))
+        
+        code = _lib.daveDecryptorDecrypt(
+            decryptor, DAVEMediaType.Audio,
+            frame_ptr, len(encrypted_frame),
+            ctypes.cast(out_buf, POINTER(c_byte)), max_out,
+            ctypes.byref(written)
+        )
+        
+        if code != DAVEDecryptorResultCode.Success:
+            if code != DAVEDecryptorResultCode.MissingKeyRatchet:
+                print(f"[DAVE] Decrypt failed ssrc={ssrc} code={code}")
+            return None
+            
+        return bytes(out_buf)[:written.value]
+
+    def _init_self_encryptor(self):
+        ratchet = _lib.daveSessionGetKeyRatchet(self._session, self._self_user_id.encode('utf-8'))
+        if not ratchet:
+            print("[DAVE] No key ratchet for self.")
+            return
+        if not self._encryptor:
+            self._encryptor = _lib.daveEncryptorCreate()
+        _lib.daveEncryptorSetKeyRatchet(self._encryptor, ratchet)
+
+    def _try_create_decryptor(self, user_id: str):
+        ratchet = _lib.daveSessionGetKeyRatchet(self._session, user_id.encode('utf-8'))
+        if not ratchet:
+            print(f"[DAVE] No key ratchet for userId {user_id}")
+            return
+        if user_id not in self._decryptors:
+            self._decryptors[user_id] = _lib.daveDecryptorCreate()
+        _lib.daveDecryptorTransitionToKeyRatchet(self._decryptors[user_id], ratchet)
+
+    def _update_decryptors_from_commit(self, commit_result: c_void_p):
+        out_ptr = c_void_p()
+        out_len = c_size_t()
+        _lib.daveCommitResultGetRosterMemberIds(commit_result, ctypes.byref(out_ptr), ctypes.byref(out_len))
+        self._update_decryptors_from_roster(out_ptr, out_len)
+
+    def _update_decryptors_from_welcome(self, welcome_result: c_void_p):
+        out_ptr = c_void_p()
+        out_len = c_size_t()
+        _lib.daveWelcomeResultGetRosterMemberIds(welcome_result, ctypes.byref(out_ptr), ctypes.byref(out_len))
+        self._update_decryptors_from_roster(out_ptr, out_len)
+
+    def _update_decryptors_from_roster(self, roster_ptr: c_void_p, roster_len: c_size_t):
+        if not roster_ptr or roster_len.value == 0: return
+        
+        count = roster_len.value
+        uint64_array = ctypes.cast(roster_ptr, POINTER(c_uint64))
+        for i in range(count):
+            uid_str = str(uint64_array[i])
+            if uid_str == self._self_user_id: continue
+            
+            ratchet = _lib.daveSessionGetKeyRatchet(self._session, uid_str.encode('utf-8'))
+            if not ratchet: continue
+            
+            if uid_str not in self._decryptors:
+                self._decryptors[uid_str] = _lib.daveDecryptorCreate()
+            _lib.daveDecryptorTransitionToKeyRatchet(self._decryptors[uid_str], ratchet)
+            
+        _lib.daveFree(roster_ptr)
+
+    def _read_and_free(self, ptr: c_void_p, length: c_size_t) -> Optional[bytes]:
+        if not ptr or length.value == 0: return None
+        data = ctypes.string_at(ptr, length.value)
+        _lib.daveFree(ptr)
+        return data
+
+    def dispose(self):
+        if self._disposed: return
+        self._disposed = True
+        
+        if _lib:
+            for d in self._decryptors.values():
+                if d: _lib.daveDecryptorDestroy(d)
+            self._decryptors.clear()
+            
+            if self._session:
+                _lib.daveSessionDestroy(self._session)
+                self._session = None
+            if self._encryptor:
+                _lib.daveEncryptorDestroy(self._encryptor)
+                self._encryptor = None

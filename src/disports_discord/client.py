@@ -8,7 +8,7 @@ from .gateway import DiscordGateway
 from .http import DiscordHTTP, DiscordHTTPError
 from .remote_auth import DiscordRemoteAuth
 from .state import DiscordState
-
+from .voice_client import VoiceGateway
 
 class DiscordClient:
     def __init__(self, emitter: Callable[[str, dict[str, Any]], None] | None = None) -> None:
@@ -17,6 +17,7 @@ class DiscordClient:
         self.emitter = emitter
         self.gateway: DiscordGateway | None = None
         self.remote_auth: DiscordRemoteAuth | None = None
+        self.voice_gateway: VoiceGateway | None = None
 
     def login(self, token: str) -> dict[str, Any]:
         self.stop_qr_login()
@@ -55,6 +56,9 @@ class DiscordClient:
         if self.gateway:
             self.gateway.stop()
             self.gateway = None
+        if self.voice_gateway:
+            self.voice_gateway.stop()
+            self.voice_gateway = None
         self.stop_qr_login()
         self.http.set_token(None)
         return True
@@ -325,6 +329,38 @@ class DiscordClient:
         if self.gateway:
             self.gateway.reconnect()
 
+    def join_voice_channel(self, guild_id: str | None, channel_id: str | None) -> None:
+        if self.gateway:
+            self.gateway.update_voice_state(guild_id, channel_id, False, False)
+
+    def leave_voice_channel(self, guild_id: str | None) -> None:
+        if self.gateway:
+            self.gateway.update_voice_state(guild_id, None, False, False)
+        if self.voice_gateway:
+            self.voice_gateway.stop()
+            self.voice_gateway = None
+            
+    def set_speakerphone(self, enabled: bool) -> None:
+        if self.voice_gateway and self.voice_gateway.udp:
+            self.voice_gateway.udp.set_speakerphone(enabled)
+
+    def _check_start_voice(self) -> None:
+        st = self.state.active_voice_state
+        sv = self.state.active_voice_server
+        if st and sv:
+            session_id = st.get("session_id")
+            endpoint = sv.get("endpoint")
+            token = sv.get("token")
+            channel_id = st.get("channel_id")
+            user_id = str((self.state.me or {}).get("id", ""))
+            
+            if session_id and endpoint and token and channel_id:
+                if self.voice_gateway:
+                    self.voice_gateway.stop()
+                
+                self.voice_gateway = VoiceGateway(endpoint, token, session_id, user_id, channel_id)
+                self.voice_gateway.start()
+
     def _handle_gateway_event(self, event_type: str, data: dict[str, Any]) -> None:
         if data is None:
             data = {}
@@ -476,6 +512,32 @@ class DiscordClient:
                     "channelId": channel_id,
                     "reactionsJson": json.dumps(updated, separators=(",", ":")),
                 })
+            return
+
+        if event_type == "VOICE_STATE_UPDATE":
+            self.state.apply_voice_state_update(data)
+            self._check_start_voice()
+            self._emit("voice_state_update", data)
+            return
+            
+        if event_type == "VOICE_SERVER_UPDATE":
+            self.state.apply_voice_server_update(data)
+            self._check_start_voice()
+            return
+            
+        if event_type == "CALL_CREATE":
+            self.state.apply_call_create(data)
+            self._emit("call_update", {"channelId": data.get("channel_id"), "call": self.state.calls.get(data.get("channel_id"))})
+            return
+            
+        if event_type == "CALL_UPDATE":
+            self.state.apply_call_update(data)
+            self._emit("call_update", {"channelId": data.get("channel_id"), "call": self.state.calls.get(data.get("channel_id"))})
+            return
+            
+        if event_type == "CALL_DELETE":
+            self.state.apply_call_delete(data)
+            self._emit("call_delete", {"channelId": data.get("channel_id")})
             return
 
     def _handle_gateway_log(self, message: str) -> None:

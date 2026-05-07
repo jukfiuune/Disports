@@ -140,6 +140,21 @@ class DiscordGateway:
         )
         return True
 
+    def update_voice_state(self, guild_id: str | None, channel_id: str | None, self_mute: bool = False, self_deaf: bool = False) -> None:
+        if not self._ws:
+            return
+        self._ws.send_json(
+            {
+                "op": 4,
+                "d": {
+                    "guild_id": guild_id,
+                    "channel_id": channel_id,
+                    "self_mute": self_mute,
+                    "self_deaf": self_deaf,
+                },
+            }
+        )
+
     def _run_forever(self) -> None:
         attempt = 0
         while not self._stop.is_set():
