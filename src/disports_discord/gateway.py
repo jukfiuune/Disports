@@ -151,6 +151,8 @@ class DiscordGateway:
                     "channel_id": channel_id,
                     "self_mute": self_mute,
                     "self_deaf": self_deaf,
+                    "self_video": False,
+                    "flags": 2,
                 },
             }
         )

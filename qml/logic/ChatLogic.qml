@@ -111,7 +111,9 @@ QtObject {
     }
 
     function joinVoiceChannel(channelId) {
-        var guildId = appState.activeServerId ? appState.activeServerId : null
+        // For guild voice channels, use the active server id.
+        // For DM/group-DM voice calls the guild_id must be null.
+        var guildId = (appState.mode === "server" && appState.activeServerId) ? appState.activeServerId : null
         python.call("discord_client.join_voice_channel", [guildId, channelId], function(result) {})
     }
 

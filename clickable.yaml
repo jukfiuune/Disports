@@ -1,11 +1,8 @@
 clickable_minimum_required: 8.0.0
 framework: ubuntu-sdk-20.04
-builder: pure-qml-cmake
+builder: cmake
 kill: qmlscene
 dependencies_target:
-  - python3-cryptography
-  - python3-qrcode
-  - python3-urllib3
   - gstreamer1.0-plugins-good
   - gstreamer1.0-plugins-bad
   - gstreamer1.0-plugins-ugly
@@ -21,20 +18,40 @@ libraries:
     builder: cmake
     src_dir: 3rdparty/libdave/cpp
     make_jobs: 2
-    prebuild: grep -q "CMAKE_TOOLCHAIN_FILE:UNINITIALIZED" CMakeCache.txt 2>/dev/null && rm -rf ./* ; test -f ../../../3rdparty/libdave/cpp/vcpkg/vcpkg || (cd ../../../3rdparty/libdave/cpp && ./vcpkg/bootstrap-vcpkg.sh -disableMetrics)
+    prebuild: |
+      # Clear cache if toolchain is uninitialized
+      grep -q "CMAKE_TOOLCHAIN_FILE:UNINITIALIZED" CMakeCache.txt 2>/dev/null && rm -rf ./*
+      # Bootstrap vcpkg if missing
+      VCPKG_ROOT="../../../3rdparty/libdave/cpp/vcpkg"
+      if [ ! -f "$VCPKG_ROOT/vcpkg" ]; then
+        (cd ../../../3rdparty/libdave/cpp && ./vcpkg/bootstrap-vcpkg.sh -disableMetrics)
+      fi
+      # Generate a toolchain wrapper to set the triplet without modifying the submodule
+      echo 'if(NOT DEFINED VCPKG_TARGET_TRIPLET)' > vcpkg_wrapper.cmake
+      echo '  if("$ENV{ARCH}" STREQUAL "arm64" OR "$ENV{ARCH}" STREQUAL "aarch64")' >> vcpkg_wrapper.cmake
+      echo '    set(VCPKG_TARGET_TRIPLET "arm64-linux" CACHE STRING "")' >> vcpkg_wrapper.cmake
+      echo '  elseif("$ENV{ARCH}" STREQUAL "armhf" OR "$ENV{ARCH}" STREQUAL "arm")' >> vcpkg_wrapper.cmake
+      echo '    set(VCPKG_TARGET_TRIPLET "arm-linux" CACHE STRING "")' >> vcpkg_wrapper.cmake
+      echo '  else()' >> vcpkg_wrapper.cmake
+      echo '    set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "")' >> vcpkg_wrapper.cmake
+      echo '  endif()' >> vcpkg_wrapper.cmake
+      echo 'endif()' >> vcpkg_wrapper.cmake
+      echo 'include("${VCPKG_CHAIN}")' >> vcpkg_wrapper.cmake
+
     build_args:
       - "-DCMAKE_BUILD_TYPE=Release"
       - "-DBUILD_SHARED_LIBS=ON"
       - "-DREQUIRE_BORINGSSL=OFF"
       - "-DCMAKE_CXX_FLAGS=-Wno-error=pedantic"
       - "-DVCPKG_MANIFEST_DIR=../../../3rdparty/libdave/cpp/vcpkg-alts/openssl_1.1"
-      - "-DCMAKE_TOOLCHAIN_FILE=../../../3rdparty/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake"
+      - "-DCMAKE_TOOLCHAIN_FILE=vcpkg_wrapper.cmake"
+      - "-DVCPKG_CHAIN=../../../3rdparty/libdave/cpp/vcpkg/scripts/buildsystems/vcpkg.cmake"
 env_vars:
   UV_INSTALL_DIR: /usr/local
 image_setup:
   run:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - apt-get install -y zip unzip pkg-config curl
+    - apt-get update && apt-get install -y zip unzip pkg-config curl ninja-build make
 postbuild:
   - rm -rf install/src install/lib
   - mkdir -p install/lib && cp -v ../libdave/install/lib/libdave.so install/lib/

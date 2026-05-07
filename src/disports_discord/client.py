@@ -9,6 +9,11 @@ from .http import DiscordHTTP, DiscordHTTPError
 from .remote_auth import DiscordRemoteAuth
 from .state import DiscordState
 from .voice_client import VoiceGateway
+from .pulse_audio import get_voice_logs, _vlog
+
+# Expose voice logs to QML UI
+def pop_voice_logs():
+    return get_voice_logs()
 
 class DiscordClient:
     def __init__(self, emitter: Callable[[str, dict[str, Any]], None] | None = None) -> None:
@@ -18,6 +23,7 @@ class DiscordClient:
         self.gateway: DiscordGateway | None = None
         self.remote_auth: DiscordRemoteAuth | None = None
         self.voice_gateway: VoiceGateway | None = None
+        self._requested_voice_channel_id = ""
 
     def login(self, token: str) -> dict[str, Any]:
         self.stop_qr_login()
@@ -53,12 +59,22 @@ class DiscordClient:
         return True
 
     def disconnect(self) -> bool:
+        active_channel_id = (
+            self.voice_gateway.channel_id
+            if self.voice_gateway
+            else self._requested_voice_channel_id
+        )
         if self.gateway:
             self.gateway.stop()
             self.gateway = None
         if self.voice_gateway:
             self.voice_gateway.stop()
             self.voice_gateway = None
+        self.state.active_voice_state = None
+        self.state.active_voice_server = None
+        self._requested_voice_channel_id = ""
+        if active_channel_id:
+            self._emit("call_delete", {"channelId": active_channel_id})
         self.stop_qr_login()
         self.http.set_token(None)
         return True
@@ -326,40 +342,180 @@ class DiscordClient:
         return {"ok": True, "channel": reference}
 
     def reconnect(self) -> None:
+        _vlog("Main gateway reconnect requested")
         if self.gateway:
             self.gateway.reconnect()
+        else:
+            _vlog("Reconnect skipped: main gateway is not connected")
 
     def join_voice_channel(self, guild_id: str | None, channel_id: str | None) -> None:
+        _vlog(f"Join voice requested guild={guild_id or '<dm>'} channel={channel_id or '<none>'}")
+        if channel_id:
+            self._requested_voice_channel_id = channel_id
+            self._emit_pending_call(guild_id, channel_id)
+            self.state.active_voice_state = None
+            self.state.active_voice_server = None
+            _vlog("Cleared cached voice state/server while waiting for fresh Discord events")
         if self.gateway:
             self.gateway.update_voice_state(guild_id, channel_id, False, False)
+            _vlog("Gateway voice state update sent")
+        else:
+            _vlog("Join voice skipped: main gateway is not connected")
 
     def leave_voice_channel(self, guild_id: str | None) -> None:
+        _vlog(f"Leave voice requested guild={guild_id or '<dm>'}")
         if self.gateway:
             self.gateway.update_voice_state(guild_id, None, False, False)
+            _vlog("Gateway voice leave update sent")
+        else:
+            _vlog("Leave voice: main gateway is not connected")
+        self.state.active_voice_state = None
+        self.state.active_voice_server = None
+        channel_id = ""
         if self.voice_gateway:
+            channel_id = self.voice_gateway.channel_id
             self.voice_gateway.stop()
             self.voice_gateway = None
+        if not channel_id:
+            channel_id = self._requested_voice_channel_id
+        self._requested_voice_channel_id = ""
+        self._emit("call_delete", {"channelId": channel_id})
             
     def set_speakerphone(self, enabled: bool) -> None:
+        _vlog(f"Speakerphone requested enabled={enabled}")
         if self.voice_gateway and self.voice_gateway.udp:
             self.voice_gateway.udp.set_speakerphone(enabled)
+        elif self.voice_gateway:
+            self.voice_gateway.set_speakerphone(enabled)
+        else:
+            _vlog("Speakerphone requested without active voice gateway")
 
     def _check_start_voice(self) -> None:
         st = self.state.active_voice_state
         sv = self.state.active_voice_server
-        if st and sv:
-            session_id = st.get("session_id")
-            endpoint = sv.get("endpoint")
-            token = sv.get("token")
-            channel_id = st.get("channel_id")
-            user_id = str((self.state.me or {}).get("id", ""))
-            
-            if session_id and endpoint and token and channel_id:
-                if self.voice_gateway:
-                    self.voice_gateway.stop()
-                
-                self.voice_gateway = VoiceGateway(endpoint, token, session_id, user_id, channel_id)
-                self.voice_gateway.start()
+        if not (st and sv):
+            _vlog(
+        st = self.state.voice_state
+        sv = self.state.voice_server
+        session_id = st.get("session_id")
+        endpoint = sv.get("endpoint")
+        token = sv.get("token")
+        channel_id = st.get("channel_id")
+        user_id = str((self.state.me or {}).get("id", ""))
+        server_id = str(st.get("guild_id") or sv.get("guild_id") or channel_id or "")
+
+        if not channel_id:
+            _vlog("Voice start skipped: active voice state has no channel_id")
+            return
+
+        if not (session_id and endpoint and token and user_id):
+            missing = []
+            if not session_id: missing.append("session_id")
+            if not endpoint: missing.append("endpoint")
+            if not token: missing.append("token")
+            if not user_id: missing.append("user_id")
+            _vlog(f"Voice start blocked: missing {', '.join(missing)}")
+            return
+
+        if (self.voice_gateway
+                and not self.voice_gateway._stop.is_set()
+                and self.voice_gateway.channel_id == channel_id):
+            _vlog(f"Voice start skipped: already connected to channel={channel_id}")
+            return
+
+        if self.voice_gateway:
+            _vlog("Stopping existing voice gateway before reconnect")
+            self.voice_gateway.stop()
+
+        _vlog(f"Starting voice gateway: endpoint={endpoint} channel={channel_id}")
+        self.voice_gateway = VoiceGateway(endpoint, token, session_id, user_id, channel_id, server_id)
+        self.voice_gateway.start()
+
+        channel = self.state.get_channel(channel_id)
+        ch_name = (channel or {}).get("name", "Voice")
+        guild_id = str((channel or {}).get("guild_id") or "")
+        vs_members = [
+            v for v in self.state.voice_states.values()
+            if v.get("channel_id") == channel_id
+        ]
+        participants = []
+        for vs in vs_members:
+            uid = str(vs.get("user_id") or "")
+            member = self.state.guild_member_for_user({"id": uid}, guild_id) if guild_id else None
+            u = (member or {}).get("user") or {}
+            avatar = u.get("avatar")
+            avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=80" if avatar else ""
+            name = (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid
+            participants.append({"id": uid, "avatarUrl": avatar_url, "name": name})
+
+        self._emit("call_update", {
+            "channelId": channel_id,
+            "call": {
+                "channelId": channel_id,
+                "guildId": guild_id,
+                "name": ch_name,
+                "type": "voice",
+                "participants": participants,
+            }
+        })
+
+    def _emit_pending_call(self, guild_id: str | None, channel_id: str) -> None:
+        channel = self.state.get_channel(channel_id)
+        resolved_guild_id = str(guild_id or (channel or {}).get("guild_id") or "")
+        ch_name = (channel or {}).get("name") or "Connecting..."
+        participants = []
+        for vs in self.state.voice_states.values():
+            if vs.get("channel_id") != channel_id:
+                continue
+            uid = str(vs.get("user_id") or "")
+            member = self.state.guild_member_for_user({"id": uid}, resolved_guild_id) if resolved_guild_id else None
+            u = (member or {}).get("user") or {}
+            avatar = u.get("avatar")
+            participants.append({
+                "id": uid,
+                "avatarUrl": f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=80" if avatar else "",
+                "name": (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid,
+            })
+        self._emit("call_update", {
+            "channelId": channel_id,
+            "call": {
+                "channelId": channel_id,
+                "guildId": resolved_guild_id,
+                "name": ch_name,
+                "type": "voice",
+                "participants": participants,
+            }
+        })
+
+    def _refresh_call_participants(self, channel_id: str) -> None:
+        if not channel_id:
+            return
+        channel = self.state.get_channel(channel_id)
+        ch_name = (channel or {}).get("name", "Voice")
+        guild_id = str((channel or {}).get("guild_id") or "")
+        vs_members = [
+            v for v in self.state.voice_states.values()
+            if v.get("channel_id") == channel_id
+        ]
+        participants = []
+        for vs in vs_members:
+            uid = str(vs.get("user_id") or "")
+            member = self.state.guild_member_for_user({"id": uid}, guild_id) if guild_id else None
+            u = (member or {}).get("user") or {}
+            avatar = u.get("avatar")
+            avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=80" if avatar else ""
+            name = (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid
+            participants.append({"id": uid, "avatarUrl": avatar_url, "name": name})
+        self._emit("call_update", {
+            "channelId": channel_id,
+            "call": {
+                "channelId": channel_id,
+                "guildId": guild_id,
+                "name": ch_name,
+                "type": "voice",
+                "participants": participants,
+            }
+        })
 
     def _handle_gateway_event(self, event_type: str, data: dict[str, Any]) -> None:
         if data is None:
@@ -516,12 +672,42 @@ class DiscordClient:
 
         if event_type == "VOICE_STATE_UPDATE":
             self.state.apply_voice_state_update(data)
-            self._check_start_voice()
+            affected_uid  = str(data.get("user_id") or "")
+            my_uid        = str((self.state.me or {}).get("id", ""))
+            is_our_update = affected_uid == my_uid
+            _vlog(
+                "VOICE_STATE_UPDATE: "
+                f"user={affected_uid} channel={data.get('channel_id') or '<none>'} "
+                f"session={'yes' if data.get('session_id') else 'no'} ours={is_our_update}"
+            )
+
+            if is_our_update:
+                new_channel = data.get("channel_id")
+                if not new_channel:
+                    # We were kicked or left — tear down voice and dismiss CallScreen
+                    if self.voice_gateway:
+                        active_ch = self.voice_gateway.channel_id
+                        self.voice_gateway.stop()
+                        self.voice_gateway = None
+                        self._emit("call_delete", {"channelId": active_ch})
+                else:
+                    self._check_start_voice()
+            else:
+                # Another user joined/left — refresh participants if we are in a call
+                if self.voice_gateway:
+                    self._refresh_call_participants(self.voice_gateway.channel_id)
+
             self._emit("voice_state_update", data)
             return
             
         if event_type == "VOICE_SERVER_UPDATE":
             self.state.apply_voice_server_update(data)
+            _vlog(
+                "VOICE_SERVER_UPDATE: "
+                f"guild={data.get('guild_id') or '<dm>'} "
+                f"endpoint={data.get('endpoint') or '<none>'} "
+                f"token={'yes' if data.get('token') else 'no'}"
+            )
             self._check_start_voice()
             return
             

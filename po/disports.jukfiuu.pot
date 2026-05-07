@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-07 09:18+0000\n"
+"POT-Creation-Date: 2026-05-07 19:20+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/CallScreen.qml:32
+#: ../qml/CallScreen.qml:55
 msgid "Unknown Call"
 msgstr ""
 
@@ -65,7 +65,7 @@ msgstr ""
 msgid "Type a message..."
 msgstr ""
 
-#: ../qml/DmPanel.qml:18
+#: ../qml/DmPanel.qml:19
 msgid "Direct Messages"
 msgstr ""
 
@@ -133,11 +133,11 @@ msgstr ""
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:341
+#: ../qml/Main.qml:342
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:346
+#: ../qml/Main.qml:347
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -338,18 +338,18 @@ msgstr ""
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:231
+#: ../qml/logic/ChatLogic.qml:233
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:233
+#: ../qml/logic/ChatLogic.qml:235
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:235
+#: ../qml/logic/ChatLogic.qml:237
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:239
+#: ../qml/logic/ChatLogic.qml:241
 msgid "Message"
 msgstr ""

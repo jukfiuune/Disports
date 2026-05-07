@@ -99,6 +99,11 @@ def reconnect() -> bool:
     return True
 
 
+def pop_voice_logs() -> list:
+    from disports_discord.pulse_audio import get_voice_logs
+    return get_voice_logs()
+
+
 def fetch_private_channels() -> dict:
     return _client.fetch_private_channels()
 

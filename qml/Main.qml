@@ -300,6 +300,7 @@ MainView {
                             visible:  appState.mode === "dm"
                             channels: dmChannelModel
                             onChannelOpened: function(channelId, name) { chatLogic.openChat(channelId, name) }
+                            onCallRequested: function(channelId, name) { chatLogic.joinVoiceChannel(channelId) }
                         }
 
                         ServerPanel {

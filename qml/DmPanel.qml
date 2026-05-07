@@ -7,6 +7,7 @@ Item {
     property alias channels: channelList.model
 
     signal channelOpened(string channelId, string name)
+    signal callRequested(string channelId, string name)
 
     PanelHeader {
         id: dmHeader
@@ -35,9 +36,9 @@ Item {
             Row {
                 anchors {
                     left: parent.left
-                    right: parent.right
+                    right: callBtn.left
                     leftMargin: units.gu(2)
-                    rightMargin: units.gu(2)
+                    rightMargin: units.gu(1)
                     verticalCenter: parent.verticalCenter
                 }
                 spacing: units.gu(1.25)
@@ -61,7 +62,7 @@ Item {
                     text: model.name || ""
                     font.pixelSize: units.gu(1.7)
                     elide: Text.ElideRight
-                    width: parent.width - units.gu(8)
+                    width: parent.width - units.gu(6)
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -69,6 +70,33 @@ Item {
                     count: model.unread || 0
                     kind: model.unreadKind || ((model.unread || 0) > 0 ? "count" : "none")
                     anchors.verticalCenter: parent.verticalCenter
+                }
+            }
+
+            // Call button — visible for both 1-on-1 DMs and group DMs
+            LomiriShape {
+                id: callBtn
+                width: units.gu(4)
+                height: units.gu(4)
+                radius: "medium"
+                color: "transparent"
+                anchors {
+                    right: parent.right
+                    rightMargin: units.gu(1.5)
+                    verticalCenter: parent.verticalCenter
+                }
+
+                Icon {
+                    anchors.centerIn: parent
+                    width: units.gu(2.5)
+                    height: units.gu(2.5)
+                    name: "call-start"
+                    color: theme.palette.normal.backgroundSecondaryText
+                }
+
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: dmPanel.callRequested(model.channelId, model.name || "")
                 }
             }
 

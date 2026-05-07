@@ -10,6 +10,7 @@ Item {
     property var activeCall: null // { channelId, guildId, name, type, participants: [{id, avatarUrl, name}] }
     property bool isSpeakerphone: false
     property bool isMuted: false
+    property bool showDebugLogs: false
 
     signal speakerphoneToggled(bool enabled)
     signal hangupRequested(string guildId)
@@ -18,6 +19,28 @@ Item {
         anchors.fill: parent
         color: theme.palette.normal.background
         opacity: 0.96
+    }
+
+    // Poll Python for voice logs (since PyOtherSide background signals are dropped on UT)
+    Timer {
+        interval: 500
+        running: callScreen.visible && typeof pythonBridge !== "undefined"
+        repeat: true
+        onTriggered: {
+            pythonBridge.call("discord_client.pop_voice_logs", [], function(logs) {
+                if (logs && logs.length > 0) {
+                    for (var i = 0; i < logs.length; i++) {
+                        voiceLogModel.append({"logMessage": logs[i]});
+                        if (voiceLogModel.count > 100) {
+                            voiceLogModel.remove(0);
+                        }
+                    }
+                    if (showDebugLogs) {
+                        voiceLogView.positionViewAtEnd();
+                    }
+                }
+            });
+        }
     }
 
     // Call Header
@@ -61,6 +84,7 @@ Item {
 
     // Participants Avatars
     Item {
+        id: avatarsItem
         anchors.centerIn: parent
         width: parent.width - units.gu(4)
         height: units.gu(22)
@@ -123,8 +147,72 @@ Item {
         }
     }
 
+    // Debug Toggle Button
+    Rectangle {
+        id: debugToggle
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: units.gu(2)
+        width: units.gu(4)
+        height: units.gu(4)
+        color: showDebugLogs ? "#00ff00" : "#333333"
+        opacity: 0.6
+        radius: units.gu(0.5)
+        z: 2000
+
+        Label {
+            anchors.centerIn: parent
+            text: "dbg"
+            color: "white"
+            font.pixelSize: units.gu(1.5)
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: showDebugLogs = !showDebugLogs
+        }
+    }
+
+    // Voice Debug Log Panel (Overlay)
+    Rectangle {
+        id: logPanel
+        anchors.fill: parent
+        anchors.margins: units.gu(2)
+        anchors.topMargin: units.gu(12)
+        anchors.bottomMargin: units.gu(14)
+        color: "#f2000000"
+        radius: units.gu(1)
+        border.color: "#333333"
+        border.width: 1
+        clip: true
+        z: 1500
+        visible: showDebugLogs
+
+        ListModel {
+            id: voiceLogModel
+        }
+
+        ListView {
+            id: voiceLogView
+            anchors.fill: parent
+            anchors.margins: units.gu(1)
+            model: voiceLogModel
+            spacing: units.gu(0.5)
+
+            delegate: Label {
+                width: ListView.view.width
+                text: logMessage
+                color: "#00ff00"
+                font.pixelSize: units.gu(1.5)
+                font.family: "monospace"
+                wrapMode: Text.Wrap
+            }
+        }
+    }
+
     // Call Controls
     Row {
+        id: controlsRow
         anchors.bottom: parent.bottom
         anchors.bottomMargin: units.gu(8)
         anchors.horizontalCenter: parent.horizontalCenter
