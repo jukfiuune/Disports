@@ -390,13 +390,22 @@ class DiscordClient:
         else:
             _vlog("Speakerphone requested without active voice gateway")
 
+    def set_muted(self, muted: bool) -> None:
+        _vlog(f"Mute requested muted={muted}")
+        if self.voice_gateway and self.voice_gateway.udp:
+            self.voice_gateway.udp.set_muted(muted)
+        elif self.voice_gateway:
+            self.voice_gateway.set_muted(muted)
+        else:
+            from .qt_audio import set_muted as _set_muted
+            _set_muted(muted)
+
     def _check_start_voice(self) -> None:
         st = self.state.active_voice_state
         sv = self.state.active_voice_server
         if not (st and sv):
-            _vlog(
-        st = self.state.voice_state
-        sv = self.state.voice_server
+            _vlog("Voice start skipped: missing active voice state or server")
+            return
         session_id = st.get("session_id")
         endpoint = sv.get("endpoint")
         token = sv.get("token")
@@ -441,10 +450,16 @@ class DiscordClient:
         participants = []
         for vs in vs_members:
             uid = str(vs.get("user_id") or "")
-            member = self.state.guild_member_for_user({"id": uid}, guild_id) if guild_id else None
-            u = (member or {}).get("user") or {}
+            user = self.state.users.get(uid) or {"id": uid}
+            member = self.state.guild_member_for_user(user, guild_id) if guild_id else {}
+            u = (member or {}).get("user") or user
             avatar = u.get("avatar")
-            avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=80" if avatar else ""
+            if avatar:
+                avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=160"
+            else:
+                disc = int(u.get("discriminator") or 0)
+                def_index = (int(uid) >> 22) % 6 if uid.isdigit() else disc % 5
+                avatar_url = f"https://cdn.discordapp.com/embed/avatars/{def_index}.png"
             name = (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid
             participants.append({"id": uid, "avatarUrl": avatar_url, "name": name})
 
@@ -468,12 +483,19 @@ class DiscordClient:
             if vs.get("channel_id") != channel_id:
                 continue
             uid = str(vs.get("user_id") or "")
-            member = self.state.guild_member_for_user({"id": uid}, resolved_guild_id) if resolved_guild_id else None
-            u = (member or {}).get("user") or {}
+            user = self.state.users.get(uid) or {"id": uid}
+            member = self.state.guild_member_for_user(user, resolved_guild_id) if resolved_guild_id else {}
+            u = (member or {}).get("user") or user
             avatar = u.get("avatar")
+            if avatar:
+                avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=160"
+            else:
+                disc = int(u.get("discriminator") or 0)
+                def_index = (int(uid) >> 22) % 6 if uid.isdigit() else disc % 5
+                avatar_url = f"https://cdn.discordapp.com/embed/avatars/{def_index}.png"
             participants.append({
                 "id": uid,
-                "avatarUrl": f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=80" if avatar else "",
+                "avatarUrl": avatar_url,
                 "name": (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid,
             })
         self._emit("call_update", {
@@ -500,12 +522,19 @@ class DiscordClient:
         participants = []
         for vs in vs_members:
             uid = str(vs.get("user_id") or "")
-            member = self.state.guild_member_for_user({"id": uid}, guild_id) if guild_id else None
-            u = (member or {}).get("user") or {}
+            user = self.state.users.get(uid) or {"id": uid}
+            member = self.state.guild_member_for_user(user, guild_id) if guild_id else {}
+            u = (member or {}).get("user") or user
             avatar = u.get("avatar")
-            avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=80" if avatar else ""
+            if avatar:
+                avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=160"
+            else:
+                disc = int(u.get("discriminator") or 0)
+                def_index = (int(uid) >> 22) % 6 if uid.isdigit() else disc % 5
+                avatar_url = f"https://cdn.discordapp.com/embed/avatars/{def_index}.png"
             name = (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid
             participants.append({"id": uid, "avatarUrl": avatar_url, "name": name})
+
         self._emit("call_update", {
             "channelId": channel_id,
             "call": {

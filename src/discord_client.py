@@ -100,8 +100,12 @@ def reconnect() -> bool:
 
 
 def pop_voice_logs() -> list:
-    from disports_discord.pulse_audio import get_voice_logs
+    from disports_discord.qt_audio import get_voice_logs
     return get_voice_logs()
+
+
+def set_muted(muted: bool) -> None:
+    _client.set_muted(muted)
 
 
 def fetch_private_channels() -> dict:
@@ -170,3 +174,8 @@ def leave_voice_channel(guild_id: str | None) -> None:
 
 def set_speakerphone(enabled: bool) -> None:
     _client.set_speakerphone(enabled)
+
+
+def set_audio_pipe_capsule(capsule) -> None:
+    from disports_discord.qt_audio import set_audio_pipe_capsule as _set
+    _set(capsule)

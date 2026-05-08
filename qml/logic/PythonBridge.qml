@@ -1,5 +1,6 @@
 import QtQuick 2.7
 import io.thp.pyotherside 1.4
+import Disports 1.0
 
 Python {
     id: python
@@ -27,11 +28,31 @@ Python {
     signal callDelete(var data)
     signal voiceStateUpdate(var data)
     signal voiceLog(var data)
+    signal voiceStartRequested()
+    signal voiceStopRequested()
+    signal voiceSpeakerRequested(var data)
+    signal voiceMuteRequested(var data)
 
     Component.onCompleted: {
         addImportPath(Qt.resolvedUrl("../../src/"))
+
+        // Register the C++ VoiceAudio singleton with the Python layer so that
+        // qt_audio.py can call startAudio(), pushPlaybackPCM(), etc. directly
+        // without crossing the QML event loop in the audio hot path.
+        addImportPath(Qt.resolvedUrl("../../lib/"))
+
         importModule("discord_client", function() {
             console.log("discord_client loaded")
+
+            // Hand the AudioPipe capsule to Python.  getAudioPipeCapsule()
+            // runs on the main thread (safe), returns a PyCapsule wrapping
+            // the raw AudioPipe*.  All subsequent audio I/O uses that pointer
+            // directly via ctypes — zero Qt main-thread involvement.
+            var capsule = VoiceAudio.getAudioPipeCapsule()
+            call("discord_client.set_audio_pipe_capsule",
+                 [capsule], function() {
+                console.log("AudioPipe capsule registered with Python")
+            })
 
             // All setHandler calls must be inside this callback —
             // pyotherside will not route events from a module that
@@ -61,6 +82,10 @@ Python {
                 dbgLog("VOICE: " + (data && data.message ? data.message : JSON.stringify(data)))
                 voiceLog(data)
             })
+            setHandler("voice_start",        voiceStartRequested)
+            setHandler("voice_stop",         voiceStopRequested)
+            setHandler("voice_speaker",      voiceSpeakerRequested)
+            setHandler("voice_mute",         voiceMuteRequested)
 
             // Signal QML that Python is ready — only after everything
             // above is wired up, so callers can safely invoke functions.

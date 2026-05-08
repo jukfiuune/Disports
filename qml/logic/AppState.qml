@@ -33,4 +33,5 @@ QtObject {
     property bool runningUnderClickableDesktop: false
     property var activeCall: null
     property string activeCallChannelId: ""
+    property bool showDebugLogs: false
 }

@@ -1,3 +1,20 @@
+"""
+voice_client.py — Discord voice gateway and UDP client for Disports.
+
+Changes from the ctypes/PulseAudio version
+------------------------------------------
+1. All audio I/O routed through qt_audio.QtPlayback / QtCapture instead of
+   PulsePlayback / PulseCapture, so hardware routing is handled natively by
+   the C++ VoiceAudio plugin.
+2. speaking flag fixed: 0x01 (Microphone) instead of the previous 0x02
+   (Soundshare), which was causing the remote party to not receive audio.
+3. Mute state is forwarded to C++ via qt_audio.set_muted() so the hardware
+   capture path is silenced rather than just suppressing the send.
+4. Five Opus silence frames are sent on capture-loop exit before the UDP
+   socket is closed, preventing server-side interpolation artefacts.
+5. qt_audio.start_audio() / stop_audio() lifecycle calls added around
+   the UDP session so the C++ plugin is properly initialised.
+"""
 from __future__ import annotations
 
 import json
@@ -20,11 +37,17 @@ except ImportError:
     AESGCM = None
 
 from .dave_interop import DaveSession, libdave_status
-from .pulse_audio import (
+from .qt_audio import (
     OpusDecoder, OpusEncoder,
-    PulsePlayback, PulseCapture,
-    set_speaker_route, _vlog,
+    QtPlayback, QtCapture,
+    set_speaker_route, set_muted,
+    start_audio, stop_audio,
+    _vlog,
 )
+
+_OPUS_SILENCE = bytes([0xF8, 0xFF, 0xFE])
+_SILENCE_FRAMES = 5
+
 
 class VoiceUdpClient:
     def __init__(self, ssrc: int):
@@ -34,28 +57,25 @@ class VoiceUdpClient:
 
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._sock.settimeout(0.5)
-        self.server_ip = None
-        self.server_port = None
+        self.server_ip: Optional[str] = None
+        self.server_port: Optional[int] = None
         self.local_ip: str = ""
         self.local_port: int = 0
 
         self._stop = threading.Event()
-        self._recv_thread = None
-        self._cap_thread = None
+        self._recv_thread: Optional[threading.Thread] = None
+        self._cap_thread: Optional[threading.Thread] = None
 
-        self._send_sequence = 0
+        self._send_sequence  = 0
         self._send_timestamp = 0
-        self._send_nonce = 0
+        self._send_nonce     = 0
 
-        self._playback = PulsePlayback()
-        self._capture = PulseCapture()
-        self._encoder = OpusEncoder()
+        self._playback = QtPlayback()
+        self._capture  = QtCapture()
+        self._encoder  = OpusEncoder()
         self._decoders: dict[int, OpusDecoder] = {}
 
-        _av = self._playback.available
-        _cv = self._capture.available
-        _ev = self._encoder._enc is not None
-        _vlog(f"VoiceUDP init: playback={_av} capture={_cv} encoder={_ev}")
+        _vlog(f"VoiceUDP init: encoder={'ok' if self._encoder._enc is not None else 'FAIL'}")
 
     def _get_decoder(self, ssrc: int) -> Optional[OpusDecoder]:
         if ssrc not in self._decoders:
@@ -66,56 +86,55 @@ class VoiceUdpClient:
         return self._decoders[ssrc]
 
     def connect(self, ip: str, port: int) -> tuple[str, int]:
-        self.server_ip = ip
+        self.server_ip   = ip
         self.server_port = port
         _vlog(f"UDP discovery: connecting to {ip}:{port} ssrc={self.ssrc}")
         self._sock.connect((ip, port))
-
         packet = struct.pack(">HHI", 0x0001, 70, self.ssrc) + b"\x00" * 66
         self._sock.send(packet)
-
         resp = self._sock.recv(74)
-        local_ip = resp[8:72].decode("ascii").rstrip("\x00")
+        local_ip   = resp[8:72].decode("ascii").rstrip("\x00")
         local_port = struct.unpack(">H", resp[72:74])[0]
-
-        self.local_ip = local_ip
+        self.local_ip   = local_ip
         self.local_port = local_port
         _vlog(f"UDP discovery: local address {local_ip}:{local_port}")
         return local_ip, local_port
 
     def start_receive_loop(self):
         self._stop.clear()
+        start_audio()
         self._recv_thread = threading.Thread(
             target=self._receive_loop, daemon=True, name="voice-recv"
         )
         self._recv_thread.start()
         _vlog("UDP receive loop started")
-
-        if self._capture.available and self._encoder._enc is not None:
+        if self._encoder._enc is not None:
             self._cap_thread = threading.Thread(
                 target=self._capture_loop, daemon=True, name="voice-cap"
             )
             self._cap_thread.start()
             _vlog("UDP capture loop started")
         else:
-            _vlog(f"UDP capture loop disabled: capture={self._capture.available} encoder={self._encoder._enc is not None}")
+            _vlog("UDP capture loop disabled: Opus encoder unavailable")
 
     def stop(self):
         _vlog("VoiceUDP stopping")
         self._stop.set()
+        stop_audio()
         try:
             self._sock.close()
         except Exception:
             pass
-        self._playback.close()
-        self._capture.close()
-        self._encoder.close()
         for dec in self._decoders.values():
             dec.close()
         self._decoders.clear()
+        self._encoder.close()
 
     def set_speakerphone(self, enabled: bool):
         set_speaker_route(enabled)
+
+    def set_muted(self, muted: bool):
+        set_muted(muted)
 
     def update_secret_key(self, key: bytes):
         self.secret_key = key
@@ -131,53 +150,41 @@ class VoiceUdpClient:
                 if not self._stop.is_set():
                     _vlog("UDP receive loop stopped after socket error")
                 break
-
             if len(data) < 12:
                 continue
             if data[0] == 0x00 and data[1] == 0x02:
                 continue
-
             payload_type = data[1] & 0x7F
             if 200 <= payload_type <= 204:
                 continue
-
             if not self.secret_key:
                 continue
-
-            cc = data[0] & 0x0F
+            cc      = data[0] & 0x0F
             has_ext = bool(data[0] & 0x10)
             hdr_len = 12 + cc * 4
             if has_ext and len(data) > hdr_len + 4:
                 hdr_len += 4 + struct.unpack_from(">H", data, hdr_len + 2)[0] * 4
-
-            pkt_ssrc = struct.unpack_from(">I", data, 8)[0]
+            pkt_ssrc  = struct.unpack_from(">I", data, 8)[0]
             nonce_val = struct.unpack(">I", data[-4:])[0]
-            nonce = struct.pack(">I", nonce_val).ljust(12, b'\x00')
+            nonce     = struct.pack(">I", nonce_val).ljust(12, b"\x00")
             ciphertext = data[hdr_len:-4]
-            aad = data[:hdr_len]
-
+            aad        = data[:hdr_len]
             try:
                 if not _HAS_AESGCM:
                     continue
                 decrypted = AESGCM(self.secret_key).decrypt(nonce, ciphertext, aad)
             except Exception:
                 continue
-
-            if decrypted == b"\xf8\xff\xfe":
+            if decrypted == _OPUS_SILENCE:
                 continue
-
             if not self.dave_session:
                 continue
-
-            dave_payload = decrypted
-            opus_frame = self.dave_session.decrypt_audio_frame(pkt_ssrc, dave_payload)
+            opus_frame = self.dave_session.decrypt_audio_frame(pkt_ssrc, decrypted)
             if not opus_frame:
                 continue
-
             dec = self._get_decoder(pkt_ssrc)
             if dec is None:
                 continue
-
             pcm = dec.decode(opus_frame)
             if pcm:
                 self._playback.write(pcm)
@@ -186,18 +193,38 @@ class VoiceUdpClient:
         while not self._stop.is_set():
             frame = self._capture.read_frame()
             if not frame:
+                if self._stop.is_set():
+                    break
+                # No device available (capture disabled): avoid a busy-spin.
+                # pullCaptureFrame() returns empty immediately when captureReady
+                # is False, so we need a small sleep here in that path only.
+                if not self._capture.available:
+                    import time; time.sleep(0.02)
                 continue
             if not self.secret_key or not self.dave_session:
                 continue
-
             opus_data = self._encoder.encode(frame)
             if not opus_data:
                 continue
-
             dave_frame = self.dave_session.encrypt_audio_frame(self.ssrc, opus_data)
             if not dave_frame:
                 continue
+            packet = self._build_rtp_packet(dave_frame)
+            if packet and self.server_ip and self.server_port:
+                try:
+                    self._sock.sendto(packet, (self.server_ip, self.server_port))
+                except Exception:
+                    pass
+        _vlog("Capture loop ending — sending silence frames")
+        self._send_silence_frames()
 
+    def _send_silence_frames(self):
+        if not self.secret_key or not self.dave_session:
+            return
+        for _ in range(_SILENCE_FRAMES):
+            dave_frame = self.dave_session.encrypt_audio_frame(self.ssrc, _OPUS_SILENCE)
+            if not dave_frame:
+                continue
             packet = self._build_rtp_packet(dave_frame)
             if packet and self.server_ip and self.server_port:
                 try:
@@ -212,42 +239,39 @@ class VoiceUdpClient:
         hdr[2:4] = struct.pack(">H", self._send_sequence)
         hdr[4:8] = struct.pack(">I", self._send_timestamp)
         hdr[8:12] = struct.pack(">I", self.ssrc)
-
-        self._send_sequence = (self._send_sequence + 1) & 0xFFFF
+        self._send_sequence  = (self._send_sequence + 1)   & 0xFFFF
         self._send_timestamp = (self._send_timestamp + 960) & 0xFFFFFFFF
-        self._send_nonce = (self._send_nonce + 1) & 0xFFFFFFFF
-
-        nonce = struct.pack(">I", self._send_nonce).ljust(12, b'\x00')
-
+        self._send_nonce     = (self._send_nonce + 1)       & 0xFFFFFFFF
+        nonce = struct.pack(">I", self._send_nonce).ljust(12, b"\x00")
         try:
             if not _HAS_AESGCM:
                 return None
             ciphertext = AESGCM(self.secret_key).encrypt(nonce, payload, bytes(hdr))
         except Exception:
             return None
-
         return bytes(hdr) + ciphertext + struct.pack(">I", self._send_nonce)
+
 
 class VoiceGateway:
     def __init__(self, endpoint: str, token: str, session_id: str,
-                 user_id: str, channel_id: str, server_id: str | None = None):
-        self.endpoint = endpoint
-        self.token = token
+                 user_id: str, channel_id: str, server_id: Optional[str] = None):
+        self.endpoint   = endpoint
+        self.token      = token
         self.session_id = session_id
-        self.user_id = user_id
+        self.user_id    = user_id
         self.channel_id = channel_id
-        self.server_id = server_id or channel_id
+        self.server_id  = server_id or channel_id
 
-        self._ws = None
+        self._ws: Optional[websocket.WebSocket] = None
         self._stop = threading.Event()
-        self._heartbeat_thread = None
+        self._heartbeat_thread: Optional[threading.Thread] = None
         self._heartbeat_interval = 41.25
-        self._seq = -1
+        self._seq       = -1
         self._send_lock = threading.Lock()
 
-        self.pending_ssrc_map = {}
-        self.pending_external_sender = None
-        self.pending_epoch = -1
+        self.pending_ssrc_map: dict[int, str] = {}
+        self.pending_external_sender: Optional[bytes] = None
+        self.pending_epoch       = -1
         self.pending_epoch_proto = 1
         self.udp: Optional[VoiceUdpClient] = None
 
@@ -273,6 +297,12 @@ class VoiceGateway:
         else:
             set_speaker_route(enabled)
 
+    def set_muted(self, muted: bool):
+        if self.udp:
+            self.udp.set_muted(muted)
+        else:
+            set_muted(muted)
+
     def _run(self):
         url = f"wss://{self.endpoint}/?v=8"
         try:
@@ -287,11 +317,11 @@ class VoiceGateway:
         identify = {
             "op": 0,
             "d": {
-                "server_id": self.server_id,
+                "server_id":  self.server_id,
                 "channel_id": self.channel_id,
-                "user_id": self.user_id,
+                "user_id":    self.user_id,
                 "session_id": self.session_id,
-                "token": self.token,
+                "token":      self.token,
                 "max_dave_protocol_version": 1,
             }
         }
@@ -337,133 +367,135 @@ class VoiceGateway:
     def _format_close_payload(payload) -> str:
         if not isinstance(payload, (bytes, bytearray)) or len(payload) < 2:
             return repr(payload)
-        code = struct.unpack(">H", payload[:2])[0]
+        code   = struct.unpack(">H", payload[:2])[0]
         reason = bytes(payload[2:]).decode("utf-8", errors="replace")
         return f"code={code} reason={reason or '<empty>'}"
 
     def _handle_json(self, data: dict):
-        op = data.get("op")
+        op  = data.get("op")
         seq = data.get("seq")
         if seq is not None:
             self._seq = seq
         d = data.get("d") or {}
         _vlog(f"VoiceGW <- op {op}")
 
-        if op == 2:  # READY
-            ip = d.get("ip")
-            port = d.get("port")
-            ssrc = d.get("ssrc")
-            _vlog(f"READY: ssrc={ssrc} server={ip}:{port}")
-            self.udp = VoiceUdpClient(ssrc)
-            try:
-                self.udp.connect(ip, port)
-            except Exception as exc:
-                _vlog(f"UDP discovery FAILED: {exc}")
-                return
-            _vlog(f"UDP connected: local={self.udp.local_ip}:{self.udp.local_port}")
-            self.udp.start_receive_loop()
-            self._send_json({"op": 16, "d": {}})
+        if op == 2:    self._on_ready(d)
+        elif op == 8:  self._on_hello(d)
+        elif op == 4:  self._on_session_description(d)
+        elif op == 5:  self._on_speaking(d)
+        elif op == 12: self._on_client_connect(d)
+        elif op == 16: self._on_capabilities_ack()
+        elif op == 24: self._on_dave_prepare_epoch(d)
 
-        elif op == 8:  # HELLO
-            self._heartbeat_interval = d.get("heartbeat_interval", 41250) / 1000.0
-            _vlog(f"VoiceGW HELLO heartbeat={self._heartbeat_interval:.3f}s")
-            self._start_heartbeat()
+    def _on_ready(self, d: dict):
+        ip, port, ssrc = d.get("ip"), d.get("port"), d.get("ssrc")
+        _vlog(f"READY: ssrc={ssrc} server={ip}:{port}")
+        self.udp = VoiceUdpClient(ssrc)
+        try:
+            self.udp.connect(ip, port)
+        except Exception as exc:
+            _vlog(f"UDP discovery FAILED: {exc}")
+            return
+        _vlog(f"UDP connected: local={self.udp.local_ip}:{self.udp.local_port}")
+        self.udp.start_receive_loop()
+        self._send_json({"op": 16, "d": {}})
 
-        elif op == 4:  # SESSION_DESCRIPTION
-            if not self.udp:
-                _vlog("SESSION_DESC ignored: UDP client is not ready")
-                return
-            secret_key = d.get("secret_key")
-            if secret_key:
-                self.udp.update_secret_key(bytes(secret_key))
-                _vlog(f"SESSION_DESC: secret_key len={len(secret_key)}")
+    def _on_hello(self, d: dict):
+        self._heartbeat_interval = d.get("heartbeat_interval", 41250) / 1000.0
+        _vlog(f"VoiceGW HELLO heartbeat={self._heartbeat_interval:.3f}s")
+        self._start_heartbeat()
 
-            dave_version = d.get("dave_protocol_version", 1)
-            status = libdave_status()
-            if not status["available"]:
-                for error in status["errors"]:
-                    _vlog(f"libdave load error: {error}")
+    def _on_session_description(self, d: dict):
+        if not self.udp:
+            _vlog("SESSION_DESC ignored: UDP client is not ready")
+            return
+        secret_key = d.get("secret_key")
+        if secret_key:
+            self.udp.update_secret_key(bytes(secret_key))
+            _vlog(f"SESSION_DESC: secret_key len={len(secret_key)}")
 
-            _vlog(f"Init DaveSession proto={dave_version} channel={self.channel_id}")
-            self.udp.dave_session = DaveSession()
-            self.udp.dave_session.init(dave_version, self.channel_id, self.user_id)
-            _vlog(f"DAVE session: {self.udp.dave_session.status_summary()}")
+        dave_version = d.get("dave_protocol_version", 1)
+        status = libdave_status()
+        if not status["available"]:
+            for error in status["errors"]:
+                _vlog(f"libdave load error: {error}")
 
-            for ssrc, uid in self.pending_ssrc_map.items():
-                self.udp.dave_session.register_ssrc(ssrc, uid)
+        _vlog(f"Init DaveSession proto={dave_version} channel={self.channel_id}")
+        self.udp.dave_session = DaveSession()
+        self.udp.dave_session.init(dave_version, self.channel_id, self.user_id)
+        _vlog(f"DAVE session: {self.udp.dave_session.status_summary()}")
 
-            if self.pending_external_sender:
-                self.udp.dave_session.set_external_sender(self.pending_external_sender)
-                _vlog(f"Applied pending external sender len={len(self.pending_external_sender)}")
-                self.pending_external_sender = None
+        for ssrc, uid in self.pending_ssrc_map.items():
+            self.udp.dave_session.register_ssrc(ssrc, uid)
 
-            if self.pending_epoch == 1:
-                kp = self.udp.dave_session.reset_and_get_key_package(self.pending_epoch_proto)
-                if kp:
-                    self._send_binary(26, kp)
+        if self.pending_external_sender:
+            self.udp.dave_session.set_external_sender(self.pending_external_sender)
+            _vlog(f"Applied pending external sender len={len(self.pending_external_sender)}")
+            self.pending_external_sender = None
 
-            self._send_json({
-                "op": 5,
-                "d": {"speaking": 2, "delay": 0, "ssrc": self.udp.ssrc}
-            })
+        if self.pending_epoch == 1:
+            kp = self.udp.dave_session.reset_and_get_key_package(self.pending_epoch_proto)
+            if kp:
+                self._send_binary(26, kp)
 
-        elif op == 5:  # SPEAKING
-            spk_uid = d.get("user_id")
-            spk_ssrc = d.get("ssrc")
-            if spk_uid and spk_ssrc:
-                _vlog(f"SPEAKING: user={spk_uid} ssrc={spk_ssrc}")
-                self.pending_ssrc_map[spk_ssrc] = str(spk_uid)
-                if self.udp and self.udp.dave_session:
-                    self.udp.dave_session.register_ssrc(spk_ssrc, str(spk_uid))
+        # FIX: was speaking=2 (Soundshare). Correct flag is 1 (Microphone, 1<<0).
+        self._send_json({"op": 5, "d": {"speaking": 1, "delay": 0, "ssrc": self.udp.ssrc}})
 
-        elif op == 12:  # CLIENT_CONNECT
-            uid = d.get("user_id")
-            ssrc = d.get("ssrc")
-            _vlog(f"CLIENT_CONNECT: user={uid} ssrc={ssrc}")
-            if uid and ssrc and self.udp and self.udp.dave_session:
-                self.udp.dave_session.register_ssrc(ssrc, str(uid))
+    def _on_speaking(self, d: dict):
+        spk_uid, spk_ssrc = d.get("user_id"), d.get("ssrc")
+        if spk_uid and spk_ssrc:
+            _vlog(f"SPEAKING: user={spk_uid} ssrc={spk_ssrc}")
+            self.pending_ssrc_map[spk_ssrc] = str(spk_uid)
+            if self.udp and self.udp.dave_session:
+                self.udp.dave_session.register_ssrc(spk_ssrc, str(spk_uid))
 
-        elif op == 16:  # CAPABILITIES_ACK
-            if not (self.udp and self.udp.local_ip):
-                _vlog("CAPABILITIES_ACK ignored: UDP local address missing")
-                return
-            _vlog("CAPABILITIES_ACK: selecting UDP transport")
-            self._send_json({
-                "op": 1,
-                "d": {
-                    "protocol": "udp",
-                    "data": {
-                        "address": self.udp.local_ip,
-                        "port": self.udp.local_port,
-                        "mode": "aead_aes256_gcm_rtpsize",
-                    },
+    def _on_client_connect(self, d: dict):
+        uid, ssrc = d.get("user_id"), d.get("ssrc")
+        _vlog(f"CLIENT_CONNECT: user={uid} ssrc={ssrc}")
+        if uid and ssrc and self.udp and self.udp.dave_session:
+            self.udp.dave_session.register_ssrc(ssrc, str(uid))
+
+    def _on_capabilities_ack(self):
+        if not (self.udp and self.udp.local_ip):
+            _vlog("CAPABILITIES_ACK ignored: UDP local address missing")
+            return
+        _vlog("CAPABILITIES_ACK: selecting UDP transport")
+        self._send_json({
+            "op": 1,
+            "d": {
+                "protocol": "udp",
+                "data": {
                     "address": self.udp.local_ip,
-                    "port": self.udp.local_port,
-                    "mode": "aead_aes256_gcm_rtpsize",
-                    "codecs": [
-                        {"name": "opus", "type": "audio", "priority": 1000,
-                         "payload_type": 120, "rtx_payload_type": None,
-                         "encode": True, "decode": True},
-                    ],
-                    "rtc_connection_id": str(uuid.uuid4()),
-                    "experiments": [
-                        "fixed_keyframe_interval", "keyframe_on_join",
-                        "network_aware_socket", "clear_cuda_cache"
-                    ]
-                }
-            })
+                    "port":    self.udp.local_port,
+                    "mode":    "aead_aes256_gcm_rtpsize",
+                },
+                "address": self.udp.local_ip,
+                "port":    self.udp.local_port,
+                "mode":    "aead_aes256_gcm_rtpsize",
+                "codecs": [
+                    {"name": "opus", "type": "audio", "priority": 1000,
+                     "payload_type": 120, "rtx_payload_type": None,
+                     "encode": True, "decode": True},
+                ],
+                "rtc_connection_id": str(uuid.uuid4()),
+                "experiments": [
+                    "fixed_keyframe_interval", "keyframe_on_join",
+                    "network_aware_socket", "clear_cuda_cache",
+                ],
+            }
+        })
 
-        elif op == 24:  # DAVE_PREPARE_EPOCH
-            epoch = d.get("epoch", 0)
-            epoch_proto = d.get("protocol_version", 1)
-            _vlog(f"DAVE_PREPARE_EPOCH epoch={epoch} proto={epoch_proto}")
-            self.pending_epoch = epoch
-            self.pending_epoch_proto = epoch_proto
-            if epoch == 1 and self.udp and self.udp.dave_session:
-                kp = self.udp.dave_session.reset_and_get_key_package(epoch_proto)
-                if kp:
-                    _vlog(f"Sending key package len={len(kp)}")
-                    self._send_binary(26, kp)
+    def _on_dave_prepare_epoch(self, d: dict):
+        epoch       = d.get("epoch", 0)
+        epoch_proto = d.get("protocol_version", 1)
+        _vlog(f"DAVE_PREPARE_EPOCH epoch={epoch} proto={epoch_proto}")
+        self.pending_epoch       = epoch
+        self.pending_epoch_proto = epoch_proto
+        if epoch == 1 and self.udp and self.udp.dave_session:
+            kp = self.udp.dave_session.reset_and_get_key_package(epoch_proto)
+            if kp:
+                _vlog(f"Sending key package len={len(kp)}")
+                self._send_binary(26, kp)
 
     def _handle_binary(self, payload: bytes):
         if len(payload) < 3:
@@ -471,7 +503,7 @@ class VoiceGateway:
         seq = struct.unpack(">H", payload[0:2])[0]
         self._seq = seq
         opcode = payload[2]
-        data = payload[3:]
+        data   = payload[3:]
         _vlog(f"VoiceGW <- binary op {opcode} len={len(data)}")
 
         if not self.udp or not self.udp.dave_session:
@@ -484,7 +516,7 @@ class VoiceGateway:
 
         ds = self.udp.dave_session
 
-        if opcode == 25:  # EXTERNAL_SENDER_PACKAGE
+        if opcode == 25:
             _vlog(f"MLS: external_sender len={len(data)}")
             ds.set_external_sender(data)
             kp = ds.get_key_package()
@@ -492,34 +524,28 @@ class VoiceGateway:
                 _vlog(f"MLS: sending key_package len={len(kp)}")
                 self._send_binary(26, kp)
 
-        elif opcode == 27:  # MLS_PROPOSALS
+        elif opcode == 27:
             _vlog(f"MLS: proposals len={len(data)}")
             cw = ds.process_proposals(data)
             if cw:
                 _vlog(f"MLS: sending commit len={len(cw)}")
                 self._send_binary(28, cw)
 
-        elif opcode == 29:  # MLS_ANNOUNCE_COMMIT
+        elif opcode == 29:
             if len(data) < 2:
                 return
             tid = struct.unpack(">H", data[0:2])[0]
-            ok = ds.process_commit(data[2:])
+            ok  = ds.process_commit(data[2:])
             _vlog(f"MLS: commit tid={tid} ok={ok}")
-            if ok:
-                self._send_json({"op": 23, "d": {"transition_id": tid}})
-            else:
-                self._send_json({"op": 31, "d": {"transition_id": tid}})
+            self._send_json({"op": 23 if ok else 31, "d": {"transition_id": tid}})
 
-        elif opcode == 30:  # MLS_WELCOME
+        elif opcode == 30:
             if len(data) < 2:
                 return
             tid = struct.unpack(">H", data[0:2])[0]
-            ok = ds.process_welcome(data[2:])
+            ok  = ds.process_welcome(data[2:])
             _vlog(f"MLS: welcome tid={tid} ok={ok}")
-            if ok:
-                self._send_json({"op": 23, "d": {"transition_id": tid}})
-            else:
-                self._send_json({"op": 31, "d": {"transition_id": tid}})
+            self._send_json({"op": 23 if ok else 31, "d": {"transition_id": tid}})
 
     def _start_heartbeat(self):
         self._heartbeat_thread = threading.Thread(
@@ -536,4 +562,3 @@ class VoiceGateway:
                 "op": 3,
                 "d": {"t": int(time.time() * 1000), "seq_ack": self._seq}
             })
-

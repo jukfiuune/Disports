@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-07 19:20+0000\n"
+"POT-Creation-Date: 2026-05-08 06:49+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/CallScreen.qml:55
+#: ../qml/CallScreen.qml:35
 msgid "Unknown Call"
 msgstr ""
 
@@ -113,31 +113,31 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/Main.qml:98
+#: ../qml/Main.qml:101
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:101
+#: ../qml/Main.qml:104
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:107
+#: ../qml/Main.qml:110
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:260 disports.desktop.in.h:1
+#: ../qml/Main.qml:290 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:264 ../qml/SettingsPage.qml:30
+#: ../qml/Main.qml:294 ../qml/SettingsPage.qml:30
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:342
+#: ../qml/Main.qml:372
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:347
+#: ../qml/Main.qml:377
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -219,6 +219,10 @@ msgstr ""
 
 #: ../qml/Sidebar.qml:160
 msgid "DMs"
+msgstr ""
+
+#: ../qml/components/DebugLogOverlay.qml:47
+msgid "Clear"
 msgstr ""
 
 #: ../qml/components/DeleteDialog.qml:10

@@ -9,10 +9,14 @@ dependencies_target:
   - gstreamer1.0-libav
   - gstreamer1.0-pulseaudio
   - libssl-dev
+  - qtmultimedia5-dev
+  - libqt5multimedia5-plugins
+  - libpython3.8-dev
 dependencies_host:
   - ninja-build
   - extra-cmake-modules
   - libssl-dev
+  - python3-dev
 libraries:
   libdave:
     builder: cmake
@@ -51,10 +55,8 @@ env_vars:
 image_setup:
   run:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
-    - apt-get update && apt-get install -y zip unzip pkg-config curl ninja-build make
+    - apt-get update && apt-get install -y zip unzip pkg-config curl ninja-build make python3-dev libpython3.8-dev
 postbuild:
-  - rm -rf install/src install/lib
   - mkdir -p install/lib && cp -v ../libdave/install/lib/libdave.so install/lib/
-  - mkdir -p install/src && cp -rv ../../../src/* install/src/
   - find install -name "__pycache__" -type d -exec rm -rf {} +
   - /usr/bin/bash install/build-python-deps.sh

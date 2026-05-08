@@ -8,6 +8,7 @@ import io.thp.pyotherside 1.4
 import "./"
 import "./logic"
 import "./components"
+import Disports 1.0
 
 MainView {
     id: root
@@ -80,6 +81,8 @@ MainView {
         onGatewayLog: function(data) {
             var message = (data && data.message) ? String(data.message) : ""
             console.log("Gateway: " + message)
+            globalLogModel.append({"logMessage": "[Gateway] " + message})
+            if (globalLogModel.count > 200) globalLogModel.remove(0)
         }
         onCallUpdate: function(data) {
             if (data && data.call) {
@@ -116,6 +119,10 @@ MainView {
                 navigationLogic.checkInitialState()
             })
         }
+        onVoiceStartRequested: VoiceAudio.startAudio()
+        onVoiceStopRequested:  VoiceAudio.stopAudio()
+        onVoiceSpeakerRequested: function(data) { VoiceAudio.setSpeakerphone(data.enabled) }
+        onVoiceMuteRequested: function(data) { VoiceAudio.setMuted(data.enabled) }
     }
 
     ChatLogic {
@@ -206,6 +213,29 @@ MainView {
 
     ListModel {
         id: chatMessageModel
+    }
+
+    ListModel {
+        id: globalLogModel
+    }
+
+    Timer {
+        id: logTimer
+        interval: 1000
+        running: appState.pythonReady
+        repeat: true
+        onTriggered: {
+            pythonBridge.call("discord_client.pop_voice_logs", [], function(logs) {
+                if (logs && logs.length > 0) {
+                    for (var i = 0; i < logs.length; i++) {
+                        globalLogModel.append({"logMessage": "[Voice] " + logs[i]});
+                        if (globalLogModel.count > 200) {
+                            globalLogModel.remove(0);
+                        }
+                    }
+                }
+            });
+        }
     }
 
     UnreadLogic {
@@ -389,6 +419,41 @@ MainView {
         }
         onSpeakerphoneToggled: function(enabled) {
             pythonBridge.call("discord_client.set_speakerphone", [enabled], function(){})
+        }
+        onMuteToggled: function(muted) {
+            pythonBridge.call("discord_client.set_muted", [muted], function(){})
+        }
+    }
+
+    DebugLogOverlay {
+        id: debugLogOverlay
+        model: globalLogModel
+        show: appState.showDebugLogs
+    }
+
+    Rectangle {
+        id: debugToggleBtn
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: units.gu(1)
+        anchors.topMargin: units.gu(8) // below header
+        width: units.gu(4)
+        height: units.gu(4)
+        color: appState.showDebugLogs ? "#00ff00" : "#333333"
+        opacity: 0.6
+        radius: units.gu(0.5)
+        z: 20000
+
+        Label {
+            anchors.centerIn: parent
+            text: "dbg"
+            color: "white"
+            font.pixelSize: units.gu(1.5)
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: appState.showDebugLogs = !appState.showDebugLogs
         }
     }
 
