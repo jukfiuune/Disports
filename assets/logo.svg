@@ -41,10 +41,6 @@
      style="opacity:0.05;fill:#fff"
      d="m0 0v512h108.2l76.4-132.3 71.4-123.7-68.9-120-0.2 0.3-78.7-136.3h-108.2z"
      id="path23726" />
-  <path
-     style="color:#000000;display:inline;opacity:0.666;fill:#ffffff;stroke-width:0.767112;-inkscape-stroke:none"
-     d="M 305.8638,318.96634 606.91622,620.01835 618.93517,607.99978 314.65054,303.71556 Z"
-     id="path24310" />
   <g
      transform="matrix(0.44165489,-0.25498957,0.25498957,0.44165489,254.24712,257.8632)"
      id="g23764">
@@ -96,4 +92,8 @@
          style="fill:#ffffff;fill-opacity:1;opacity:0.66611044" />
     </g>
   </g>
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;opacity:0.666;vector-effect:none;fill:#ffffff;enable-background:accumulate;stop-color:#000000;stop-opacity:1"
+     d="M 292.6778,342.23032 544.75391,778.8418 564.41406,767.49023 305.76671,319.49695 Z"
+     id="path1" />
 </svg>

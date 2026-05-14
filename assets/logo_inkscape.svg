@@ -5,8 +5,8 @@
    width="512"
    version="1.1"
    id="svg23772"
-   sodipodi:docname="logo.svg"
-   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   sodipodi:docname="logo_inkscape.svg"
+   inkscape:version="1.4.4 (dcaf3e7, 2026-05-05)"
    inkscape:export-filename="disports.png"
    inkscape:export-xdpi="300"
    inkscape:export-ydpi="300"
@@ -25,13 +25,13 @@
      inkscape:deskcolor="#d1d1d1"
      showgrid="false"
      showguides="true"
-     inkscape:zoom="0.35355339"
-     inkscape:cx="-558.61436"
-     inkscape:cy="219.2031"
-     inkscape:window-width="1854"
-     inkscape:window-height="1011"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
+     inkscape:zoom="0.70710678"
+     inkscape:cx="521.8448"
+     inkscape:cy="403.75797"
+     inkscape:window-width="1368"
+     inkscape:window-height="850"
+     inkscape:window-x="-6"
+     inkscape:window-y="-6"
      inkscape:window-maximized="1"
      inkscape:current-layer="svg23772" />
   <defs
@@ -68,11 +68,6 @@
      style="opacity:0.05;fill:#fff"
      d="m0 0v512h108.2l76.4-132.3 71.4-123.7-68.9-120-0.2 0.3-78.7-136.3h-108.2z"
      id="path23726" />
-  <path
-     style="color:#000000;display:inline;opacity:0.666;fill:#ffffff;stroke-width:0.767112;-inkscape-stroke:none"
-     d="M 305.8638,318.96634 606.91622,620.01835 618.93517,607.99978 314.65054,303.71556 Z"
-     id="path24310"
-     sodipodi:nodetypes="ccccc" />
   <g
      transform="matrix(0.44165489,-0.25498957,0.25498957,0.44165489,254.24712,257.8632)"
      id="g23764">
@@ -124,4 +119,9 @@
          style="fill:#ffffff;fill-opacity:1;opacity:0.66611044" />
     </g>
   </g>
+  <path
+     style="baseline-shift:baseline;display:inline;overflow:visible;opacity:0.666;vector-effect:none;fill:#ffffff;enable-background:accumulate;stop-color:#000000;stop-opacity:1"
+     d="M 292.6778,342.23032 544.75391,778.8418 564.41406,767.49023 305.76671,319.49695 Z"
+     id="path1"
+     sodipodi:nodetypes="ccccc" />
 </svg>
