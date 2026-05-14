@@ -5,8 +5,35 @@
    width="512"
    version="1.1"
    id="svg23772"
+   sodipodi:docname="logo.svg"
+   inkscape:version="1.2.2 (b0a8486541, 2022-12-01)"
+   inkscape:export-filename="disports.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview23774"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     showguides="true"
+     inkscape:zoom="0.35355339"
+     inkscape:cx="-558.61436"
+     inkscape:cy="219.2031"
+     inkscape:window-width="1854"
+     inkscape:window-height="1011"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg23772" />
   <defs
      id="defs23720">
     <linearGradient
@@ -44,7 +71,8 @@
   <path
      style="color:#000000;display:inline;opacity:0.666;fill:#ffffff;stroke-width:0.767112;-inkscape-stroke:none"
      d="M 305.8638,318.96634 606.91622,620.01835 618.93517,607.99978 314.65054,303.71556 Z"
-     id="path24310" />
+     id="path24310"
+     sodipodi:nodetypes="ccccc" />
   <g
      transform="matrix(0.44165489,-0.25498957,0.25498957,0.44165489,254.24712,257.8632)"
      id="g23764">
