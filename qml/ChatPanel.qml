@@ -170,6 +170,7 @@ Item {
             displayKind: model.displayKind || "default"
             discordMessageType: model.discordMessageType || "Default"
             medias: model.medias || []
+            richEmbeds: model.richEmbeds || []
             reactionsJson: model.reactionsJson || "[]"
             hasReply: !!model.hasReply
             replyMessageId: model.replyMessageId || ""

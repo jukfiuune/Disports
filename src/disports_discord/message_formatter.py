@@ -50,10 +50,17 @@ class MessageFormatterMixin:
             rich=True,
         )
 
-        raw_attachments = message.get("attachments", []) or []
-        embeds = message.get("embeds", []) or []
+        raw_attachments = list(message.get("attachments", []) or [])
+        embeds = list(message.get("embeds", []) or [])
+
+        # Extract attachments and embeds from forwarded messages so they render correctly
+        for snapshot in message.get("message_snapshots") or []:
+            snap_msg = snapshot.get("message") or {}
+            raw_attachments.extend(snap_msg.get("attachments", []) or [])
+            embeds.extend(snap_msg.get("embeds", []) or [])
 
         medias = []
+        rich_embeds = []
         for att in raw_attachments:
             medias.append(self.format_media(att))
 
@@ -111,6 +118,55 @@ class MessageFormatterMixin:
                         "filename": "GIF",
                         "is_gif_like": True,
                     }))
+            elif em_type == "rich":
+                import html
+                parts = []
+                
+                embed_author = (em.get("author") or {}).get("name")
+                if embed_author:
+                    parts.append(f"<b>{html.escape(embed_author)}</b>")
+                
+                embed_title = em.get("title")
+                if embed_title:
+                    embed_url = em.get("url")
+                    if embed_url:
+                        escaped_url = html.escape(embed_url, quote=True)
+                        parts.append(f'<a href="{escaped_url}"><b>{html.escape(embed_title)}</b></a>')
+                    else:
+                        parts.append(f"<b>{html.escape(embed_title)}</b>")
+                
+                embed_desc = em.get("description")
+                if embed_desc:
+                    parsed_desc = self.render_message_content(
+                        embed_desc,
+                        message.get("mentions", []) or [],
+                        guild_id=guild_id,
+                        rich=True
+                    )
+                    parts.append(parsed_desc)
+                
+                for field in em.get("fields") or []:
+                    fname = field.get("name")
+                    fval = field.get("value")
+                    if fname and fval:
+                        parsed_val = self.render_message_content(
+                            fval,
+                            message.get("mentions", []) or [],
+                            guild_id=guild_id,
+                            rich=True
+                        )
+                        # Add a line break before the field name for separation from the previous item
+                        parts.append(f"<br><b>{html.escape(fname)}</b><br>{parsed_val}")
+                
+                if parts:
+                    embed_html = "<br>".join(parts)
+                    embed_color_int = em.get("color")
+                    embed_color_hex = f"#{embed_color_int:06x}" if embed_color_int is not None else "#4f545c"
+                    
+                    rich_embeds.append({
+                        "color": embed_color_hex,
+                        "html": embed_html
+                    })
 
         if medias:
             temp_content = re.sub(r'https?://[^\s]+', '', message.get("content", ""))
@@ -167,6 +223,7 @@ class MessageFormatterMixin:
             "reactionsJson": json.dumps(self.format_reactions(raw_reactions), separators=(",", ":")),  # type: ignore[attr-defined]
             "authorBlocked": author_blocked,
             "blockedVisibility": blocked_visibility,
+            "richEmbeds": rich_embeds,
         }
     # Media
     @staticmethod

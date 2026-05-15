@@ -14,6 +14,7 @@ ListItem {
     property string displayKind: "default"
     property string discordMessageType: "Default"
     property var medias: []
+    property var richEmbeds: []
     property string reactionsJson: "[]"
     property var parsedReactions: []
 
@@ -250,6 +251,55 @@ ListItem {
                 body: ""
                 onMediaClicked: function(url, type) {
                     bubble.mediaClicked(url, type)
+                }
+            }
+        }
+
+        Repeater {
+            model: bubble.richEmbeds || []
+            delegate: Item {
+                width: parent.width
+                implicitHeight: Math.max(embedCol.height, units.gu(2)) + units.gu(1)
+
+                Rectangle {
+                    id: embedBar
+                    anchors {
+                        left: parent.left
+                        top: parent.top
+                        bottom: parent.bottom
+                        bottomMargin: units.gu(1)
+                    }
+                    width: units.dp(4)
+                    color: model.color || theme.palette.normal.base
+                    radius: units.dp(2)
+                }
+
+                Column {
+                    id: embedCol
+                    anchors {
+                        left: embedBar.right
+                        leftMargin: units.gu(1.5)
+                        right: parent.right
+                        top: parent.top
+                    }
+
+                    Label {
+                        width: parent.width
+                        text: model.html || ""
+                        textFormat: Text.RichText
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: units.gu(1.4)
+                        color: theme.palette.normal.backgroundSecondaryText
+                        lineHeight: 1.2
+                        onLinkActivated: {
+                            var prefix = "disports://channel/"
+                            if (link.indexOf(prefix) === 0) {
+                                bubble.channelMentionRequested(link.substring(prefix.length))
+                                return
+                            }
+                            Qt.openUrlExternally(link)
+                        }
+                    }
                 }
             }
         }
