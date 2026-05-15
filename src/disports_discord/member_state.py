@@ -223,9 +223,48 @@ class MemberStateMixin:
         if not allows and not denies:
             return "everyone"
 
-        import mmh3
         parts = [f"allow:{a}" for a in allows] + [f"deny:{d}" for d in denies]
-        return str(mmh3.hash(",".join(parts).encode(), signed=False))
+        key = ",".join(parts).encode()
+
+        # replaces mmh3 (c python package, not available on "all")
+        def fmix32(h: int) -> int:
+            h ^= h >> 16
+            h = (h * 0x85ebca6b) & 0xFFFFFFFF
+            h ^= h >> 13
+            h = (h * 0xc2b2ae35) & 0xFFFFFFFF
+            h ^= h >> 16
+            return h
+
+        length = len(key)
+        nblocks = length // 4
+        h1 = 0
+        c1 = 0xcc9e2d51
+        c2 = 0x1b873593
+
+        for i in range(nblocks):
+            k1 = int.from_bytes(key[i * 4:(i + 1) * 4], byteorder='little', signed=False)
+            k1 = (k1 * c1) & 0xFFFFFFFF
+            k1 = ((k1 << 15) | (k1 >> 17)) & 0xFFFFFFFF
+            k1 = (k1 * c2) & 0xFFFFFFFF
+            h1 ^= k1
+            h1 = ((h1 << 13) | (h1 >> 19)) & 0xFFFFFFFF
+            h1 = (h1 * 5 + 0xe6546b64) & 0xFFFFFFFF
+
+        tail = key[nblocks * 4:]
+        k1 = 0
+        if len(tail) >= 3:
+            k1 ^= tail[2] << 16
+        if len(tail) >= 2:
+            k1 ^= tail[1] << 8
+        if len(tail) >= 1:
+            k1 ^= tail[0]
+            k1 = (k1 * c1) & 0xFFFFFFFF
+            k1 = ((k1 << 15) | (k1 >> 17)) & 0xFFFFFFFF
+            k1 = (k1 * c2) & 0xFFFFFFFF
+            h1 ^= k1
+
+        h1 ^= length
+        return str(fmix32(h1))
         
     def _get_or_create_guild_sub(self, guild_id: str) -> _GuildSub:
         with self._member_state_lock:
