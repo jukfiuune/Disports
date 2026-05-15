@@ -139,12 +139,16 @@ class MessageFormatterMixin:
         if message_id:
             self._reaction_cache[message_id] = list(raw_reactions)  # type: ignore[attr-defined]
 
+        author_id_str = author.get("id", "")
+        author_blocked = self.is_blocked(author_id_str)  # type: ignore[attr-defined]
+        blocked_visibility = self.message_notification_visibility(message)  # type: ignore[attr-defined]
+
         return {
             "messageId": message_id,
-            "authorId": author.get("id", ""),
+            "authorId": author_id_str,
             "author": display_name,
             "initials": self.abbr(display_name, length=2),  # type: ignore[attr-defined]
-            "avatarCol": self.avatar_color(author.get("id", "")),  # type: ignore[attr-defined]
+            "avatarCol": self.avatar_color(author_id_str),  # type: ignore[attr-defined]
             "timestamp": self.format_timestamp(message.get("timestamp")),  # type: ignore[attr-defined]
             "body": content,
             "rawBody": message.get("content", ""),
@@ -161,6 +165,8 @@ class MessageFormatterMixin:
             "forwardedBody": forwarded["forwardedBody"],
             "hasForwarded": forwarded["hasForwarded"],
             "reactionsJson": json.dumps(self.format_reactions(raw_reactions), separators=(",", ":")),  # type: ignore[attr-defined]
+            "authorBlocked": author_blocked,
+            "blockedVisibility": blocked_visibility,
         }
     # Media
     @staticmethod

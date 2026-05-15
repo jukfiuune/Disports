@@ -103,6 +103,7 @@ MainView {
                     appState.runningUnderClickableDesktop = true
                 navigationLogic.checkInitialState()
             })
+            pythonBridge.call("discord_client.set_preference", ["blockedMessageVisibility", appSettings.blockedMessageVisibility], function(){});
         }
     }
 
@@ -171,6 +172,16 @@ MainView {
         property int themeMode: 2
         property bool inlineGifPlayback: true
         property string uitkTheme: ""
+        property string blockedMessageVisibility: "reveal"
+    }
+
+    Connections {
+        target: appSettings
+        onBlockedMessageVisibilityChanged: {
+            if (appState.pythonReady) {
+                pythonBridge.call("discord_client.set_preference", ["blockedMessageVisibility", appSettings.blockedMessageVisibility], function(){});
+            }
+        }
     }
 
     // Shared models

@@ -343,6 +343,7 @@ class DiscordClient:
 
         if event_type == "READY":
             self.state.apply_ready(data)
+            self.state.apply_relationships(data.get("relationships") or [])
             self._emit("ready", self.state.format_ready_payload())
             return
 
@@ -480,6 +481,16 @@ class DiscordClient:
             self._emit("typing", self.state.format_typing(data))
             return
 
+        if event_type == "RELATIONSHIP_ADD":
+            self.state.apply_relationship_add(data)
+            self._emit("relationships_update", self.state.format_private_channel_payload())
+            return
+
+        if event_type == "RELATIONSHIP_REMOVE":
+            self.state.apply_relationship_remove(data)
+            self._emit("relationships_update", self.state.format_private_channel_payload())
+            return
+
         if event_type in (
             "MESSAGE_REACTION_ADD",
             "MESSAGE_REACTION_REMOVE",
@@ -507,6 +518,9 @@ class DiscordClient:
     def _emit(self, name: str, payload: dict[str, Any]) -> None:
         if self.emitter:
             self.emitter(name, payload)
+
+    def set_preference(self, key: str, value: str) -> None:
+        self.state.client_preferences[key] = value
 
     def _emit_channel_unread(self, channel_id: str) -> None:
         guild_id = self.state.get_guild_for_channel(channel_id)

@@ -26,7 +26,8 @@ QtObject {
                 "status": contact.status || "offline",
                 "iconName": "",
                 "sortKey": contact.sortKey || 0,
-                "contactId": contact.contactId || ""
+                "contactId": contact.contactId || "",
+                "blocked": !!contact.blocked
             })
         }
 
@@ -44,7 +45,8 @@ QtObject {
                 "status": "",
                 "iconName": "contact-group",
                 "sortKey": group.sortKey || 0,
-                "contactId": ""
+                "contactId": "",
+                "blocked": false
             })
         }
 

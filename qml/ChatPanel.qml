@@ -180,6 +180,8 @@ Item {
             forwardedAuthor: model.forwardedAuthor || ""
             forwardedBody: model.forwardedBody || ""
             highlighted: chatPanel.highlightedMessageId !== "" && chatPanel.highlightedMessageId === (model.messageId || "")
+            authorBlocked: !!model.authorBlocked
+            blockedVisibility: model.blockedVisibility || "show"
             onReplyRequested: function(messageId) { chatPanel.replyRequested(messageId) }
             onJumpRequested: function(messageId) { chatPanel.jumpToMessage(messageId) }
             onEditRequested: function(messageId, currentBody) {

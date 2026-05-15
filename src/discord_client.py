@@ -63,6 +63,10 @@ def clear_token() -> dict:
     return {"ok": True}
 
 
+def set_preference(key: str, value: str) -> None:
+    _client.set_preference(key, value)
+
+
 def dev_flags() -> dict:
     dm = os.environ.get("CLICKABLE_DESKTOP_MODE", "").strip().lower()
 

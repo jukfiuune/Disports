@@ -18,12 +18,22 @@ Page {
         }
     }
 
+    ListModel {
+        id: blockedVisibilityModel
+        function initialize() {
+            blockedVisibilityModel.append({ text: i18n.tr("Hide completely"), value: "hide" })
+            blockedVisibilityModel.append({ text: i18n.tr("Reveal placeholder"), value: "reveal" })
+            blockedVisibilityModel.append({ text: i18n.tr("Show normally"), value: "show" })
+        }
+    }
+
     readonly property var settingsStore: settingsPage.settingsObject ? settingsPage.settingsObject : localSettings
 
     Settings {
         id: localSettings
         property int themeMode: 2
         property bool inlineGifPlayback: true
+        property string blockedMessageVisibility: "reveal"
     }
 
     header: PageHeader {
@@ -107,6 +117,42 @@ Page {
                     }
                     checked: settingsStore.inlineGifPlayback
                     onCheckedChanged: settingsStore.inlineGifPlayback = checked
+                }
+            }
+
+            Rectangle {
+                width: parent.width; height: units.dp(1)
+                color: theme.palette.normal.base
+            }
+
+            Label {
+                text: i18n.tr("Blocked messages")
+                font.pixelSize: units.gu(1.6)
+                font.bold: true
+            }
+
+            OptionSelector {
+                id: blockedChooser
+                width: parent.width
+                model: blockedVisibilityModel
+                containerHeight: itemHeight * blockedVisibilityModel.count
+                delegate: OptionSelectorDelegate {
+                    text: model.text
+                }
+                onDelegateClicked: {
+                    var mode = blockedVisibilityModel.get(index).value
+                    if (settingsStore.blockedMessageVisibility !== mode) {
+                        settingsStore.blockedMessageVisibility = mode
+                    }
+                }
+                Component.onCompleted: {
+                    blockedVisibilityModel.initialize()
+                    for (var i = 0; i < blockedVisibilityModel.count; i++) {
+                        if (blockedVisibilityModel.get(i).value === settingsStore.blockedMessageVisibility) {
+                            blockedChooser.selectedIndex = i
+                            break
+                        }
+                    }
                 }
             }
 

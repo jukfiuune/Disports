@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-15 20:26+0000\n"
+"POT-Creation-Date: 2026-05-15 21:07+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:34
+#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:44
 msgid "Back"
 msgstr ""
 
@@ -37,27 +37,27 @@ msgstr ""
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:267
+#: ../qml/ChatPanel.qml:269
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:267 ../qml/ChatPanel.qml:348
+#: ../qml/ChatPanel.qml:269 ../qml/ChatPanel.qml:350
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:276
+#: ../qml/ChatPanel.qml:278
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:346
+#: ../qml/ChatPanel.qml:348
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:348
+#: ../qml/ChatPanel.qml:350
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:349
+#: ../qml/ChatPanel.qml:351
 msgid "Type a message..."
 msgstr ""
 
@@ -121,19 +121,19 @@ msgstr ""
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:248 disports.desktop.in.h:1
+#: ../qml/Main.qml:259 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:252 ../qml/SettingsPage.qml:30
+#: ../qml/Main.qml:263 ../qml/SettingsPage.qml:40
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:323
+#: ../qml/Main.qml:334
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:328
+#: ../qml/Main.qml:339
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -145,24 +145,32 @@ msgstr ""
 msgid "Open Externally"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:61 ../qml/components/DeleteDialog.qml:14
+#: ../qml/MessageBubble.qml:74 ../qml/components/DeleteDialog.qml:14
 msgid "Delete"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:72
+#: ../qml/MessageBubble.qml:85
 msgid "Reply"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:79
+#: ../qml/MessageBubble.qml:92
 msgid "Edit"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:86
+#: ../qml/MessageBubble.qml:99
 msgid "Copy"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:97
+#: ../qml/MessageBubble.qml:110
 msgid "React"
+msgstr ""
+
+#: ../qml/MessageBubble.qml:152
+msgid "Message from blocked user"
+msgstr ""
+
+#: ../qml/MessageBubble.qml:161
+msgid "Show"
 msgstr ""
 
 #: ../qml/MessageMedia.qml:118
@@ -197,19 +205,35 @@ msgstr ""
 msgid "Dark"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:55
+#: ../qml/SettingsPage.qml:24
+msgid "Hide completely"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:25
+msgid "Reveal placeholder"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:26
+msgid "Show normally"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:65
 msgid "Theme"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:100
+#: ../qml/SettingsPage.qml:110
 msgid "Autoplay GIFs"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:121
+#: ../qml/SettingsPage.qml:129
+msgid "Blocked messages"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:167
 msgid "Log out"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:135
+#: ../qml/SettingsPage.qml:181
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 
