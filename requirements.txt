@@ -1,3 +1,4 @@
 qrcode
 pypng
 websocket-client
+mmh3

@@ -140,6 +140,12 @@ class DiscordGateway:
         )
         return True
 
+    def guild_subscribe_raw(self, payload: dict) -> bool:
+        if not self._ws:
+            return False
+        self._ws.send_json(payload)
+        return True
+
     def _run_forever(self) -> None:
         attempt = 0
         while not self._stop.is_set():

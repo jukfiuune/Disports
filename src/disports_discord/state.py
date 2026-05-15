@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from .read_state import ReadStateMixin
 from .guild_state import GuildStateMixin
+from .member_state import MemberStateMixin
 from .message_formatter import MessageFormatterMixin
 from .reactions import ReactionsMixin
 from .permissions import PermissionsMixin
@@ -10,6 +11,7 @@ from .formatters import FormattersMixin
 class DiscordState(
     ReadStateMixin,
     GuildStateMixin,
+    MemberStateMixin,
     MessageFormatterMixin,
     ReactionsMixin,
     PermissionsMixin,

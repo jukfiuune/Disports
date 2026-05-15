@@ -48,6 +48,7 @@ class DiscordClient:
             self._handle_gateway_event,
             self._handle_gateway_log,
         )
+        self.state._send_gateway = self.gateway.guild_subscribe_raw
         self.gateway.start()
         return True
 
@@ -55,6 +56,7 @@ class DiscordClient:
         if self.gateway:
             self.gateway.stop()
             self.gateway = None
+        self.state._send_gateway = None
         self.stop_qr_login()
         self.http.set_token(None)
         return True
@@ -123,6 +125,10 @@ class DiscordClient:
             (active_threads.get("threads") or []) if isinstance(active_threads, dict) else [],
         )
         self.state.set_guild_channels(guild_id, merged_channels)
+
+        if self.gateway:
+            self.state.subscribe_guild_channel(guild_id, "")
+
         self._emit(
             "guild_sidebar",
             {"guilds": self.state.format_sidebar_guild_rows()},
@@ -286,6 +292,9 @@ class DiscordClient:
         if channel_id:
             self.state.set_active_channel(channel_id)
             self._emit_channel_unread(channel_id)
+            guild_id = self.state.get_guild_for_channel(channel_id)
+            if guild_id and self.gateway:
+                self.state.subscribe_guild_channel(guild_id, channel_id)
         else:
             self.state.set_active_channel("")
         return True
@@ -376,6 +385,20 @@ class DiscordClient:
                         "guildId": guild_id,
                     },
                 )
+            return
+
+        if event_type == "GUILD_MEMBER_LIST_UPDATE":
+            self.state.apply_member_list_update(data)
+            guild_id = str(data.get("guild_id") or "")
+            self._emit(
+                "member_list_update",
+                {
+                    "guildId": guild_id,
+                    "listId": str(data.get("id") or "everyone"),
+                    "memberCount": int(data.get("member_count") or 0),
+                    "onlineCount": int(data.get("online_count") or 0),
+                },
+            )
             return
 
         if event_type in ("CHANNEL_CREATE", "CHANNEL_UPDATE", "THREAD_CREATE", "THREAD_UPDATE"):
