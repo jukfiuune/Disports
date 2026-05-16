@@ -9,6 +9,14 @@ Page {
     property string errorText: ""
     property string qrImageSource: ""
     property string qrStatusText: ""
+    property bool tosDialogOpened: false
+
+    onVisibleChanged: {
+        if (visible && !tosDialogOpened) {
+            Popups.PopupUtils.open(tosDialogComponent)
+            tosDialogOpened = true
+        }
+    }
 
     signal tokenLoginRequested(string token)
     signal refreshQrRequested()
@@ -74,7 +82,7 @@ Page {
 
             Label {
                 width: parent.width
-                text: loginPage.qrStatusText !== "" ? loginPage.qrStatusText : i18n.tr("Open Discord on your phone and scan to sign in.")
+                text: loginPage.qrStatusText !== "" ? loginPage.qrStatusText : i18n.tr("Open Discord on your Android or iOS device and scan to sign in.")
                 wrapMode: Text.WordWrap
                 horizontalAlignment: Text.AlignHCenter
                 color: theme.palette.normal.backgroundSecondaryText
@@ -103,7 +111,7 @@ Page {
 
             Button {
                 width: parent.width
-                text: i18n.tr("Paste a token instead")
+                text: i18n.tr("Paste a token instead (not recommended)")
                 onClicked: {
                     var popup = __popups.open(tokenDialogComponent)
                 }
@@ -141,6 +149,42 @@ Page {
                     var t = tokenField.text;
                     Popups.PopupUtils.close(tokenDialog);
                     loginPage.tokenLoginRequested(t);
+                }
+            }
+        }
+    }
+    Component {
+        id: tosDialogComponent
+        Popups.Dialog {
+            id: tosDialog
+            title: i18n.tr("Warning")
+
+            Column {
+                width: parent.width
+                spacing: units.gu(2)
+
+                Label {
+                    width: parent.width
+                    text: i18n.tr("Using any unofficial Discord client is against Discord's Terms of Service and may result in your account being restricted or permanently banned (I've tried to minimize the risk of this as much as possible).")
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    font.pixelSize: units.gu(1.8)
+                }
+
+                Label {
+                    width: parent.width
+                    text: i18n.tr("Use Disports at your own risk.")
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    font.bold: true
+                    font.pixelSize: units.gu(1.8)
+                }
+
+                Button {
+                    width: parent.width
+                    text: i18n.tr("I understand")
+                    color: theme.palette.normal.positive
+                    onClicked: Popups.PopupUtils.close(tosDialog)
                 }
             }
         }

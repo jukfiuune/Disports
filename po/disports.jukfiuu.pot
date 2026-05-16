@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-16 10:12+0000\n"
+"POT-Creation-Date: 2026-05-16 19:18+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -65,48 +65,67 @@ msgstr ""
 msgid "Direct Messages"
 msgstr ""
 
-#: ../qml/LoginPage.qml:17 ../qml/LoginPage.qml:137
+#: ../qml/LoginPage.qml:25 ../qml/LoginPage.qml:145
 msgid "Sign In"
 msgstr ""
 
-#: ../qml/LoginPage.qml:38
+#: ../qml/LoginPage.qml:46
 msgid "Scan the QR code with the Discord mobile app, or paste a token instead."
 msgstr ""
 
-#: ../qml/LoginPage.qml:68
+#: ../qml/LoginPage.qml:76
 msgid "Preparing QR code..."
 msgstr ""
 
-#: ../qml/LoginPage.qml:68
+#: ../qml/LoginPage.qml:76
 msgid "Tap refresh to try again"
 msgstr ""
 
-#: ../qml/LoginPage.qml:77
-msgid "Open Discord on your phone and scan to sign in."
+#: ../qml/LoginPage.qml:85
+msgid "Open Discord on your Android or iOS device and scan to sign in."
 msgstr ""
 
-#: ../qml/LoginPage.qml:85
+#: ../qml/LoginPage.qml:93
 msgid "Refresh QR code"
 msgstr ""
 
-#: ../qml/LoginPage.qml:106
-msgid "Paste a token instead"
+#: ../qml/LoginPage.qml:114
+msgid "Paste a token instead (not recommended)"
 msgstr ""
 
-#: ../qml/LoginPage.qml:121
+#: ../qml/LoginPage.qml:129
 msgid "Manual Login"
 msgstr ""
 
-#: ../qml/LoginPage.qml:122
+#: ../qml/LoginPage.qml:130
 msgid "Paste your Discord account token to sign in directly."
 msgstr ""
 
-#: ../qml/LoginPage.qml:127
+#: ../qml/LoginPage.qml:135
 msgid "Token"
 msgstr ""
 
-#: ../qml/LoginPage.qml:132 ../qml/components/DeleteDialog.qml:22
+#: ../qml/LoginPage.qml:140 ../qml/components/DeleteDialog.qml:22
 msgid "Cancel"
+msgstr ""
+
+#: ../qml/LoginPage.qml:160
+msgid "Warning"
+msgstr ""
+
+#: ../qml/LoginPage.qml:168
+msgid ""
+"Using any unofficial Discord client is against Discord's Terms of Service "
+"and may result in your account being restricted or permanently banned (I've "
+"tried to minimize the risk of this as much as possible)."
+msgstr ""
+
+#: ../qml/LoginPage.qml:176
+msgid "Use Disports at your own risk."
+msgstr ""
+
+#: ../qml/LoginPage.qml:185
+msgid "I understand"
 msgstr ""
 
 #: ../qml/Main.qml:86
