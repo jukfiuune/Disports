@@ -146,13 +146,8 @@ Item {
                             id: inlineGifPlayer
                             autoPlay: true
                             muted: true
+                            loops: MediaPlayer.Infinite
                             source: mediaRoot.mediaUrl
-                            onStatusChanged: {
-                                if (status === MediaPlayer.EndOfMedia && mediaRoot.inlineGifMode) {
-                                    seek(0)
-                                    play()
-                                }
-                            }
                         }
 
                         VideoOutput {

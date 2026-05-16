@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-15 21:52+0000\n"
+"POT-Creation-Date: 2026-05-16 10:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -181,15 +181,15 @@ msgstr ""
 msgid "Tap to play video"
 msgstr ""
 
-#: ../qml/MessageMedia.qml:225
+#: ../qml/MessageMedia.qml:220
 msgid "Open in browser"
 msgstr ""
 
-#: ../qml/MessageMedia.qml:267
+#: ../qml/MessageMedia.qml:262
 msgid "Attachment"
 msgstr ""
 
-#: ../qml/MessageMedia.qml:267
+#: ../qml/MessageMedia.qml:262
 msgid "Audio attachment"
 msgstr ""
 
@@ -237,7 +237,7 @@ msgstr ""
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 
-#: ../qml/Sidebar.qml:179
+#: ../qml/Sidebar.qml:175
 msgid "DMs"
 msgstr ""
 
@@ -358,18 +358,18 @@ msgstr ""
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:243
+#: ../qml/logic/ChatLogic.qml:239
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:245
+#: ../qml/logic/ChatLogic.qml:241
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:247
+#: ../qml/logic/ChatLogic.qml:243
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:251
+#: ../qml/logic/ChatLogic.qml:247
 msgid "Message"
 msgstr ""
