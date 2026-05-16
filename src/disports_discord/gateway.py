@@ -11,7 +11,7 @@ from typing import Callable
 import websocket
 from websocket import ABNF, WebSocketException
 
-from .constants import GATEWAY_PROPERTIES, GATEWAY_URL, USER_AGENT, build_gateway_url
+from .constants import GATEWAY_CAPABILITIES, GATEWAY_PROPERTIES, GATEWAY_URL, USER_AGENT, build_gateway_url
 from .errors import GatewayClosed, ReconnectRequested
 
 ZLIB_SUFFIX = b"\x00\x00\xff\xff"
@@ -262,6 +262,7 @@ class DiscordGateway:
                 "op": 2,
                 "d": {
                     "token": self.token,
+                    "capabilities": GATEWAY_CAPABILITIES,
                     # NOTE: "compress": False disables per-message deflate.
                     # We use transport-level zlib-stream compression instead.
                     "compress": False,
