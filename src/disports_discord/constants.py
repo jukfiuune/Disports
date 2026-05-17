@@ -52,10 +52,6 @@ _LAUNCH_ID = _format_uuid(random.getrandbits(64), random.getrandbits(64))
 _HEARTBEAT_SESSION_ID = _format_uuid(random.getrandbits(64), random.getrandbits(64))
 _LAUNCH_SIGNATURE = _generate_launch_signature()
 
-
-GATEWAY_CAPABILITIES = 37563 
-
-
 def build_super_properties() -> str:
     payload = {
         "os": "Linux",
