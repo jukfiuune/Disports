@@ -42,6 +42,7 @@ If you still need to use token login, here's how to find your token:
 - [ ] Uploading attachments (images, videos, etc)
 - [ ] Ping people
 - [ ] Message styling (Markdown)
+- [ ] Nitro features
 - [ ] Offline storage (server messages, DMs, last messages, etc)
 - [ ] Notifications
 - [ ] Voice calls and channels

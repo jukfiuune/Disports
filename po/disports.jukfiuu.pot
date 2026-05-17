@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-17 10:05+0000\n"
+"POT-Creation-Date: 2026-05-17 11:44+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,11 +17,11 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:86
+#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:87
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:44
+#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:46
 msgid "Back"
 msgstr ""
 
@@ -29,36 +29,50 @@ msgstr ""
 msgid "Info"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:116
+#: ../qml/ChatPanel.qml:117
 msgid "Load older messages"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:116 ../qml/components/EmojiPickerContent.qml:277
+#: ../qml/ChatPanel.qml:117 ../qml/components/EmojiPickerContent.qml:277
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:267
+#: ../qml/ChatPanel.qml:268
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:267 ../qml/ChatPanel.qml:348
+#: ../qml/ChatPanel.qml:268 ../qml/ChatPanel.qml:349
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:276
+#: ../qml/ChatPanel.qml:277
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:346
+#: ../qml/ChatPanel.qml:347
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:348
+#: ../qml/ChatPanel.qml:349
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:349
+#: ../qml/ChatPanel.qml:350
 msgid "Type a message..."
+msgstr ""
+
+#: ../qml/ChatPanel.qml:463
+msgid "Character Limit Exceeded"
+msgstr ""
+
+#: ../qml/ChatPanel.qml:471
+msgid ""
+"Messages cannot exceed 2000 characters. Your text has been truncated to fit "
+"the limit."
+msgstr ""
+
+#: ../qml/ChatPanel.qml:479
+msgid "OK"
 msgstr ""
 
 #: ../qml/DmPanel.qml:18
@@ -140,19 +154,19 @@ msgstr ""
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:259 disports.desktop.in.h:1
+#: ../qml/Main.qml:260 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:263 ../qml/SettingsPage.qml:40
+#: ../qml/Main.qml:264 ../qml/SettingsPage.qml:42
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:334
+#: ../qml/Main.qml:335
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:339
+#: ../qml/Main.qml:340
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -236,23 +250,27 @@ msgstr ""
 msgid "Show normally"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:65
+#: ../qml/SettingsPage.qml:67
 msgid "Theme"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:110
+#: ../qml/SettingsPage.qml:112
 msgid "Autoplay GIFs"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:129
+#: ../qml/SettingsPage.qml:131
 msgid "Blocked messages"
 msgstr ""
 
 #: ../qml/SettingsPage.qml:167
+msgid "Max message box lines"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:196
 msgid "Log out"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:181
+#: ../qml/SettingsPage.qml:210
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 

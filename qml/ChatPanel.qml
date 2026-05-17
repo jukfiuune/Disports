@@ -26,6 +26,7 @@ Item {
     property string editMessageId: ""
     property string editOriginalBody: ""
     property bool inlineGifPlayback: false
+    property int composerMaxLines: 3
     property bool showHeader: true
     property bool initialScrollPending: channelId !== ""
     property bool anchoredToBottom: true
@@ -337,7 +338,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     autoSize: true
-                    maximumLineCount: 3
+                    maximumLineCount: chatPanel.composerMaxLines
                     activeFocusOnPress: true
                     selectByMouse: true
                     mouseSelectionMode: TextEdit.SelectWords
@@ -358,6 +359,10 @@ Item {
                             text = chatPanel.draftText
                     }
                     onTextChanged: {
+                        if (text.length > 2000) {
+                            text = text.substring(0, 2000)
+                            Popups.PopupUtils.open(charLimitDialogComponent)
+                        }
                         if (text !== chatPanel.draftText)
                             chatPanel.draftEdited(text)
                     }
@@ -447,6 +452,34 @@ Item {
                     chatPanel.insertEmoji(text, emojiData)
                 }
                 Popups.PopupUtils.close(emojiDialog)
+            }
+        }
+    }
+
+    Component {
+        id: charLimitDialogComponent
+        Popups.Dialog {
+            id: charLimitDialog
+            title: i18n.tr("Character Limit Exceeded")
+
+            Column {
+                width: parent.width
+                spacing: units.gu(2)
+
+                Label {
+                    width: parent.width
+                    text: i18n.tr("Messages cannot exceed 2000 characters. Your text has been truncated to fit the limit.")
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    font.pixelSize: units.gu(1.8)
+                }
+
+                Button {
+                    width: parent.width
+                    text: i18n.tr("OK")
+                    color: theme.palette.normal.positive
+                    onClicked: Popups.PopupUtils.close(charLimitDialog)
+                }
             }
         }
     }
