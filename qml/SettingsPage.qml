@@ -27,6 +27,7 @@ Page {
         }
     }
 
+
     readonly property var settingsStore: settingsPage.settingsObject ? settingsPage.settingsObject : localSettings
 
     Settings {
@@ -34,6 +35,7 @@ Page {
         property int themeMode: 2
         property bool inlineGifPlayback: true
         property string blockedMessageVisibility: "reveal"
+        property int maxComposerLines: 3
     }
 
     header: PageHeader {
@@ -152,6 +154,33 @@ Page {
                             blockedChooser.selectedIndex = i
                             break
                         }
+                    }
+                }
+            }
+
+            Rectangle {
+                width: parent.width; height: units.dp(1)
+                color: theme.palette.normal.base
+            }
+
+            Label {
+                text: i18n.tr("Max message box lines")
+                font.pixelSize: units.gu(1.6)
+                font.bold: true
+            }
+
+            Slider {
+                id: linesSlider
+                width: parent.width
+                minimumValue: 1
+                maximumValue: 6
+                stepSize: 1
+                live: true
+                value: settingsStore.maxComposerLines
+                onValueChanged: {
+                    var rounded = Math.round(value)
+                    if (settingsStore.maxComposerLines !== rounded) {
+                        settingsStore.maxComposerLines = rounded
                     }
                 }
             }

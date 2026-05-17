@@ -173,6 +173,7 @@ MainView {
         property bool inlineGifPlayback: true
         property string uitkTheme: ""
         property string blockedMessageVisibility: "reveal"
+        property int maxComposerLines: 3
     }
 
     Connections {
