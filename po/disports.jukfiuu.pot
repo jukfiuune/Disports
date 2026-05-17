@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-17 09:31+0000\n"
+"POT-Creation-Date: 2026-05-17 10:05+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:90
+#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:86
 msgid "Chat"
 msgstr ""
 
@@ -29,35 +29,35 @@ msgstr ""
 msgid "Info"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:120
+#: ../qml/ChatPanel.qml:116
 msgid "Load older messages"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:120 ../qml/components/EmojiPickerContent.qml:277
+#: ../qml/ChatPanel.qml:116 ../qml/components/EmojiPickerContent.qml:277
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:270
+#: ../qml/ChatPanel.qml:267
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:270 ../qml/ChatPanel.qml:351
+#: ../qml/ChatPanel.qml:267 ../qml/ChatPanel.qml:348
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:279
+#: ../qml/ChatPanel.qml:276
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:349
+#: ../qml/ChatPanel.qml:346
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:351
+#: ../qml/ChatPanel.qml:348
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:352
+#: ../qml/ChatPanel.qml:349
 msgid "Type a message..."
 msgstr ""
 
