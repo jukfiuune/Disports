@@ -47,6 +47,30 @@ from .qt_audio import (
 
 _OPUS_SILENCE = bytes([0xF8, 0xFF, 0xFE])
 _SILENCE_FRAMES = 5
+_VOICE_DEBUG_INTERVAL = 5.0
+
+
+def _rtp_aead_header_len(packet: bytes) -> int:
+    cc = packet[0] & 0x0F
+    offset = 12 + cc * 4
+    if packet[0] & 0x10:
+        offset += 4
+    return offset
+
+
+def _rtp_payload_offset(packet: bytes) -> Optional[int]:
+    cc = packet[0] & 0x0F
+    offset = 12 + cc * 4
+    if len(packet) < offset:
+        return None
+    if packet[0] & 0x10:
+        if len(packet) < offset + 4:
+            return None
+        ext_words = struct.unpack_from(">H", packet, offset + 2)[0]
+        offset += 4 + ext_words * 4
+    if len(packet) < offset:
+        return None
+    return offset
 
 
 class VoiceUdpClient:
@@ -65,6 +89,8 @@ class VoiceUdpClient:
         self._stop = threading.Event()
         self._recv_thread: Optional[threading.Thread] = None
         self._cap_thread: Optional[threading.Thread] = None
+        self._stop_lock = threading.Lock()
+        self._stopped = False
 
         self._send_sequence  = 0
         self._send_timestamp = 0
@@ -74,6 +100,15 @@ class VoiceUdpClient:
         self._capture  = QtCapture()
         self._encoder  = OpusEncoder()
         self._decoders: dict[int, OpusDecoder] = {}
+        self._rx_stats: dict[str, int] = {
+            "rtp": 0,
+            "transport_ok": 0,
+            "transport_fail": 0,
+            "dave_ok": 0,
+            "dave_fail": 0,
+            "opus_ok": 0,
+        }
+        self._last_rx_debug = 0.0
 
         _vlog(f"VoiceUDP init: encoder={'ok' if self._encoder._enc is not None else 'FAIL'}")
 
@@ -118,13 +153,27 @@ class VoiceUdpClient:
             _vlog("UDP capture loop disabled: Opus encoder unavailable")
 
     def stop(self):
+        with self._stop_lock:
+            if self._stopped:
+                return
+            self._stopped = True
         _vlog("VoiceUDP stopping")
         self._stop.set()
-        stop_audio()
+        self._capture.close()
+
+        current = threading.current_thread()
+        if self._cap_thread and self._cap_thread is not current:
+            self._cap_thread.join(timeout=1.5)
+
         try:
             self._sock.close()
         except Exception:
             pass
+
+        if self._recv_thread and self._recv_thread is not current:
+            self._recv_thread.join(timeout=1.5)
+
+        stop_audio()
         for dec in self._decoders.values():
             dec.close()
         self._decoders.clear()
@@ -154,40 +203,77 @@ class VoiceUdpClient:
                 continue
             if data[0] == 0x00 and data[1] == 0x02:
                 continue
+            self._rx_stats["rtp"] += 1
             payload_type = data[1] & 0x7F
             if 200 <= payload_type <= 204:
                 continue
+            if payload_type != 120:
+                continue
             if not self.secret_key:
                 continue
-            cc      = data[0] & 0x0F
-            has_ext = bool(data[0] & 0x10)
-            hdr_len = 12 + cc * 4
-            if has_ext and len(data) > hdr_len + 4:
-                hdr_len += 4 + struct.unpack_from(">H", data, hdr_len + 2)[0] * 4
+            aead_hdr_len = _rtp_aead_header_len(data)
+            payload_offset = _rtp_payload_offset(data)
+            if payload_offset is None or len(data) < aead_hdr_len + 4:
+                continue
             pkt_ssrc  = struct.unpack_from(">I", data, 8)[0]
+            if pkt_ssrc == self.ssrc:
+                continue
             nonce_val = struct.unpack(">I", data[-4:])[0]
             nonce     = struct.pack(">I", nonce_val).ljust(12, b"\x00")
-            ciphertext = data[hdr_len:-4]
-            aad        = data[:hdr_len]
+            ciphertext = data[aead_hdr_len:-4]
+            aad        = data[:aead_hdr_len]
             try:
                 if not _HAS_AESGCM:
                     continue
-                decrypted = AESGCM(self.secret_key).decrypt(nonce, ciphertext, aad)
+                transport_plaintext = AESGCM(self.secret_key).decrypt(nonce, ciphertext, aad)
             except Exception:
+                self._rx_stats["transport_fail"] += 1
+                self._maybe_log_rx_stats()
                 continue
-            if decrypted == _OPUS_SILENCE:
+            self._rx_stats["transport_ok"] += 1
+
+            payload_start = payload_offset - aead_hdr_len
+            if payload_start < 0 or payload_start > len(transport_plaintext):
+                continue
+            encrypted_payload = transport_plaintext[payload_start:]
+
+            if encrypted_payload == _OPUS_SILENCE:
                 continue
             if not self.dave_session:
                 continue
-            opus_frame = self.dave_session.decrypt_audio_frame(pkt_ssrc, decrypted)
+            opus_frame = self.dave_session.decrypt_audio_frame(pkt_ssrc, encrypted_payload)
             if not opus_frame:
+                self._rx_stats["dave_fail"] += 1
+                self._maybe_log_rx_stats()
                 continue
+            self._rx_stats["dave_ok"] += 1
             dec = self._get_decoder(pkt_ssrc)
             if dec is None:
                 continue
-            pcm = dec.decode(opus_frame)
+            try:
+                pcm = dec.decode(opus_frame)
+            except Exception as exc:
+                _vlog(f"Opus decode error: {exc}")
+                continue
             if pcm:
+                self._rx_stats["opus_ok"] += 1
                 self._playback.write(pcm)
+                self._maybe_log_rx_stats()
+
+    def _maybe_log_rx_stats(self):
+        now = time.time()
+        if now - self._last_rx_debug < _VOICE_DEBUG_INTERVAL:
+            return
+        self._last_rx_debug = now
+        _vlog(
+            "UDP rx stats "
+            f"rtp={self._rx_stats['rtp']} "
+            f"transport_ok={self._rx_stats['transport_ok']} "
+            f"transport_fail={self._rx_stats['transport_fail']} "
+            f"dave_ok={self._rx_stats['dave_ok']} "
+            f"dave_fail={self._rx_stats['dave_fail']} "
+            f"opus_ok={self._rx_stats['opus_ok']}"
+        )
 
     def _capture_loop(self):
         while not self._stop.is_set():
@@ -215,7 +301,7 @@ class VoiceUdpClient:
                     self._sock.sendto(packet, (self.server_ip, self.server_port))
                 except Exception:
                     pass
-        _vlog("Capture loop ending — sending silence frames")
+        _vlog("Capture loop ending - sending silence frames")
         self._send_silence_frames()
 
     def _send_silence_frames(self):
@@ -383,8 +469,12 @@ class VoiceGateway:
         elif op == 8:  self._on_hello(d)
         elif op == 4:  self._on_session_description(d)
         elif op == 5:  self._on_speaking(d)
-        elif op == 12: self._on_client_connect(d)
+        elif op == 11: self._on_client_connect(d)
+        elif op == 12: self._on_client_connect(d)  # legacy/older gateway shape
+        elif op == 14: self._on_session_update(d)
         elif op == 16: self._on_capabilities_ack()
+        elif op == 21: self._on_dave_prepare_transition(d)
+        elif op == 22: self._on_dave_execute_transition(d)
         elif op == 24: self._on_dave_prepare_epoch(d)
 
     def _on_ready(self, d: dict):
@@ -421,12 +511,14 @@ class VoiceGateway:
                 _vlog(f"libdave load error: {error}")
 
         _vlog(f"Init DaveSession proto={dave_version} channel={self.channel_id}")
-        self.udp.dave_session = DaveSession()
-        self.udp.dave_session.init(dave_version, self.channel_id, self.user_id)
-        _vlog(f"DAVE session: {self.udp.dave_session.status_summary()}")
+        self.udp.dave_session = DaveSession(str(self.channel_id), str(self.user_id))
+        self.udp.dave_session.set_callbacks(self._send_binary, self._send_json)
+        self.udp.dave_session.set_local_ssrc(self.udp.ssrc)
+        self.udp.dave_session.init_session(dave_version)
+        _vlog(f"DAVE session: {self.udp.dave_session.debug_info()}")
 
         for ssrc, uid in self.pending_ssrc_map.items():
-            self.udp.dave_session.register_ssrc(ssrc, uid)
+            self.udp.dave_session.register_ssrc(ssrc, str(uid))
 
         if self.pending_external_sender:
             self.udp.dave_session.set_external_sender(self.pending_external_sender)
@@ -434,9 +526,7 @@ class VoiceGateway:
             self.pending_external_sender = None
 
         if self.pending_epoch == 1:
-            kp = self.udp.dave_session.reset_and_get_key_package(self.pending_epoch_proto)
-            if kp:
-                self._send_binary(26, kp)
+            self.udp.dave_session.prepare_epoch(self.pending_epoch)
 
         # FIX: was speaking=2 (Soundshare). Correct flag is 1 (Microphone, 1<<0).
         self._send_json({"op": 5, "d": {"speaking": 1, "delay": 0, "ssrc": self.udp.ssrc}})
@@ -450,10 +540,30 @@ class VoiceGateway:
                 self.udp.dave_session.register_ssrc(spk_ssrc, str(spk_uid))
 
     def _on_client_connect(self, d: dict):
+        user_ids = d.get("user_ids")
+        if isinstance(user_ids, list):
+            for uid in user_ids:
+                _vlog(f"CLIENT_CONNECT: user={uid}")
+                if self.udp and self.udp.dave_session:
+                    self.udp.dave_session.add_connected_user(str(uid))
+            return
+
         uid, ssrc = d.get("user_id"), d.get("ssrc")
         _vlog(f"CLIENT_CONNECT: user={uid} ssrc={ssrc}")
         if uid and ssrc and self.udp and self.udp.dave_session:
             self.udp.dave_session.register_ssrc(ssrc, str(uid))
+
+    def _on_session_update(self, d: dict):
+        uid = d.get("user_id")
+        audio_ssrc = d.get("audio_ssrc") or d.get("ssrc")
+        if not uid:
+            return
+        _vlog(f"SESSION_UPDATE: user={uid} audio_ssrc={audio_ssrc}")
+        if self.udp and self.udp.dave_session:
+            self.udp.dave_session.add_connected_user(str(uid))
+            if audio_ssrc:
+                self.pending_ssrc_map[int(audio_ssrc)] = str(uid)
+                self.udp.dave_session.register_ssrc(int(audio_ssrc), str(uid))
 
     def _on_capabilities_ack(self):
         if not (self.udp and self.udp.local_ip):
@@ -485,17 +595,27 @@ class VoiceGateway:
             }
         })
 
+    def _on_dave_prepare_transition(self, d: dict):
+        tid = d.get("transition_id")
+        protocol_version = d.get("protocol_version", 1)
+        _vlog(f"DAVE_PREPARE_TRANSITION tid={tid}")
+        if tid is not None and self.udp and self.udp.dave_session:
+            self.udp.dave_session.prepare_transition(tid, protocol_version)
+
+    def _on_dave_execute_transition(self, d: dict):
+        tid = d.get("transition_id")
+        _vlog(f"DAVE_EXECUTE_TRANSITION tid={tid}")
+        if tid is not None and self.udp and self.udp.dave_session:
+            self.udp.dave_session.execute_transition(tid)
+
     def _on_dave_prepare_epoch(self, d: dict):
         epoch       = d.get("epoch", 0)
         epoch_proto = d.get("protocol_version", 1)
         _vlog(f"DAVE_PREPARE_EPOCH epoch={epoch} proto={epoch_proto}")
         self.pending_epoch       = epoch
         self.pending_epoch_proto = epoch_proto
-        if epoch == 1 and self.udp and self.udp.dave_session:
-            kp = self.udp.dave_session.reset_and_get_key_package(epoch_proto)
-            if kp:
-                _vlog(f"Sending key package len={len(kp)}")
-                self._send_binary(26, kp)
+        if self.udp and self.udp.dave_session:
+            self.udp.dave_session.prepare_epoch(epoch)
 
     def _handle_binary(self, payload: bytes):
         if len(payload) < 3:
@@ -519,33 +639,24 @@ class VoiceGateway:
         if opcode == 25:
             _vlog(f"MLS: external_sender len={len(data)}")
             ds.set_external_sender(data)
-            kp = ds.get_key_package()
-            if kp:
-                _vlog(f"MLS: sending key_package len={len(kp)}")
-                self._send_binary(26, kp)
 
         elif opcode == 27:
             _vlog(f"MLS: proposals len={len(data)}")
-            cw = ds.process_proposals(data)
-            if cw:
-                _vlog(f"MLS: sending commit len={len(cw)}")
-                self._send_binary(28, cw)
+            ds.process_proposals(data)
 
         elif opcode == 29:
             if len(data) < 2:
                 return
             tid = struct.unpack(">H", data[0:2])[0]
-            ok  = ds.process_commit(data[2:])
-            _vlog(f"MLS: commit tid={tid} ok={ok}")
-            self._send_json({"op": 23 if ok else 31, "d": {"transition_id": tid}})
+            _vlog(f"MLS: commit tid={tid}")
+            ds.process_commit(tid, data[2:])
 
         elif opcode == 30:
             if len(data) < 2:
                 return
             tid = struct.unpack(">H", data[0:2])[0]
-            ok  = ds.process_welcome(data[2:])
-            _vlog(f"MLS: welcome tid={tid} ok={ok}")
-            self._send_json({"op": 23 if ok else 31, "d": {"transition_id": tid}})
+            _vlog(f"MLS: welcome tid={tid}")
+            ds.process_welcome(tid, data[2:])
 
     def _start_heartbeat(self):
         self._heartbeat_thread = threading.Thread(

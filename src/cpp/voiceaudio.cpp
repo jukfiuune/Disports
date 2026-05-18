@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cstring>
 
+static AudioPipe *g_audioPipe = nullptr;
+
 // ============================================================================
 // RingBuffer
 // ============================================================================
@@ -114,9 +116,10 @@ void CaptureDevice::setMuted(bool m) {
 
 qint64 CaptureDevice::writeData(const char *data, qint64 len) {
     QMutexLocker lk(&_mutedLock);
+    if (!_ring) return len;
     if (_muted) {
         QByteArray silence(static_cast<int>(len), '\0');
-        _ring->write(silence.constData(), static_cast<int>(len));
+        _ring->write(silence.constData(), silence.size());
     } else {
         _ring->write(data, static_cast<int>(len));
     }
@@ -128,16 +131,19 @@ qint64 CaptureDevice::writeData(const char *data, qint64 len) {
 // ============================================================================
 
 VoiceAudio::VoiceAudio(QObject *parent) : QObject(parent) {
-    _pipe.play   = new RingBuffer(kPlayRingSize);
-    _pipe.cap    = new RingBuffer(kCapRingSize);
-    _pipe.capStop = false;
+    _playRing = new RingBuffer(kPlayRingSize);
+    _capRing = new RingBuffer(kCapRingSize);
+    _pipe = new AudioPipe{_playRing, _capRing, true};
+    g_audioPipe = _pipe;
     _setupFormat();
 }
 
 VoiceAudio::~VoiceAudio() {
     stopAudio();
-    delete _pipe.play;
-    delete _pipe.cap;
+    if (g_audioPipe == _pipe) g_audioPipe = nullptr;
+    delete _pipe;
+    delete _playRing;
+    delete _capRing;
 }
 
 void VoiceAudio::_setupFormat() {
@@ -169,16 +175,15 @@ void VoiceAudio::_applyMediaRole(bool speakerphone) {
                       : "media.role=phone (earpiece)");
 }
 
-// ---------------------------------------------------------------------------
-// getAudioPipeCapsule
-//   Returns a PyCapsule wrapping the AudioPipe*.  Python stores this and
-//   calls the free functions below (write_playback / read_capture) on it
-//   directly from its worker threads — zero Qt involvement.
-// ---------------------------------------------------------------------------
-QVariant VoiceAudio::getAudioPipeCapsule() {
-    // Return the raw pointer address as a 64-bit integer.
-    // This is much more robust for cross-thread marshaling than PyCapsule.
-    return QVariant::fromValue(reinterpret_cast<qlonglong>(&_pipe));
+void VoiceAudio::pushPcmBase64(const QString &b64) {
+    if (!_playRing) return;
+    QByteArray pcm = QByteArray::fromBase64(b64.toLatin1());
+    if (pcm.isEmpty()) return;
+    _playRing->write(pcm.constData(), pcm.size());
+}
+
+quint64 VoiceAudio::audioPipePointer() const {
+    return reinterpret_cast<quint64>(_pipe);
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +192,7 @@ QVariant VoiceAudio::getAudioPipeCapsule() {
 void VoiceAudio::startAudio() {
     if (_running) return;
     _running = true;
-    _pipe.capStop = false;
+    if (_pipe) _pipe->capStop = false;
     _applyMediaRole(false);
     _startPlayback();
     _startCapture();
@@ -198,8 +203,10 @@ void VoiceAudio::startAudio() {
 void VoiceAudio::stopAudio() {
     if (!_running) return;
     _running      = false;
-    _pipe.capStop = true;
-    _pipe.cap->wakeAll();   // unblock any Python thread in readExact()
+    if (_pipe) {
+        _pipe->capStop = true;
+        if (_pipe->cap) _pipe->cap->wakeAll();
+    }
     _stopPlayback();
     _stopCapture();
     emit activeChanged();
@@ -217,7 +224,7 @@ void VoiceAudio::_startPlayback() {
     }
     _playFmt = fmt;
 
-    _playDev = new PlaybackDevice(_pipe.play, this);
+    _playDev = new PlaybackDevice(_playRing, this);
     _playDev->start();
     _audioOut = new QAudioOutput(_playFmt, this);
     _audioOut->setBufferSize(_playFmt.bytesForDuration(100000));
@@ -240,7 +247,7 @@ void VoiceAudio::_startCapture() {
     }
     _capFmt = fmt;
 
-    _capDev = new CaptureDevice(_pipe.cap, this);
+    _capDev = new CaptureDevice(_capRing, this);
     _capDev->start();
     _audioIn = new QAudioInput(_capFmt, this);
     _audioIn->setBufferSize(_capFmt.bytesForDuration(40000));
@@ -256,14 +263,14 @@ void VoiceAudio::_stopPlayback() {
     if (_audioOut) { _audioOut->stop(); delete _audioOut; _audioOut = nullptr; }
     if (_playDev)  { _playDev->stop();  delete _playDev;  _playDev  = nullptr; }
     _playbackReady = false;
-    _pipe.play->clear();
+    _playRing->clear();
 }
 
 void VoiceAudio::_stopCapture() {
     if (_audioIn) { _audioIn->stop(); delete _audioIn; _audioIn = nullptr; }
     if (_capDev)  { _capDev->stop();  delete _capDev;  _capDev  = nullptr; }
     _captureReady = false;
-    _pipe.cap->clear();
+    if (_capRing) _capRing->clear();
 }
 
 void VoiceAudio::setMuted(bool m) {
@@ -274,6 +281,28 @@ void VoiceAudio::setMuted(bool m) {
     emit mutedChanged();
 }
 
+extern "C" void* disports_voice_audio_pipe() {
+    return g_audioPipe;
+}
+
+extern "C" int disports_pipe_write(void *pipePtr, const char *data, int len) {
+    auto *pipe = static_cast<AudioPipe*>(pipePtr);
+    if (!pipe || !pipe->play || !data || len <= 0) return 0;
+    return pipe->play->write(data, len);
+}
+
+extern "C" int disports_pipe_read(void *pipePtr, char *out, int len) {
+    auto *pipe = static_cast<AudioPipe*>(pipePtr);
+    if (!pipe || !pipe->cap || !out || len <= 0) return 0;
+    return pipe->cap->readExact(out, len, pipe->capStop) ? len : 0;
+}
+
+extern "C" int disports_pipe_cap_ready(void *pipePtr) {
+    auto *pipe = static_cast<AudioPipe*>(pipePtr);
+    if (!pipe || !pipe->cap || pipe->capStop) return 0;
+    return 1;
+}
+
 void VoiceAudio::setSpeakerphone(bool s) {
     if (_speakerphone == s) return;
     _speakerphone = s;
@@ -282,37 +311,3 @@ void VoiceAudio::setSpeakerphone(bool s) {
     emit speakerphoneChanged();
 }
 
-// ============================================================================
-// Plain C exports — called directly from Python via ctypes.
-// These operate on AudioPipe* with NO Qt involvement — safe from any thread.
-// ============================================================================
-extern "C" {
-
-// Write PCM into the playback ring buffer.
-// Python calls this from its receive/decode thread.
-int disports_pipe_write(void *pipe_ptr, const char *data, int len) {
-    if (!pipe_ptr || !data || len <= 0) return 0;
-    auto *pipe = static_cast<AudioPipe *>(pipe_ptr);
-    if (!pipe->play) return 0;
-    return pipe->play->write(data, len);
-}
-
-// Read exactly `len` bytes from the capture ring buffer.
-// Blocks until data is available or capStop is set.
-// Returns `len` on success, 0 on shutdown.
-int disports_pipe_read(void *pipe_ptr, char *out, int len) {
-    if (!pipe_ptr || !out || len <= 0) return 0;
-    auto *pipe = static_cast<AudioPipe *>(pipe_ptr);
-    if (!pipe->cap) return 0;
-    bool ok = pipe->cap->readExact(out, len, pipe->capStop);
-    return ok ? len : 0;
-}
-
-// Returns 1 if the capture ring is active (capStop == false), else 0.
-int disports_pipe_cap_ready(void *pipe_ptr) {
-    if (!pipe_ptr) return 0;
-    auto *pipe = static_cast<AudioPipe *>(pipe_ptr);
-    return pipe->capStop ? 0 : 1;
-}
-
-} // extern "C"

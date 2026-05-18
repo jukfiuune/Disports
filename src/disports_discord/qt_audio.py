@@ -11,15 +11,15 @@ that blocks *inside* C++ (like pullCaptureFrame waiting on a mutex), the main
 thread is frozen for the full wait duration, causing the UI freeze.
 
 Fix: the audio data path never calls any QObject method at all.
-VoiceAudio.getAudioPipeCapsule() is called ONCE from the main thread during
-setup and returns a PyCapsule wrapping a raw AudioPipe*.  Python then calls
-two plain C functions — pipe_write() and pipe_read() — that operate directly
-on the ring buffer memory with no Qt involvement whatsoever.
+Python resolves the raw AudioPipe* from the C++ plugin and then calls two
+plain C functions — pipe_write() and pipe_read() — that operate directly on
+the ring buffer memory with no Qt involvement whatsoever.
 """
 from __future__ import annotations
 
 import ctypes
 import ctypes.util
+import os
 import threading
 from typing import Optional
 
@@ -31,9 +31,10 @@ _log_lock = threading.Lock()
 
 
 def _vlog(msg: str) -> None:
-    print(f"[Voice] {msg}", flush=True)
+    safe_msg = str(msg).encode("ascii", errors="replace").decode("ascii")
+    print(f"[Voice] {safe_msg}", flush=True)
     with _log_lock:
-        _log_buffer.append(msg)
+        _log_buffer.append(safe_msg)
         if len(_log_buffer) > 100:
             _log_buffer.pop(0)
 
@@ -108,7 +109,10 @@ class OpusDecoder:
                                    self._pcm_buf, OPUS_FRAME_SIZE * 6, 0)
         if n <= 0:
             return None
-        return bytes(self._pcm_buf[: n * self._channels])
+        return ctypes.string_at(
+            ctypes.byref(self._pcm_buf),
+            n * self._channels * ctypes.sizeof(ctypes.c_int16),
+        )
 
     def close(self):
         if self._dec and self._lib:
@@ -152,84 +156,72 @@ class OpusEncoder:
 
 
 # ---------------------------------------------------------------------------
-# AudioPipe — direct ring-buffer access from Python
-#
-# The C++ layout (from voiceaudio.h) is:
-#   struct AudioPipe {
-#       RingBuffer *play;   // offset 0
-#       RingBuffer *cap;    // offset 8
-#       bool        capStop; // offset 16
-#   };
-#
-# We never touch the RingBuffer internals from Python — we call back into
-# the compiled plugin via ctypes to use its write()/readExact() methods.
-# The plugin exports two plain C helper functions for exactly this purpose.
+# AudioPipe - direct ring-buffer access from Python
 # ---------------------------------------------------------------------------
 
-_pipe_capsule = None   # PyCapsule set by set_audio_pipe_capsule()
-_pipe_lib: Optional[ctypes.CDLL] = None   # handle to libdisportsvoice.so
+_pipe_lib: Optional[ctypes.CDLL] = None
+_pipe_ptr: Optional[int] = None
 
 
 def _load_pipe_lib() -> Optional[ctypes.CDLL]:
-    global _pipe_lib
+    global _pipe_lib, _pipe_ptr
     if _pipe_lib is not None:
         return _pipe_lib
-    for name in ("libdisportsvoice.so", "libdisportsvoice.so.1"):
+
+    candidates = ["libdisportsvoice.so"]
+    app_dir = os.environ.get("APP_DIR")
+    if app_dir:
+        for root, _dirs, files in os.walk(os.path.join(app_dir, "lib")):
+            if "libdisportsvoice.so" in files:
+                candidates.insert(0, os.path.join(root, "libdisportsvoice.so"))
+                break
+
+    for name in candidates:
         try:
             lib = ctypes.CDLL(name)
-            # int  disports_pipe_write(void *pipe, const char *data, int len)
-            lib.disports_pipe_write.restype  = ctypes.c_int
-            lib.disports_pipe_write.argtypes = [ctypes.c_void_p,
-                                                 ctypes.c_char_p,
-                                                 ctypes.c_int]
-            # int  disports_pipe_read(void *pipe, char *out, int len)
-            # Blocks until len bytes available or capStop set.
-            # Returns 0 on shutdown, len on success.
-            lib.disports_pipe_read.restype  = ctypes.c_int
-            lib.disports_pipe_read.argtypes = [ctypes.c_void_p,
-                                                ctypes.c_char_p,
-                                                ctypes.c_int]
-            # int  disports_pipe_cap_ready(void *pipe)  → 0 or 1
-            lib.disports_pipe_cap_ready.restype  = ctypes.c_int
+            lib.disports_voice_audio_pipe.restype = ctypes.c_void_p
+            lib.disports_voice_audio_pipe.argtypes = []
+            lib.disports_pipe_write.restype = ctypes.c_int
+            lib.disports_pipe_write.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+            lib.disports_pipe_read.restype = ctypes.c_int
+            lib.disports_pipe_read.argtypes = [ctypes.c_void_p, ctypes.c_char_p, ctypes.c_int]
+            lib.disports_pipe_cap_ready.restype = ctypes.c_int
             lib.disports_pipe_cap_ready.argtypes = [ctypes.c_void_p]
             _pipe_lib = lib
-            _vlog(f"libdisportsvoice loaded: {name}")
+            _pipe_ptr = lib.disports_voice_audio_pipe()
+            _vlog(f"libdisportsvoice audio pipe loaded: {name}")
             return lib
         except OSError as e:
             _vlog(f"libdisportsvoice not at {name}: {e}")
-    _vlog("ERROR: libdisportsvoice not found — audio data path unavailable")
+        except AttributeError as e:
+            _vlog(f"libdisportsvoice missing audio pipe symbol at {name}: {e}")
     return None
 
 
-def set_audio_pipe_capsule(ptr_int) -> None:
-    """
-    Called from QML/PythonBridge once, on the main thread, immediately after
-    VoiceAudio is instantiated. `ptr_int` is the raw memory address (int) 
-    of the AudioPipe struct in C++.
-    """
-    global _pipe_capsule
-    _pipe_capsule = ptr_int
-    _vlog(f"AudioPipe pointer registered: 0x{ptr_int:x}")
-    _load_pipe_lib()
+def _audio_pipe_ptr() -> Optional[int]:
+    global _pipe_ptr
+    lib = _load_pipe_lib()
+    if not lib:
+        return None
+    _pipe_ptr = lib.disports_voice_audio_pipe()
+    return _pipe_ptr or None
 
 
-def _pipe_ptr() -> Optional[int]:
-    if _pipe_capsule is None:
-        _vlog("WARNING: AudioPipe not yet registered")
-    return _pipe_capsule
+FRAME_BYTES = OPUS_FRAME_SIZE * OpusEncoder.CAPTURE_CHANNELS * 2
 
 
-FRAME_BYTES = OPUS_FRAME_SIZE * OpusEncoder.CAPTURE_CHANNELS * 2  # 1920 bytes
-
+def put_capture_frame(_b64_frame: str) -> None:
+    # Kept for older QML builds; current audio capture uses AudioPipe directly.
+    return None
 
 # ---------------------------------------------------------------------------
 # QtPlayback — pushes decoded stereo S16LE PCM into the playback ring
 # ---------------------------------------------------------------------------
 class QtPlayback:
     def write(self, pcm: bytes) -> None:
-        ptr = _pipe_ptr()
-        lib = _pipe_lib
-        if ptr is None or lib is None:
+        lib = _load_pipe_lib()
+        ptr = _audio_pipe_ptr()
+        if not lib or not ptr:
             return
         try:
             lib.disports_pipe_write(ptr, pcm, len(pcm))
@@ -239,10 +231,8 @@ class QtPlayback:
     def close(self) -> None:
         pass
 
-
 # ---------------------------------------------------------------------------
-# QtCapture — pulls mono S16LE frames from the capture ring
-#             disports_pipe_read() blocks in C++ with NO Qt involvement
+# QtCapture — pulls mono S16LE frames from the capture queue
 # ---------------------------------------------------------------------------
 class QtCapture:
     def __init__(self):
@@ -250,9 +240,9 @@ class QtCapture:
 
     @property
     def available(self) -> bool:
-        ptr = _pipe_ptr()
-        lib = _pipe_lib
-        if ptr is None or lib is None:
+        lib = _load_pipe_lib()
+        ptr = _audio_pipe_ptr()
+        if not lib or not ptr:
             return False
         try:
             return bool(lib.disports_pipe_cap_ready(ptr))
@@ -260,15 +250,11 @@ class QtCapture:
             return False
 
     def read_frame(self) -> Optional[bytes]:
-        """
-        Blocks in C++ until a 20ms frame is ready or stopAudio() is called.
-        Never touches the Qt main thread — runs entirely in the Python daemon
-        thread that calls it.
-        """
-        ptr = _pipe_ptr()
-        lib = _pipe_lib
-        if ptr is None or lib is None:
-            import time; time.sleep(0.02)
+        lib = _load_pipe_lib()
+        ptr = _audio_pipe_ptr()
+        if not lib or not ptr:
+            import time
+            time.sleep(0.02)
             return None
         try:
             n = lib.disports_pipe_read(ptr, self._buf, FRAME_BYTES)

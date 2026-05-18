@@ -411,7 +411,8 @@ class DiscordClient:
         token = sv.get("token")
         channel_id = st.get("channel_id")
         user_id = str((self.state.me or {}).get("id", ""))
-        server_id = str(st.get("guild_id") or sv.get("guild_id") or channel_id or "")
+        voice_guild_id = str(st.get("guild_id") or sv.get("guild_id") or "")
+        server_id = str(voice_guild_id or channel_id or "")
 
         if not channel_id:
             _vlog("Voice start skipped: active voice state has no channel_id")
@@ -440,17 +441,56 @@ class DiscordClient:
         self.voice_gateway = VoiceGateway(endpoint, token, session_id, user_id, channel_id, server_id)
         self.voice_gateway.start()
 
-        channel = self.state.get_channel(channel_id)
-        ch_name = (channel or {}).get("name", "Voice")
-        guild_id = str((channel or {}).get("guild_id") or "")
+        self._emit_call_update(channel_id, guild_id=voice_guild_id)
+
+    def _emit_pending_call(self, guild_id: str | None, channel_id: str) -> None:
+        self._emit_call_update(channel_id, guild_id=guild_id, fallback_name="Connecting...")
+
+    def _refresh_call_participants(self, channel_id: str) -> None:
+        self._emit_call_update(channel_id)
+
+    def _call_display_name(self, channel: dict[str, Any] | None, fallback_name: str = "Voice") -> str:
+        if not channel:
+            return fallback_name
+        name = (channel or {}).get("name")
+        if name:
+            return str(name)
+        recipients = (channel or {}).get("recipients") or []
+        names = []
+        for recipient in recipients:
+            uid = str(recipient.get("id") or "")
+            if uid and uid == str((self.state.me or {}).get("id", "")):
+                continue
+            names.append(
+                recipient.get("global_name")
+                or recipient.get("username")
+                or uid
+            )
+        return ", ".join([str(n) for n in names if n]) or fallback_name
+
+    def _call_participants(self, channel_id: str, guild_id: str) -> list[dict[str, str]]:
         vs_members = [
             v for v in self.state.voice_states.values()
             if v.get("channel_id") == channel_id
         ]
+        seen_voice_ids = {str(v.get("user_id") or "") for v in vs_members}
+        channel = self.state.get_channel(channel_id) or {}
+        for recipient in channel.get("recipients") or []:
+            uid = str(recipient.get("id") or "")
+            if uid and uid not in seen_voice_ids:
+                vs_members.append({"user_id": uid})
+                seen_voice_ids.add(uid)
+
         participants = []
         for vs in vs_members:
             uid = str(vs.get("user_id") or "")
             user = self.state.users.get(uid) or {"id": uid}
+            if not user.get("avatar"):
+                channel = self.state.get_channel(channel_id) or {}
+                for recipient in channel.get("recipients") or []:
+                    if str(recipient.get("id") or "") == uid:
+                        user = {**user, **recipient}
+                        break
             member = self.state.guild_member_for_user(user, guild_id) if guild_id else {}
             u = (member or {}).get("user") or user
             avatar = u.get("avatar")
@@ -462,87 +502,22 @@ class DiscordClient:
                 avatar_url = f"https://cdn.discordapp.com/embed/avatars/{def_index}.png"
             name = (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid
             participants.append({"id": uid, "avatarUrl": avatar_url, "name": name})
+        return participants
 
-        self._emit("call_update", {
-            "channelId": channel_id,
-            "call": {
-                "channelId": channel_id,
-                "guildId": guild_id,
-                "name": ch_name,
-                "type": "voice",
-                "participants": participants,
-            }
-        })
-
-    def _emit_pending_call(self, guild_id: str | None, channel_id: str) -> None:
+    def _emit_call_update(self, channel_id: str, guild_id: str | None = None, fallback_name: str = "Voice") -> None:
+        if not channel_id:
+            return
         channel = self.state.get_channel(channel_id)
         resolved_guild_id = str(guild_id or (channel or {}).get("guild_id") or "")
-        ch_name = (channel or {}).get("name") or "Connecting..."
-        participants = []
-        for vs in self.state.voice_states.values():
-            if vs.get("channel_id") != channel_id:
-                continue
-            uid = str(vs.get("user_id") or "")
-            user = self.state.users.get(uid) or {"id": uid}
-            member = self.state.guild_member_for_user(user, resolved_guild_id) if resolved_guild_id else {}
-            u = (member or {}).get("user") or user
-            avatar = u.get("avatar")
-            if avatar:
-                avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=160"
-            else:
-                disc = int(u.get("discriminator") or 0)
-                def_index = (int(uid) >> 22) % 6 if uid.isdigit() else disc % 5
-                avatar_url = f"https://cdn.discordapp.com/embed/avatars/{def_index}.png"
-            participants.append({
-                "id": uid,
-                "avatarUrl": avatar_url,
-                "name": (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid,
-            })
+
         self._emit("call_update", {
             "channelId": channel_id,
             "call": {
                 "channelId": channel_id,
                 "guildId": resolved_guild_id,
-                "name": ch_name,
+                "name": self._call_display_name(channel, fallback_name),
                 "type": "voice",
-                "participants": participants,
-            }
-        })
-
-    def _refresh_call_participants(self, channel_id: str) -> None:
-        if not channel_id:
-            return
-        channel = self.state.get_channel(channel_id)
-        ch_name = (channel or {}).get("name", "Voice")
-        guild_id = str((channel or {}).get("guild_id") or "")
-        vs_members = [
-            v for v in self.state.voice_states.values()
-            if v.get("channel_id") == channel_id
-        ]
-        participants = []
-        for vs in vs_members:
-            uid = str(vs.get("user_id") or "")
-            user = self.state.users.get(uid) or {"id": uid}
-            member = self.state.guild_member_for_user(user, guild_id) if guild_id else {}
-            u = (member or {}).get("user") or user
-            avatar = u.get("avatar")
-            if avatar:
-                avatar_url = f"https://cdn.discordapp.com/avatars/{uid}/{avatar}.png?size=160"
-            else:
-                disc = int(u.get("discriminator") or 0)
-                def_index = (int(uid) >> 22) % 6 if uid.isdigit() else disc % 5
-                avatar_url = f"https://cdn.discordapp.com/embed/avatars/{def_index}.png"
-            name = (member or {}).get("nick") or u.get("global_name") or u.get("username") or uid
-            participants.append({"id": uid, "avatarUrl": avatar_url, "name": name})
-
-        self._emit("call_update", {
-            "channelId": channel_id,
-            "call": {
-                "channelId": channel_id,
-                "guildId": guild_id,
-                "name": ch_name,
-                "type": "voice",
-                "participants": participants,
+                "participants": self._call_participants(channel_id, resolved_guild_id),
             }
         })
 
@@ -742,12 +717,12 @@ class DiscordClient:
             
         if event_type == "CALL_CREATE":
             self.state.apply_call_create(data)
-            self._emit("call_update", {"channelId": data.get("channel_id"), "call": self.state.calls.get(data.get("channel_id"))})
+            self._emit_call_update(str(data.get("channel_id") or ""), fallback_name="Voice")
             return
             
         if event_type == "CALL_UPDATE":
             self.state.apply_call_update(data)
-            self._emit("call_update", {"channelId": data.get("channel_id"), "call": self.state.calls.get(data.get("channel_id"))})
+            self._emit_call_update(str(data.get("channel_id") or ""), fallback_name="Voice")
             return
             
         if event_type == "CALL_DELETE":

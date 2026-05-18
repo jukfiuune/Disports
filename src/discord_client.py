@@ -176,6 +176,6 @@ def set_speakerphone(enabled: bool) -> None:
     _client.set_speakerphone(enabled)
 
 
-def set_audio_pipe_capsule(capsule) -> None:
-    from disports_discord.qt_audio import set_audio_pipe_capsule as _set
-    _set(capsule)
+def _on_capture_frame(b64_frame: str) -> None:
+    from disports_discord.qt_audio import put_capture_frame
+    put_capture_frame(b64_frame)

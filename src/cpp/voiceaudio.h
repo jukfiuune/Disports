@@ -45,19 +45,10 @@ private:
     QWaitCondition  _cond;
 };
 
-// ---------------------------------------------------------------------------
-// AudioPipe  — a plain C struct wrapping two RingBuffers.
-//
-// Python holds a PyCapsule pointing to an AudioPipe*.  All audio data
-// transfers happen through this pointer: no QObject, no Qt signal, no
-// pyotherside marshal.  The Qt main thread is never touched by audio I/O.
-// ---------------------------------------------------------------------------
 struct AudioPipe {
-    RingBuffer *play;    // Python writes → QAudioOutput reads
-    RingBuffer *cap;     // QAudioInput writes → Python reads (blocking)
-    bool        capStop; // set true by VoiceAudio::stopAudio() to unblock readers
-
-    AudioPipe() : play(nullptr), cap(nullptr), capStop(false) {}
+    RingBuffer *play;
+    RingBuffer *cap;
+    bool capStop;
 };
 
 // ---------------------------------------------------------------------------
@@ -101,8 +92,8 @@ private:
 // Control path  : QML ↔ C++ via Q_INVOKABLE / properties (main thread only)
 // Data path     : Python ↔ AudioPipe raw pointer (never touches main thread)
 //
-// Python obtains the AudioPipe* via getAudioPipeCapsule(), which returns
-// a PyCapsule.  All subsequent audio I/O uses that capsule directly.
+// Python obtains the AudioPipe* via the exported disports_voice_audio_pipe()
+// symbol. All subsequent audio I/O uses that pointer directly.
 // ---------------------------------------------------------------------------
 class VoiceAudio : public QObject {
     Q_OBJECT
@@ -119,9 +110,8 @@ public:
     Q_INVOKABLE void startAudio();
     Q_INVOKABLE void stopAudio();
 
-    // Returns a PyCapsule("AudioPipe") pointing to the internal AudioPipe.
-    // Python calls this ONCE during setup and keeps the capsule.
-    Q_INVOKABLE QVariant getAudioPipeCapsule();
+    Q_INVOKABLE void pushPcmBase64(const QString &b64);
+    Q_INVOKABLE quint64 audioPipePointer() const;
 
     bool active()        const { return _running;        }
     bool playbackReady() const { return _playbackReady;  }
@@ -154,7 +144,9 @@ private:
     static constexpr int kPlayRingSize = 48000;
     static constexpr int kCapRingSize  = 24000;
 
-    AudioPipe       _pipe;           // owns the two ring buffers
+    RingBuffer     *_playRing = nullptr;
+    RingBuffer     *_capRing  = nullptr;
+    AudioPipe      *_pipe     = nullptr;
     PlaybackDevice *_playDev  = nullptr;
     CaptureDevice  *_capDev   = nullptr;
     QAudioOutput   *_audioOut = nullptr;

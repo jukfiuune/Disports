@@ -33,6 +33,7 @@ Python {
     signal voiceSpeakerRequested(var data)
     signal voiceMuteRequested(var data)
 
+
     Component.onCompleted: {
         addImportPath(Qt.resolvedUrl("../../src/"))
 
@@ -43,16 +44,6 @@ Python {
 
         importModule("discord_client", function() {
             console.log("discord_client loaded")
-
-            // Hand the AudioPipe capsule to Python.  getAudioPipeCapsule()
-            // runs on the main thread (safe), returns a PyCapsule wrapping
-            // the raw AudioPipe*.  All subsequent audio I/O uses that pointer
-            // directly via ctypes — zero Qt main-thread involvement.
-            var capsule = VoiceAudio.getAudioPipeCapsule()
-            call("discord_client.set_audio_pipe_capsule",
-                 [capsule], function() {
-                console.log("AudioPipe capsule registered with Python")
-            })
 
             // All setHandler calls must be inside this callback —
             // pyotherside will not route events from a module that
@@ -86,6 +77,7 @@ Python {
             setHandler("voice_stop",         voiceStopRequested)
             setHandler("voice_speaker",      voiceSpeakerRequested)
             setHandler("voice_mute",         voiceMuteRequested)
+            setHandler("voice_pcm_tx",       function(data) {})
 
             // Signal QML that Python is ready — only after everything
             // above is wired up, so callers can safely invoke functions.
