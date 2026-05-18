@@ -52,9 +52,12 @@ jobs:
             clickable/ci-ut24.04-1.x-arm64:latest \
             bash -c "cd /app && clickable build"
 
+      - name: Sanitize artifact name
+        run: echo "SAFE_REF_NAME=$(echo '${{ github.ref_name }}' | tr '/' '-')" >> $GITHUB_ENV
+
       - name: Upload click package
         uses: actions/upload-artifact@v4
         with:
-          name: disports-${{ github.ref_name }}-${{ github.sha }}
+          name: disports-${{ env.SAFE_REF_NAME }}-${{ github.sha }}
           path: build/all/app/*.click
           retention-days: 30
