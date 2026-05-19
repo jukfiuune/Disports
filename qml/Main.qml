@@ -82,6 +82,7 @@ MainView {
             console.log("Gateway: " + message)
         }
         onQrLoginImage: function(data) {
+            appState.loginBusy = false
             appState.qrImageSource = data.dataUri || ""
             appState.qrStatusText = i18n.tr("Scan with the Discord mobile app.")
             appState.loginError = ""

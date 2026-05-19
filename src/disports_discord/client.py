@@ -254,7 +254,7 @@ class DiscordClient:
         try:
             self.http.request(
                 "DELETE",
-                f"channels/{channel_id}/messages/{message_id}/reactions/{quote(emoji, safe='')}/@me",
+                f"channels/{channel_id}/messages/{message_id}/reactions/{quote(emoji, safe='')}/0/@me",
             )
         except DiscordHTTPError as exc:
             return {"ok": False, "error": self._api_error(exc)}
@@ -606,4 +606,4 @@ class DiscordClient:
     def _api_error(exc: DiscordHTTPError) -> str:
         if exc.status == 401:
             return "Discord rejected the token."
-        return f"Discord API error ({exc.status}): {exc.body}"
+        return exc.display_message()

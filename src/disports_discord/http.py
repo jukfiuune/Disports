@@ -14,7 +14,31 @@ class DiscordHTTPError(Exception):
     def __init__(self, status: int, body: str):
         self.status = status
         self.body = body
+        self.code: int | None = None
+        self.message = ""
+        self.errors: Any = None
+        try:
+            payload = json.loads(body) if body else {}
+        except json.JSONDecodeError:
+            payload = {}
+        if isinstance(payload, dict):
+            try:
+                self.code = int(payload["code"]) if payload.get("code") is not None else None
+            except (TypeError, ValueError):
+                self.code = None
+            self.message = str(payload.get("message") or "")
+            self.errors = payload.get("errors")
         super().__init__(f"Discord API request failed with status {status}")
+
+    def display_message(self) -> str:
+        parts = [f"Discord API error ({self.status})"]
+        if self.code is not None:
+            parts.append(f"code {self.code}")
+        if self.message:
+            return f"{' / '.join(parts)}: {self.message}"
+        if self.body:
+            return f"{' / '.join(parts)}: {self.body[:300]}"
+        return f"{' / '.join(parts)}: no response details"
 
 
 class DiscordHTTP:
@@ -38,9 +62,14 @@ class DiscordHTTP:
     def set_token(self, token: str | None) -> None:
         self.token = token.strip() if token else None
 
-    def _headers(self, extra: dict[str, str] | None = None) -> dict[str, str]:
+    def _headers(
+        self,
+        extra: dict[str, str] | None = None,
+        *,
+        include_auth: bool = True,
+    ) -> dict[str, str]:
         headers = dict(self._default_headers)
-        if self.token:
+        if include_auth and self.token:
             headers["Authorization"] = self.token
         if extra:
             headers.update(extra)
@@ -78,6 +107,7 @@ class DiscordHTTP:
         params: dict[str, Any] | None = None,
         json_body: Any = None,
         headers: dict[str, str] | None = None,
+        auth: bool = True,
         _429_attempts: int = 4,
     ) -> Any:
         self._wait_if_needed()
@@ -94,7 +124,7 @@ class DiscordHTTP:
             method.upper(),
             url,
             body=body,
-            headers=self._headers(headers),
+            headers=self._headers(headers, include_auth=auth),
             decode_content=True,
         )
 
@@ -120,6 +150,7 @@ class DiscordHTTP:
                 params=params,
                 json_body=json_body,
                 headers=headers,
+                auth=auth,
                 _429_attempts=_429_attempts - 1,
             )
 

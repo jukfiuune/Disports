@@ -102,10 +102,13 @@ QtObject {
     function startQrLogin() {
         if (!appState.pythonReady || appState.authenticated)
             return
+        appState.loginBusy = true
+        appState.loginError = ""
         appState.qrImageSource = ""
         appState.qrStatusText = i18n.tr("Generating QR code…")
         python.call("discord_client.start_qr_login", [], function(result) {
             if (result && !result.ok) {
+                appState.loginBusy = false
                 appState.loginError = result.error || i18n.tr("Unable to start QR login.")
                 appState.qrStatusText = ""
             }
