@@ -31,4 +31,9 @@ QtObject {
     property bool isWideLayout: false
     property int sidebarRevision: 0
     property bool runningUnderClickableDesktop: false
+    property bool captchaRequired: false
+    property string captchaSiteKey: ""
+    property string captchaRqData: ""
+    property string captchaRqToken: ""
+    property string pendingLoginToken: ""
 }

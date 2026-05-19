@@ -40,6 +40,15 @@ class DiscordHTTPError(Exception):
             return f"{' / '.join(parts)}: {self.body[:300]}"
         return f"{' / '.join(parts)}: no response details"
 
+class DiscordCaptchaRequired(Exception):
+    def __init__(self, status: int, body: str, payload: dict[str, Any]):
+        self.status = status
+        self.body = body
+        self.captcha_sitekey = payload.get("captcha_sitekey", "")
+        self.captcha_service = payload.get("captcha_service", "")
+        self.captcha_rqdata = payload.get("captcha_rqdata", "")
+        self.captcha_rqtoken = payload.get("captcha_rqtoken", "")
+        super().__init__(f"Captcha required (sitekey: {self.captcha_sitekey})")
 
 class DiscordHTTP:
     def __init__(self) -> None:
@@ -135,6 +144,15 @@ class DiscordHTTP:
             return json.loads(response.data)
 
         text = response.data.decode("utf-8", errors="replace")
+
+        # Catch 400 Captcha Challenge
+        if response.status == 400:
+            try:
+                payload = json.loads(text)
+                if isinstance(payload, dict) and "captcha_key" in payload:
+                    raise DiscordCaptchaRequired(response.status, text, payload)
+            except json.JSONDecodeError:
+                pass
 
         if response.status == 429 and _429_attempts > 0:
             retry_after = response.headers.get("Retry-After")

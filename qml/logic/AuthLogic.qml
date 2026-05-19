@@ -14,6 +14,49 @@ QtObject {
     property var channelModel
     property var chatMessageModel
 
+    function _handleLoginResult(token, result) {
+        appState.loginBusy = false
+        
+        if (result && result.captcha_required) {
+            appState.pendingLoginToken = token
+            appState.captchaSiteKey = result.sitekey || ""
+            appState.captchaRqData = result.rqdata || ""
+            appState.captchaRqToken = result.rqtoken || ""
+            appState.captchaRequired = true
+            return
+        }
+        
+        if (!result || !result.ok) {
+            if (result && result.clear_saved_token)
+                python.call("discord_client.clear_token", [], function() {})
+            appSettings.token = ""
+            appState.authenticated = false
+            appState.loginError = result && result.error ? result.error : i18n.tr("Login failed.")
+            appState.qrStatusText = ""
+            appState.startupPhase = "loaded"
+            startQrLogin()
+            return
+        }
+        python.call("discord_client.save_token", [token], function(saveRes) {
+            if (!saveRes || !saveRes.ok) {
+                python.call("discord_client.disconnect", [], function() {})
+                appState.loginError = (saveRes && saveRes.error) ? saveRes.error : i18n.tr("Could not save login securely.")
+                appState.startupPhase = "loaded"
+                startQrLogin()
+                return
+            }
+            appSettings.token = ""
+            appState.myUserId = result.id
+            appState.myUsername = result.username
+            appState.authenticated = true
+            appState.loginError = ""
+            appState.qrImageSource = ""
+            appState.qrStatusText = ""
+            appState.startupPhase = "syncing"
+            python.call("discord_client.connect_gateway", [], function() {})
+        })
+    }
+
     function beginLogin(token) {
         if (!appState.pythonReady || !token || token.trim() === "")
             return
@@ -23,36 +66,17 @@ QtObject {
         appState.qrStatusText = i18n.tr("Signing in…")
         stopQrLogin()
         python.call("discord_client.login", [token], function(result) {
-            appState.loginBusy = false
-            if (!result || !result.ok) {
-                if (result && result.clear_saved_token)
-                    python.call("discord_client.clear_token", [], function() {})
-                appSettings.token = ""
-                appState.authenticated = false
-                appState.loginError = result && result.error ? result.error : i18n.tr("Login failed.")
-                appState.qrStatusText = ""
-                appState.startupPhase = "loaded"
-                startQrLogin()
-                return
-            }
-            python.call("discord_client.save_token", [token], function(saveRes) {
-                if (!saveRes || !saveRes.ok) {
-                    python.call("discord_client.disconnect", [], function() {})
-                    appState.loginError = (saveRes && saveRes.error) ? saveRes.error : i18n.tr("Could not save login securely.")
-                    appState.startupPhase = "loaded"
-                    startQrLogin()
-                    return
-                }
-                appSettings.token = ""
-                appState.myUserId = result.id
-                appState.myUsername = result.username
-                appState.authenticated = true
-                appState.loginError = ""
-                appState.qrImageSource = ""
-                appState.qrStatusText = ""
-                appState.startupPhase = "syncing"
-                python.call("discord_client.connect_gateway", [], function() {})
-            })
+            _handleLoginResult(token, result)
+        })
+    }
+
+    function submitCaptcha(captchaKey) {
+        appState.captchaRequired = false
+        appState.loginBusy = true
+        appState.qrStatusText = i18n.tr("Verifying security check...")
+        
+        python.call("discord_client.login_with_captcha", [appState.pendingLoginToken, captchaKey, appState.captchaRqToken], function(result) {
+            _handleLoginResult(appState.pendingLoginToken, result)
         })
     }
 

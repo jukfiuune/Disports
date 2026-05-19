@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from .emoji_catalog import unicode_emoji_catalog
 from .gateway import DiscordGateway
-from .http import DiscordHTTP, DiscordHTTPError
+from .http import DiscordHTTP, DiscordHTTPError, DiscordCaptchaRequired
 from .remote_auth import DiscordRemoteAuth
 from .state import DiscordState
 
@@ -19,11 +19,31 @@ class DiscordClient:
         self.remote_auth: DiscordRemoteAuth | None = None
 
     def login(self, token: str) -> dict[str, Any]:
+        # Standard login
+        return self._perform_login(token)
+
+    def login_with_captcha(self, token: str, captcha_key: str, rqtoken: str) -> dict[str, Any]:
+        # Retry login with Captcha headers attached
+        headers = {"X-Captcha-Key": captcha_key}
+        if rqtoken:
+            headers["X-Captcha-Rqtoken"] = rqtoken
+        return self._perform_login(token, headers=headers)
+
+    def _perform_login(self, token: str, headers: dict[str, str] | None = None) -> dict[str, Any]:
+        # Internal underlying login routine
         self.stop_qr_login()
         self.http.set_token(token)
         self.state.reset()
         try:
-            me = self.http.request("GET", "users/@me")
+            me = self.http.request("GET", "users/@me", headers=headers)
+        except DiscordCaptchaRequired as exc:
+            return {
+                "ok": False,
+                "captcha_required": True,
+                "sitekey": exc.captcha_sitekey,
+                "rqdata": exc.captcha_rqdata,
+                "rqtoken": exc.captcha_rqtoken,
+            }
         except DiscordHTTPError as exc:
             return {
                 "ok": False,

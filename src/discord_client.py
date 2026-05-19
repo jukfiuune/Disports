@@ -79,6 +79,9 @@ def dev_flags() -> dict:
 def login(token: str) -> dict:
     return _client.login(token)
 
+def login_with_captcha(token: str, captcha_key: str, rqtoken: str) -> dict:
+    return _client.login_with_captcha(token, captcha_key, rqtoken)
+
 
 def start_qr_login() -> dict:
     return _client.start_qr_login()

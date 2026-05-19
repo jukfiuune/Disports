@@ -244,6 +244,12 @@ MainView {
                 qrStatusText: appState.qrStatusText
                 onTokenLoginRequested: function(token) { authLogic.beginLogin(token) }
                 onRefreshQrRequested: authLogic.startQrLogin()
+                
+                onCaptchaSolved: function(captchaToken) { authLogic.submitCaptcha(captchaToken) }
+                onCaptchaCanceled: function() { 
+                    appState.loginBusy = false; 
+                    appState.captchaRequired = false; 
+                }
             }
 
     // Navigation stack
