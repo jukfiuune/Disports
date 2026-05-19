@@ -20,6 +20,13 @@ Page {
 
         trailingActionBar.actions: [
             Action {
+                iconName: "call-start"
+                text: i18n.tr("Start call")
+                visible: appState.mode === "dm" && appState.activeChannelId !== ""
+                enabled: visible
+                onTriggered: chatLogic.joinVoiceChannel(appState.activeChannelId)
+            },
+            Action {
                 iconName: "info"
                 text: i18n.tr("Info")
                 onTriggered: { /* TODO: channel/contact info sheet */ }

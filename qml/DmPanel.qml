@@ -5,9 +5,17 @@ Item {
     id: dmPanel
 
     property alias channels: channelList.model
+    property var activeCall: null
 
     signal channelOpened(string channelId, string name)
     signal callRequested(string channelId, string name)
+
+    function rowHasActiveCall(channelId) {
+        if (!activeCall || !channelId)
+            return false
+        var participants = activeCall.participants || []
+        return (activeCall.channelId || "") === channelId && participants.length > 0
+    }
 
     PanelHeader {
         id: dmHeader
@@ -36,7 +44,7 @@ Item {
             Row {
                 anchors {
                     left: parent.left
-                    right: callBtn.left
+                    right: callBtn.visible ? callBtn.left : parent.right
                     leftMargin: units.gu(2)
                     rightMargin: units.gu(1)
                     verticalCenter: parent.verticalCenter
@@ -73,11 +81,11 @@ Item {
                 }
             }
 
-            // Call button — visible for both 1-on-1 DMs and group DMs
             LomiriShape {
                 id: callBtn
                 width: units.gu(4)
                 height: units.gu(4)
+                visible: dmPanel.rowHasActiveCall(model.channelId || "")
                 radius: "medium"
                 color: "transparent"
                 anchors {

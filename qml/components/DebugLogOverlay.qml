@@ -5,6 +5,7 @@ Rectangle {
     id: root
     property alias model: listView.model
     property bool show: false
+    property bool active: false
 
     anchors.fill: parent
     anchors.margins: units.gu(2)
@@ -20,6 +21,8 @@ Rectangle {
 
     ListView {
         id: listView
+        visible: root.active
+        activeFocusOnTab: root.active
         anchors.fill: parent
         anchors.margins: units.gu(1)
         spacing: units.gu(0.5)

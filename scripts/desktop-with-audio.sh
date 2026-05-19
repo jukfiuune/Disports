@@ -19,6 +19,25 @@ echo "Pulse socket: $PULSE_SOCKET"
 
 mkdir -p "$BUILD_HOME"
 
+GPU_ARGS=()
+GROUP_ARGS=()
+if [[ -d /dev/dri ]]; then
+    GPU_ARGS+=(--device /dev/dri)
+    for dri_node in /dev/dri/renderD* /dev/dri/card*; do
+        [[ -e "$dri_node" ]] || continue
+        GROUP_ARGS+=(--group-add "$(stat -c '%g' "$dri_node")")
+    done
+fi
+
+RENDER_ENV=()
+if [[ "${DISPORTS_FORCE_SOFTWARE_RENDERING:-0}" == "1" ]]; then
+    echo "Forcing software rendering because DISPORTS_FORCE_SOFTWARE_RENDERING=1"
+    RENDER_ENV+=(
+        -e LIBGL_ALWAYS_SOFTWARE=1
+        -e GALLIUM_DRIVER=softpipe
+    )
+fi
+
 # Allow docker X11 access
 touch /tmp/.docker.xauth
 xauth nlist "$DISPLAY" | sed -e 's/^..../ffff/' | xauth -f /tmp/.docker.xauth nmerge - 2>/dev/null || true
@@ -33,10 +52,11 @@ trap cleanup EXIT
 docker run --rm \
     --network=host \
     --user "$(id -u):$(id -g)" \
+    "${GPU_ARGS[@]}" \
+    "${GROUP_ARGS[@]}" \
     -e DISPLAY="$DISPLAY" \
     -e QT_QPA_PLATFORM=xcb \
-    -e LIBGL_ALWAYS_SOFTWARE=1 \
-    -e GALLIUM_DRIVER=softpipe \
+    "${RENDER_ENV[@]}" \
     -e PULSE_SERVER="unix:/tmp/pulse-socket" \
     -e PYTHONPATH=/app/src \
     -e LD_LIBRARY_PATH="/app/lib/x86_64-linux-gnu:/app/lib" \
@@ -61,4 +81,4 @@ docker run --rm \
     -v "${BUILD_HOME}:/home/phablet" \
     -w /app \
     "$IMAGE" \
-    qmlscene -I /app/lib/x86_64-linux-gnu qml/Main.qml
+    sh -c 'mkdir -p "$XDG_RUNTIME_DIR" && chmod 700 "$XDG_RUNTIME_DIR" && qmlscene -I /app/lib/x86_64-linux-gnu qml/Main.qml'

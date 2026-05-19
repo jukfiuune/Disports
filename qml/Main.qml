@@ -8,7 +8,6 @@ import io.thp.pyotherside 1.4
 import "./"
 import "./logic"
 import "./components"
-import Disports 1.0
 
 MainView {
     id: root
@@ -29,6 +28,12 @@ MainView {
                 return
             }
         }
+    }
+
+    function ensureVoiceAudio() {
+        if (!voiceAudioLoader.active)
+            voiceAudioLoader.active = true
+        return voiceAudioLoader.item
     }
 
     // Logic & State
@@ -80,9 +85,11 @@ MainView {
         onMessageReaction: function(data) { chatLogic.applyReactionUpdate(data) }
         onGatewayLog: function(data) {
             var message = (data && data.message) ? String(data.message) : ""
-            console.log("Gateway: " + message)
-            globalLogModel.append({"logMessage": "[Gateway] " + message})
-            if (globalLogModel.count > 200) globalLogModel.remove(0)
+            if (appState.showDebugLogs) {
+                console.log("Gateway: " + message)
+                globalLogModel.append({"logMessage": "[Gateway] " + message})
+                if (globalLogModel.count > 200) globalLogModel.remove(0)
+            }
         }
         onCallUpdate: function(data) {
             if (data && data.call) {
@@ -119,10 +126,33 @@ MainView {
                 navigationLogic.checkInitialState()
             })
         }
-        onVoiceStartRequested: VoiceAudio.startAudio()
-        onVoiceStopRequested:  VoiceAudio.stopAudio()
-        onVoiceSpeakerRequested: function(data) { VoiceAudio.setSpeakerphone(data.enabled) }
-        onVoiceMuteRequested: function(data) { VoiceAudio.setMuted(data.enabled) }
+        onVoiceStartRequested: {
+            var voiceAudio = root.ensureVoiceAudio()
+            if (voiceAudio)
+                voiceAudio.startAudio()
+        }
+        onVoiceStopRequested: {
+            if (voiceAudioLoader.item)
+                voiceAudioLoader.item.stopAudio()
+        }
+        onVoiceSpeakerRequested: function(data) {
+            var voiceAudio = root.ensureVoiceAudio()
+            if (voiceAudio)
+                voiceAudio.setSpeakerphone(data.enabled)
+        }
+        onVoiceMuteRequested: function(data) {
+            var voiceAudio = root.ensureVoiceAudio()
+            if (voiceAudio)
+                voiceAudio.setMuted(data.enabled)
+        }
+    }
+
+    Loader {
+        id: voiceAudioLoader
+        active: false
+        asynchronous: false
+        source: "VoiceAudioBridge.qml"
+        visible: false
     }
 
     ChatLogic {
@@ -222,7 +252,7 @@ MainView {
     Timer {
         id: logTimer
         interval: 1000
-        running: appState.pythonReady
+        running: appState.pythonReady && appState.showDebugLogs
         repeat: true
         onTriggered: {
             pythonBridge.call("discord_client.pop_voice_logs", [], function(logs) {
@@ -329,6 +359,7 @@ MainView {
                             anchors.fill: parent
                             visible:  appState.mode === "dm"
                             channels: dmChannelModel
+                            activeCall: appState.activeCall
                             onChannelOpened: function(channelId, name) { chatLogic.openChat(channelId, name) }
                             onCallRequested: function(channelId, name) { chatLogic.joinVoiceChannel(channelId) }
                         }
@@ -427,7 +458,8 @@ MainView {
 
     DebugLogOverlay {
         id: debugLogOverlay
-        model: globalLogModel
+        active: appState.showDebugLogs
+        model: appState.showDebugLogs ? globalLogModel : null
         show: appState.showDebugLogs
     }
 
@@ -443,6 +475,7 @@ MainView {
         opacity: 0.6
         radius: units.gu(0.5)
         z: 20000
+        visible: appState.showDebugLogs
 
         Label {
             anchors.centerIn: parent

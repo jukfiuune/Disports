@@ -1,6 +1,5 @@
 import QtQuick 2.7
 import io.thp.pyotherside 1.4
-import Disports 1.0
 
 Python {
     id: python
@@ -37,9 +36,6 @@ Python {
     Component.onCompleted: {
         addImportPath(Qt.resolvedUrl("../../src/"))
 
-        // Register the C++ VoiceAudio singleton with the Python layer so that
-        // qt_audio.py can call startAudio(), pushPlaybackPCM(), etc. directly
-        // without crossing the QML event loop in the audio hot path.
         addImportPath(Qt.resolvedUrl("../../lib/"))
 
         importModule("discord_client", function() {

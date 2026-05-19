@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Callable
+import sys
+from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import quote
 
 from .emoji_catalog import unicode_emoji_catalog
@@ -8,12 +9,33 @@ from .gateway import DiscordGateway
 from .http import DiscordHTTP, DiscordHTTPError
 from .remote_auth import DiscordRemoteAuth
 from .state import DiscordState
-from .voice_client import VoiceGateway
-from .pulse_audio import get_voice_logs, _vlog
+
+if TYPE_CHECKING:
+    from .voice_client import VoiceGateway
+
+
+_voice_log_buffer: list[str] = []
+
+
+def _vlog(msg: str) -> None:
+    safe_msg = str(msg).encode("ascii", errors="replace").decode("ascii")
+    print(f"[Voice] {safe_msg}", flush=True)
+    _voice_log_buffer.append(safe_msg)
+    if len(_voice_log_buffer) > 100:
+        _voice_log_buffer.pop(0)
+
 
 # Expose voice logs to QML UI
 def pop_voice_logs():
-    return get_voice_logs()
+    logs = list(_voice_log_buffer)
+    _voice_log_buffer.clear()
+    if "disports_discord.qt_audio" in sys.modules:
+        try:
+            from .qt_audio import get_voice_logs
+            logs.extend(get_voice_logs())
+        except Exception:
+            pass
+    return logs
 
 class DiscordClient:
     def __init__(self, emitter: Callable[[str, dict[str, Any]], None] | None = None) -> None:
@@ -438,6 +460,7 @@ class DiscordClient:
             self.voice_gateway.stop()
 
         _vlog(f"Starting voice gateway: endpoint={endpoint} channel={channel_id}")
+        from .voice_client import VoiceGateway
         self.voice_gateway = VoiceGateway(endpoint, token, session_id, user_id, channel_id, server_id)
         self.voice_gateway.start()
 
@@ -473,15 +496,8 @@ class DiscordClient:
             v for v in self.state.voice_states.values()
             if v.get("channel_id") == channel_id
         ]
-        seen_voice_ids = {str(v.get("user_id") or "") for v in vs_members}
-        channel = self.state.get_channel(channel_id) or {}
-        for recipient in channel.get("recipients") or []:
-            uid = str(recipient.get("id") or "")
-            if uid and uid not in seen_voice_ids:
-                vs_members.append({"user_id": uid})
-                seen_voice_ids.add(uid)
-
         participants = []
+        channel = self.state.get_channel(channel_id) or {}
         for vs in vs_members:
             uid = str(vs.get("user_id") or "")
             user = self.state.users.get(uid) or {"id": uid}

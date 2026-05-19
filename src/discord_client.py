@@ -100,8 +100,8 @@ def reconnect() -> bool:
 
 
 def pop_voice_logs() -> list:
-    from disports_discord.qt_audio import get_voice_logs
-    return get_voice_logs()
+    from disports_discord.client import pop_voice_logs as _pop_voice_logs
+    return _pop_voice_logs()
 
 
 def set_muted(muted: bool) -> None:

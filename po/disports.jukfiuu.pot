@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-18 19:59+0000\n"
+"POT-Creation-Date: 2026-05-18 20:38+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -30,6 +30,10 @@ msgid "Back"
 msgstr ""
 
 #: ../qml/ChatPage.qml:24
+msgid "Start call"
+msgstr ""
+
+#: ../qml/ChatPage.qml:31
 msgid "Info"
 msgstr ""
 
@@ -65,7 +69,7 @@ msgstr ""
 msgid "Type a message..."
 msgstr ""
 
-#: ../qml/DmPanel.qml:19
+#: ../qml/DmPanel.qml:27
 msgid "Direct Messages"
 msgstr ""
 
@@ -113,31 +117,31 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/Main.qml:101
+#: ../qml/Main.qml:108
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:104
+#: ../qml/Main.qml:111
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:110
+#: ../qml/Main.qml:117
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:290 disports.desktop.in.h:1
+#: ../qml/Main.qml:320 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:294 ../qml/SettingsPage.qml:30
+#: ../qml/Main.qml:324 ../qml/SettingsPage.qml:30
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:372
+#: ../qml/Main.qml:403
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:377
+#: ../qml/Main.qml:408
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -217,11 +221,11 @@ msgstr ""
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 
-#: ../qml/Sidebar.qml:160
+#: ../qml/Sidebar.qml:174
 msgid "DMs"
 msgstr ""
 
-#: ../qml/components/DebugLogOverlay.qml:47
+#: ../qml/components/DebugLogOverlay.qml:50
 msgid "Clear"
 msgstr ""
 
