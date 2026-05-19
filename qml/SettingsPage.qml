@@ -194,10 +194,7 @@ Page {
                 width: parent.width
                 color: theme.palette.normal.negative
                 text: i18n.tr("Log out")
-                onClicked: {
-                    settingsPage.logoutRequested()
-                    settingsPage.stack.pop()
-                }
+                onClicked: settingsPage.logoutRequested()
             }
 
             // About

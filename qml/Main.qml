@@ -251,7 +251,14 @@ MainView {
                 id: pageStack
                 anchors.fill: parent
                 visible: appState.startupPhase === "loaded" && appState.authenticated
-                Component.onCompleted: pageStack.push(mainPageComp)
+                onVisibleChanged: {
+                    if (visible && depth === 0)
+                        pageStack.push(mainPageComp)
+                }
+                Component.onCompleted: {
+                    if (depth === 0)
+                        pageStack.push(mainPageComp)
+                }
 
         Component {
             id: mainPageComp

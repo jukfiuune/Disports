@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-17 11:44+0000\n"
+"POT-Creation-Date: 2026-05-19 16:43+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -142,31 +142,31 @@ msgstr ""
 msgid "I understand"
 msgstr ""
 
-#: ../qml/Main.qml:86
+#: ../qml/Main.qml:87
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:89
+#: ../qml/Main.qml:90
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:95
+#: ../qml/Main.qml:96
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:260 disports.desktop.in.h:1
+#: ../qml/Main.qml:268 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:264 ../qml/SettingsPage.qml:42
+#: ../qml/Main.qml:272 ../qml/SettingsPage.qml:42
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:335
+#: ../qml/Main.qml:343
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:340
+#: ../qml/Main.qml:348
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -270,7 +270,7 @@ msgstr ""
 msgid "Log out"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:210
+#: ../qml/SettingsPage.qml:207
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 
@@ -387,11 +387,11 @@ msgstr ""
 msgid "Could not save login securely."
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:106
+#: ../qml/logic/AuthLogic.qml:108
 msgid "Generating QR code…"
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:109
+#: ../qml/logic/AuthLogic.qml:112
 msgid "Unable to start QR login."
 msgstr ""
 
