@@ -9,6 +9,7 @@ ChatPanel {
     messagesModel: chatMessageModel
     unicodeEmojis: appState.unicodeEmojis
     inlineGifPlayback: appSettings.inlineGifPlayback
+    composerMaxLines: appSettings.maxComposerLines
     myUserId: appState.myUserId
 
     // Bind to transient appState

@@ -77,6 +77,7 @@ class DiscordClient:
             self._handle_gateway_event,
             self._handle_gateway_log,
         )
+        self.state._send_gateway = self.gateway.guild_subscribe_raw
         self.gateway.start()
         return True
 
@@ -89,6 +90,7 @@ class DiscordClient:
         if self.gateway:
             self.gateway.stop()
             self.gateway = None
+        self.state._send_gateway = None
         if self.voice_gateway:
             self.voice_gateway.stop()
             self.voice_gateway = None
@@ -165,6 +167,10 @@ class DiscordClient:
             (active_threads.get("threads") or []) if isinstance(active_threads, dict) else [],
         )
         self.state.set_guild_channels(guild_id, merged_channels)
+
+        if self.gateway:
+            self.state.subscribe_guild_channel(guild_id, "")
+
         self._emit(
             "guild_sidebar",
             {"guilds": self.state.format_sidebar_guild_rows()},
@@ -328,6 +334,9 @@ class DiscordClient:
         if channel_id:
             self.state.set_active_channel(channel_id)
             self._emit_channel_unread(channel_id)
+            guild_id = self.state.get_guild_for_channel(channel_id)
+            if guild_id and self.gateway:
+                self.state.subscribe_guild_channel(guild_id, channel_id)
         else:
             self.state.set_active_channel("")
         return True
@@ -546,6 +555,7 @@ class DiscordClient:
 
         if event_type == "READY":
             self.state.apply_ready(data)
+            self.state.apply_relationships(data.get("relationships") or [])
             self._emit("ready", self.state.format_ready_payload())
             return
 
@@ -588,6 +598,20 @@ class DiscordClient:
                         "guildId": guild_id,
                     },
                 )
+            return
+
+        if event_type == "GUILD_MEMBER_LIST_UPDATE":
+            self.state.apply_member_list_update(data)
+            guild_id = str(data.get("guild_id") or "")
+            self._emit(
+                "member_list_update",
+                {
+                    "guildId": guild_id,
+                    "listId": str(data.get("id") or "everyone"),
+                    "memberCount": int(data.get("member_count") or 0),
+                    "onlineCount": int(data.get("online_count") or 0),
+                },
+            )
             return
 
         if event_type in ("CHANNEL_CREATE", "CHANNEL_UPDATE", "THREAD_CREATE", "THREAD_UPDATE"):
@@ -667,6 +691,16 @@ class DiscordClient:
 
         if event_type == "TYPING_START":
             self._emit("typing", self.state.format_typing(data))
+            return
+
+        if event_type == "RELATIONSHIP_ADD":
+            self.state.apply_relationship_add(data)
+            self._emit("relationships_update", self.state.format_private_channel_payload())
+            return
+
+        if event_type == "RELATIONSHIP_REMOVE":
+            self.state.apply_relationship_remove(data)
+            self._emit("relationships_update", self.state.format_private_channel_payload())
             return
 
         if event_type in (
@@ -752,6 +786,9 @@ class DiscordClient:
     def _emit(self, name: str, payload: dict[str, Any]) -> None:
         if self.emitter:
             self.emitter(name, payload)
+
+    def set_preference(self, key: str, value: str) -> None:
+        self.state.client_preferences[key] = value
 
     def _emit_channel_unread(self, channel_id: str) -> None:
         guild_id = self.state.get_guild_for_channel(channel_id)

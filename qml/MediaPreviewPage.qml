@@ -108,15 +108,15 @@ Page {
                         playing: visible
                     }
                 }
-            }
 
-            MouseArea {
-                anchors.fill: parent
-                onDoubleClicked: {
-                    if (flickable.sizeScale < maximumZoom) {
-                        zoomIn(mouse.x, mouse.y, maximumZoom);
-                    } else {
-                        zoomOut();
+                MouseArea {
+                    anchors.fill: parent
+                    onDoubleClicked: {
+                        if (flickable.sizeScale < pinchArea.maximumZoom) {
+                            zoomIn(mouse.x, mouse.y, pinchArea.maximumZoom);
+                        } else {
+                            zoomOut();
+                        }
                     }
                 }
             }

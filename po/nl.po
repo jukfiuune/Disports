@@ -8,384 +8,416 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-18 20:38+0000\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
-"Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"POT-Creation-Date: 2026-05-17 11:44+0000\n"
+"PO-Revision-Date: 2026-05-18 10:46+0200\n"
+"Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
+"Language-Team: \n"
+"Language: nl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 3.8\n"
 
-#: ../qml/CallScreen.qml:35
-msgid "Unknown Call"
-msgstr ""
-
-#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:92
+#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:87
 msgid "Chat"
-msgstr ""
+msgstr "Chat"
 
 #: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:46
 msgid "Back"
-msgstr ""
+msgstr "Terug"
 
 #: ../qml/ChatPage.qml:24
-msgid "Start call"
-msgstr ""
-
-#: ../qml/ChatPage.qml:31
 msgid "Info"
-msgstr ""
+msgstr "Informatie"
 
-#: ../qml/ChatPanel.qml:139
+#: ../qml/ChatPanel.qml:117
 msgid "Load older messages"
-msgstr ""
+msgstr "Oudere berichten laden"
 
-#: ../qml/ChatPanel.qml:139 ../qml/components/EmojiPickerContent.qml:277
+#: ../qml/ChatPanel.qml:117 ../qml/components/EmojiPickerContent.qml:277
 msgid "Loading…"
-msgstr ""
+msgstr "Bezig met laden…"
 
-#: ../qml/ChatPanel.qml:286
+#: ../qml/ChatPanel.qml:268
 msgid "Replying to %1"
-msgstr ""
+msgstr "Antwoord aan %1"
 
-#: ../qml/ChatPanel.qml:286 ../qml/ChatPanel.qml:367
+#: ../qml/ChatPanel.qml:268 ../qml/ChatPanel.qml:349
 msgid "message"
-msgstr ""
+msgstr "bericht"
 
-#: ../qml/ChatPanel.qml:295
+#: ../qml/ChatPanel.qml:277
 msgid "Editing message"
-msgstr ""
+msgstr "Bericht bewerken"
 
-#: ../qml/ChatPanel.qml:365
+#: ../qml/ChatPanel.qml:347
 msgid "Waiting for network..."
-msgstr ""
+msgstr "Bezig met wachten op internetverbinding…"
 
-#: ../qml/ChatPanel.qml:367
+#: ../qml/ChatPanel.qml:349
 msgid "Reply to %1..."
-msgstr ""
+msgstr "%1 beantwoorden…"
 
-#: ../qml/ChatPanel.qml:368
+#: ../qml/ChatPanel.qml:350
 msgid "Type a message..."
-msgstr ""
+msgstr "Typ een bericht…"
 
-#: ../qml/DmPanel.qml:27
-msgid "Direct Messages"
+#: ../qml/ChatPanel.qml:463
+msgid "Character Limit Exceeded"
+msgstr "Maximaal aantal tekens overschreden"
+
+#: ../qml/ChatPanel.qml:471
+msgid ""
+"Messages cannot exceed 2000 characters. Your text has been truncated to fit "
+"the limit."
 msgstr ""
+"Berichten mogen niet meer dan 2000 tekens bevatten — de tekst is daarom "
+"ingekort."
+
+#: ../qml/ChatPanel.qml:479
+msgid "OK"
+msgstr "Oké"
+
+#: ../qml/DmPanel.qml:18
+msgid "Direct Messages"
+msgstr "Privéberichten"
 
 #: ../qml/LoginPage.qml:25 ../qml/LoginPage.qml:145
 msgid "Sign In"
-msgstr ""
+msgstr "Inloggen"
 
 #: ../qml/LoginPage.qml:46
 msgid "Scan the QR code with the Discord mobile app, or paste a token instead."
 msgstr ""
+"Scan de QR-code met de mobiele Discord-app of plak een toegangssleutel."
 
 #: ../qml/LoginPage.qml:76
 msgid "Preparing QR code..."
-msgstr ""
+msgstr "Bezig met laden van QR-code…"
 
 #: ../qml/LoginPage.qml:76
 msgid "Tap refresh to try again"
-msgstr ""
+msgstr "Druk op herladen om opnieuw te proberen"
 
 #: ../qml/LoginPage.qml:85
 msgid "Open Discord on your Android or iOS device and scan to sign in."
 msgstr ""
+"Open Discord op je Android- of iOS-apparaat en scan de QR-code om in te "
+"loggen."
 
 #: ../qml/LoginPage.qml:93
 msgid "Refresh QR code"
-msgstr ""
+msgstr "QR-code herladen"
 
 #: ../qml/LoginPage.qml:114
 msgid "Paste a token instead (not recommended)"
-msgstr ""
+msgstr "Toegangssleutel plakken (niet aanbevolen)"
 
 #: ../qml/LoginPage.qml:129
 msgid "Manual Login"
-msgstr ""
+msgstr "Handmatig inloggen"
 
 #: ../qml/LoginPage.qml:130
 msgid "Paste your Discord account token to sign in directly."
-msgstr ""
+msgstr "Plak de toegangssleutel van je Discord-account om direct in te loggen."
 
 #: ../qml/LoginPage.qml:135
 msgid "Token"
-msgstr ""
+msgstr "Toegangssleutel"
 
 #: ../qml/LoginPage.qml:140 ../qml/components/DeleteDialog.qml:22
 msgid "Cancel"
-msgstr ""
+msgstr "Annuleren"
 
-#: ../qml/Main.qml:108
+#: ../qml/LoginPage.qml:160
+msgid "Warning"
+msgstr "Waarschuwing"
+
+#: ../qml/LoginPage.qml:168
+msgid ""
+"Using any unofficial Discord client is against Discord's Terms of Service "
+"and may result in your account being restricted or permanently banned (I've "
+"tried to minimize the risk of this as much as possible)."
+msgstr ""
+"Het gebruik van onofficiële Discord-apps druist in tegen de algemene "
+"voorwaarden en kan leiden accountbeperkingen of zelfs -verbanningen (ik "
+"probeer het risico, waar mogelijk, te verkleinen)."
+
+#: ../qml/LoginPage.qml:176
+msgid "Use Disports at your own risk."
+msgstr "Het gebruik van Disports is op eigen risico."
+
+#: ../qml/LoginPage.qml:185
+msgid "I understand"
+msgstr "Ik begrijp het"
+
+#: ../qml/Main.qml:86
 msgid "Scan with the Discord mobile app."
-msgstr ""
+msgstr "Scan de QR-code met de mobiele Discord-app."
 
-#: ../qml/Main.qml:111
+#: ../qml/Main.qml:89
 msgid "Confirm the login on your phone."
-msgstr ""
+msgstr "Keur het inloggen goed op je telefoon."
 
-#: ../qml/Main.qml:117
+#: ../qml/Main.qml:95
 msgid "QR login failed."
-msgstr ""
+msgstr "Het inloggen is mislukt."
 
-#: ../qml/Main.qml:320 disports.desktop.in.h:1
+#: ../qml/Main.qml:260 disports.desktop.in.h:1
 msgid "Disports"
-msgstr ""
+msgstr "Disports"
 
-#: ../qml/Main.qml:324 ../qml/SettingsPage.qml:30
+#: ../qml/Main.qml:264 ../qml/SettingsPage.qml:42
 msgid "Settings"
-msgstr ""
+msgstr "Instellingen"
 
-#: ../qml/Main.qml:403
+#: ../qml/Main.qml:335
 msgid "Select a conversation"
-msgstr ""
+msgstr "Kies een gesprek"
 
-#: ../qml/Main.qml:408
+#: ../qml/Main.qml:340
 msgid "Choose a DM, group, or channel to start chatting."
-msgstr ""
+msgstr "Kies een privébericht, groep of kanaal om te kunnen chatten."
 
 #: ../qml/MediaPreviewPage.qml:7
 msgid "Media Preview"
-msgstr ""
+msgstr "Mediavoorvertoning"
 
 #: ../qml/MediaPreviewPage.qml:19
 msgid "Open Externally"
-msgstr ""
+msgstr "Openen in andere app"
 
 #: ../qml/MessageBubble.qml:75 ../qml/components/DeleteDialog.qml:14
 msgid "Delete"
-msgstr ""
+msgstr "Verwijderen"
 
 #: ../qml/MessageBubble.qml:86
 msgid "Reply"
-msgstr ""
+msgstr "Beantwoorden"
 
 #: ../qml/MessageBubble.qml:93
 msgid "Edit"
-msgstr ""
+msgstr "Bewerken"
 
 #: ../qml/MessageBubble.qml:100
 msgid "Copy"
-msgstr ""
+msgstr "Kopiëren"
 
 #: ../qml/MessageBubble.qml:111
 msgid "React"
-msgstr ""
+msgstr "Reageren"
 
 #: ../qml/MessageBubble.qml:153
 msgid "Message from blocked user"
-msgstr ""
+msgstr "Bericht van geblokkeerde gebruiker"
 
 #: ../qml/MessageBubble.qml:162
 msgid "Show"
-msgstr ""
+msgstr "Bekijken"
 
 #: ../qml/MessageMedia.qml:118
 msgid "Video attachment"
-msgstr ""
+msgstr "Videobijlage"
 
 #: ../qml/MessageMedia.qml:126
 msgid "Tap to play video"
-msgstr ""
+msgstr "Druk om af te spelen"
 
 #: ../qml/MessageMedia.qml:220
 msgid "Open in browser"
-msgstr ""
+msgstr "Openen in webbrowser"
 
 #: ../qml/MessageMedia.qml:262
 msgid "Attachment"
-msgstr ""
+msgstr "Bijlage"
 
 #: ../qml/MessageMedia.qml:262
 msgid "Audio attachment"
-msgstr ""
+msgstr "Audiobijlage"
 
 #: ../qml/SettingsPage.qml:15
 msgid "Follow system"
-msgstr ""
+msgstr "Systeemthema"
 
 #: ../qml/SettingsPage.qml:16
 msgid "Light"
-msgstr ""
+msgstr "Licht thema"
 
 #: ../qml/SettingsPage.qml:17
 msgid "Dark"
-msgstr ""
+msgstr "Donker thema"
 
 #: ../qml/SettingsPage.qml:24
 msgid "Hide completely"
-msgstr ""
+msgstr "Volledig verbergen"
 
 #: ../qml/SettingsPage.qml:25
 msgid "Reveal placeholder"
-msgstr ""
+msgstr "Opvultekst tonen"
 
 #: ../qml/SettingsPage.qml:26
 msgid "Show normally"
-msgstr ""
+msgstr "Normaal tonen"
 
 #: ../qml/SettingsPage.qml:67
 msgid "Theme"
-msgstr ""
+msgstr "Thema"
 
 #: ../qml/SettingsPage.qml:112
 msgid "Autoplay GIFs"
-msgstr ""
+msgstr "Gifjes automatisch afspelen"
 
 #: ../qml/SettingsPage.qml:131
 msgid "Blocked messages"
-msgstr ""
+msgstr "Geblokkeerde berichten"
 
 #: ../qml/SettingsPage.qml:167
 msgid "Max message box lines"
-msgstr ""
+msgstr "Max. aantal regels in berichtveld"
 
 #: ../qml/SettingsPage.qml:196
 msgid "Log out"
-msgstr ""
+msgstr "Uitloggen"
 
 #: ../qml/SettingsPage.qml:210
 msgid "Disports - a Discord client for Ubuntu Touch"
-msgstr ""
+msgstr "Disports — een Discord-app voor Ubuntu Touch"
 
-#: ../qml/Sidebar.qml:174
+#: ../qml/Sidebar.qml:175
 msgid "DMs"
-msgstr ""
-
-#: ../qml/components/DebugLogOverlay.qml:50
-msgid "Clear"
-msgstr ""
+msgstr "PB's"
 
 #: ../qml/components/DeleteDialog.qml:10
 msgid "Delete message"
-msgstr ""
+msgstr "Bericht verwijderen"
 
 #: ../qml/components/DeleteDialog.qml:11
 msgid "Are you sure you want to permanently delete this message?"
-msgstr ""
+msgstr "Weet je zeker dat je dit bericht wilt verwijderen?"
 
 #: ../qml/components/EmojiPickerContent.qml:19
 msgid "Faces"
-msgstr ""
+msgstr "Gezichten"
 
 #: ../qml/components/EmojiPickerContent.qml:20
 msgid "People"
-msgstr ""
+msgstr "Personen"
 
 #: ../qml/components/EmojiPickerContent.qml:21
 msgid "Nature"
-msgstr ""
+msgstr "Natuur"
 
 #: ../qml/components/EmojiPickerContent.qml:22
 msgid "Food"
-msgstr ""
+msgstr "Eten en drinken"
 
 #: ../qml/components/EmojiPickerContent.qml:23
 msgid "Activity"
-msgstr ""
+msgstr "Activiteiten"
 
 #: ../qml/components/EmojiPickerContent.qml:24
 msgid "Travel"
-msgstr ""
+msgstr "Reizen"
 
 #: ../qml/components/EmojiPickerContent.qml:25
 msgid "Objects"
-msgstr ""
+msgstr "Objecten"
 
 #: ../qml/components/EmojiPickerContent.qml:26
 msgid "Symbols"
-msgstr ""
+msgstr "Symbolen"
 
 #: ../qml/components/EmojiPickerContent.qml:27
 msgid "Flags"
-msgstr ""
+msgstr "Vlaggen"
 
 #: ../qml/components/EmojiPickerContent.qml:30
 #: ../qml/components/EmojiPickerContent.qml:31
 msgid "Emoji"
-msgstr ""
+msgstr "Emoji"
 
 #: ../qml/components/EmojiPickerContent.qml:30
 msgid "Server"
-msgstr ""
+msgstr "Server"
 
 #: ../qml/components/EmojiPickerContent.qml:291
 msgid "This server has no custom emoji."
-msgstr ""
+msgstr "Deze server bevat geen aangepaste emoji."
 
 #: ../qml/components/EmojiPickerContent.qml:292
 msgid "Server emoji are for server channels."
-msgstr ""
+msgstr "Serveremoji zijn bedoeld voor serverkanalen."
 
 #: ../qml/components/EmojiPickerContent.qml:293
 msgid "Empty."
-msgstr ""
+msgstr "Leeg."
 
 #: ../qml/components/EmojiPickerDialog.qml:17
 msgid "Choose emoji"
-msgstr ""
+msgstr "Emoji kiezen"
 
 #: ../qml/components/EmojiPickerDialog.qml:18
 msgid "Insert an emoji into your message."
-msgstr ""
+msgstr "Voeg een emoji toe aan je bericht."
 
 #: ../qml/components/EmojiPickerDialog.qml:39
 msgid "Close"
-msgstr ""
+msgstr "Sluiten"
 
 #: ../qml/components/OfflineBanner.qml:32
 msgid "No network connection"
-msgstr ""
+msgstr "Geen internetverbinding"
 
 #: ../qml/components/OfflineView.qml:29
 msgid "No internet connection. Please check your network and try again."
 msgstr ""
+"Je bent niet verbonden met het internet. Controleer je verbinding en probeer "
+"het opnieuw."
 
 #: ../qml/components/OfflineView.qml:37
 msgid "Retry"
-msgstr ""
+msgstr "Opnieuw proberen"
 
 #: ../qml/components/SplashView.qml:36
 msgid "Starting Disports…"
-msgstr ""
+msgstr "Bezig met starten van Disports…"
 
 #: ../qml/components/SplashView.qml:38
 msgid "Loading your conversations…"
-msgstr ""
+msgstr "Bezig met laden gesprekken…"
 
 #: ../qml/components/SplashView.qml:39 ../qml/logic/AuthLogic.qml:23
 msgid "Signing in…"
-msgstr ""
+msgstr "Bezig met inloggen…"
 
 #: ../qml/logic/AuthLogic.qml:32
 msgid "Login failed."
-msgstr ""
+msgstr "Het inloggen is mislukt."
 
 #: ../qml/logic/AuthLogic.qml:41
 msgid "Could not save login securely."
-msgstr ""
+msgstr "De inloggegevens kunnen niet veilig worden bewaard."
 
 #: ../qml/logic/AuthLogic.qml:106
 msgid "Generating QR code…"
-msgstr ""
+msgstr "Bezig met maken van QR-code…"
 
 #: ../qml/logic/AuthLogic.qml:109
 msgid "Unable to start QR login."
-msgstr ""
+msgstr "Het inloggen met QR-code is mislukt."
 
-#: ../qml/logic/ChatLogic.qml:233
+#: ../qml/logic/ChatLogic.qml:239
 msgid "Image"
-msgstr ""
-
-#: ../qml/logic/ChatLogic.qml:235
-msgid "Video"
-msgstr ""
-
-#: ../qml/logic/ChatLogic.qml:237
-msgid "Audio"
-msgstr ""
+msgstr "Afbeelding"
 
 #: ../qml/logic/ChatLogic.qml:241
+msgid "Video"
+msgstr "Video"
+
+#: ../qml/logic/ChatLogic.qml:243
+msgid "Audio"
+msgstr "Audio"
+
+#: ../qml/logic/ChatLogic.qml:247
 msgid "Message"
-msgstr ""
+msgstr "Bericht"

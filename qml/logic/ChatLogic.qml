@@ -139,9 +139,22 @@ QtObject {
             return
         if (!items)
             items = []
-        model.clear()
-        for (var i = 0; i < items.length; i++)
-            model.append(items[i])
+
+        if (model.count > 0 && model.count === items.length) {
+            for (var i = 0; i < items.length; i++) {
+                var newItem = items[i]
+                var keys = Object.keys(newItem)
+                for (var k = 0; k < keys.length; k++) {
+                    var key = keys[k]
+                    model.setProperty(i, key, newItem[key])
+                }
+            }
+        } else {
+            model.clear()
+            for (var j = 0; j < items.length; j++)
+                model.append(items[j])
+        }
+
         if (model === chatMessageModel)
             rebuildMessageIndex()
         if (unreadLogic)

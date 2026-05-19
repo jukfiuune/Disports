@@ -62,63 +62,62 @@ Item {
             folderExpanded = o
     }
 
+    property bool _dmRebuildQueued: false
+    function queueRebuildUnreadDmItems() {
+        if (_dmRebuildQueued) return
+        _dmRebuildQueued = true
+        Qt.callLater(function() {
+            _dmRebuildQueued = false
+            sidebar.rebuildUnreadDmItems()
+        })
+    }
+
     function rebuildUnreadDmItems() {
-        _savedHeaderHeight = railList.headerItem ? Math.round(railList.headerItem.height) : 0
         var items = []
-        var i
-        if (!dmChannels) {
-            unreadDmItems = items
-            return
-        }
-        for (i = 0; i < dmChannels.count; i++) {
-            var row = dmChannels.get(i)
-            var unread = Number(row.unread || 0)
-            if (unread <= 0)
-                continue
-            items.push({
-                "channelId": row.channelId || "",
-                "name": row.name || "",
-                "abbr": row.abbr || "",
-                "iconUrl": row.iconUrl || "",
-                "iconName": row.iconName || "",
-                "unread": unread,
-                "unreadKind": row.unreadKind || "count"
-            })
+        if (dmChannels) {
+            for (var i = 0; i < dmChannels.count; i++) {
+                var row = dmChannels.get(i)
+                var unread = Number(row.unread || 0)
+                if (unread > 0) {
+                    items.push({
+                        "channelId": row.channelId || "",
+                        "name": row.name || "",
+                        "abbr": row.abbr || "",
+                        "iconUrl": row.iconUrl || "",
+                        "iconName": row.iconName || "",
+                        "unread": unread,
+                        "unreadKind": row.unreadKind || "count"
+                    })
+                }
+            }
         }
         unreadDmItems = items
     }
 
-    onDmChannelsChanged: rebuildUnreadDmItems()
-    onRevisionChanged: rebuildUnreadDmItems()
-    onUnreadDmItemsChanged: {
-        if (!startupDone) {
-            Qt.callLater(function() { railList.contentY = 0 })
-        } else if (railList.contentY > 0) {
-            // Anchor the visible content by compensating for header height change
-            var savedY = railList.contentY
-            var savedH = _savedHeaderHeight
-            Qt.callLater(function() {
-                var newH = railList.headerItem ? Math.round(railList.headerItem.height) : 0
-                railList.contentY = Math.max(0, savedY + (newH - savedH))
-            })
-        }
-    }
+    onDmChannelsChanged: queueRebuildUnreadDmItems()
+    onRevisionChanged: queueRebuildUnreadDmItems()
     Component.onCompleted: {
         rebuildUnreadDmItems()
         Qt.callLater(function() {
-            railList.contentY = 0
+            railList.contentY = railList.originY
             startupDone = true
         })
     }
 
     Connections {
         target: sidebar.dmChannels
-        function onCountChanged() { sidebar.rebuildUnreadDmItems() }
+        function onCountChanged() { sidebar.queueRebuildUnreadDmItems() }
     }
 
     Connections {
         target: sidebar.servers
-        function onCountChanged() { sidebar._pruneFolderExpanded() }
+        function onCountChanged() {
+            sidebar._pruneFolderExpanded()
+            // If we are at the top, prevent QML from scrolling down when the model populates
+            if (railList.contentY <= railList.originY + 5) {
+                Qt.callLater(function() { railList.contentY = railList.originY })
+            }
+        }
     }
 
     Rectangle {
@@ -136,8 +135,24 @@ Item {
         spacing: 0
         clip: true
         cacheBuffer: units.gu(80)
-        Component.onCompleted: Qt.callLater(function() { railList.contentY = 0 })
-        onModelChanged: Qt.callLater(function() { railList.contentY = 0 })
+
+        property real _lastOriginY: 0
+
+        Component.onCompleted: {
+            _lastOriginY = originY
+            Qt.callLater(function() { railList.contentY = railList.originY })
+        }
+
+        onOriginYChanged: {
+            if (contentY <= _lastOriginY + 5) {
+                contentY = originY
+            }
+            _lastOriginY = originY
+        }
+
+        onModelChanged: {
+            Qt.callLater(function() { railList.contentY = railList.originY })
+        }
 
         header: Column {
             width: railList.width

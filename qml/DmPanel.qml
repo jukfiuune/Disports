@@ -53,7 +53,16 @@ Item {
 
                 StatusDot {
                     status: model.status || "offline"
-                    visible: (model.itemType || "contact") === "contact"
+                    visible: (model.itemType || "contact") === "contact" && !model.blocked
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Icon {
+                    name: "cancel"
+                    width: units.gu(1.5)
+                    height: width
+                    visible: (model.itemType || "contact") === "contact" && !!model.blocked
+                    color: theme.palette.normal.negative
                     anchors.verticalCenter: parent.verticalCenter
                 }
 
@@ -69,8 +78,12 @@ Item {
                 Label {
                     text: model.name || ""
                     font.pixelSize: units.gu(1.7)
+                    font.strikeout: !!model.blocked
                     elide: Text.ElideRight
-                    width: parent.width - units.gu(6)
+                    width: parent.width - units.gu(8)
+                    color: model.blocked
+                           ? theme.palette.normal.backgroundSecondaryText
+                           : theme.palette.normal.backgroundText
                     anchors.verticalCenter: parent.verticalCenter
                 }
 

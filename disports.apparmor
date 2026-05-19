@@ -3,7 +3,6 @@
         "audio",
         "connectivity",
         "content_exchange",
-        "content_exchange_source",
         "keep-display-on",
         "microphone",
         "networking",

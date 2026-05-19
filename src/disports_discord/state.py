@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from .read_state import ReadStateMixin
 from .guild_state import GuildStateMixin
+from .member_state import MemberStateMixin
+from .relationship_state import RelationshipStateMixin
 from .message_formatter import MessageFormatterMixin
 from .reactions import ReactionsMixin
 from .permissions import PermissionsMixin
@@ -11,12 +13,18 @@ from .voice_state import VoiceStateMixin
 class DiscordState(
     ReadStateMixin,
     GuildStateMixin,
+    MemberStateMixin,
+    RelationshipStateMixin,
     MessageFormatterMixin,
     ReactionsMixin,
     PermissionsMixin,
     FormattersMixin,
     VoiceStateMixin,
 ):
+    def __init__(self) -> None:
+        self.client_preferences: dict[str, str] = {}
+        super().__init__()
+
     MESSAGE_TYPE_NAMES = {
         0: "Default",
         1: "RecipientAdd",
@@ -59,9 +67,6 @@ class DiscordState(
         46: "PollResult",
     }
 
-    def __init__(self) -> None:
-        # Note: All mixins call super().__init__() to ensure full initialization chain.
-        super().__init__()
 
 # Re-export for any direct imports that exist elsewhere
 __all__ = ["DiscordState"]

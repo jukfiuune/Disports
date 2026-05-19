@@ -14,6 +14,7 @@ ListItem {
     property string displayKind: "default"
     property string discordMessageType: "Default"
     property var medias: []
+    property var richEmbeds: []
     property string reactionsJson: "[]"
     property var parsedReactions: []
 
@@ -35,6 +36,13 @@ ListItem {
     property string forwardedAuthor: ""
     property string forwardedBody: ""
     property bool highlighted: false
+    property bool authorBlocked: false
+    property string blockedVisibility: "show"  // "show" | "reveal" | "hide"
+    property bool _revealedByUser: false
+
+    // Effective visibility: if the user tapped "Show message", treat as show.
+    readonly property string _effectiveVisibility:
+        _revealedByUser ? "show" : blockedVisibility
 
     signal replyRequested(string messageId)
     signal jumpRequested(string messageId)
@@ -46,7 +54,13 @@ ListItem {
     signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
 
     divider.visible: false
-    height: inner.height + units.gu(displayKind === "system" ? 1 : 1.5)
+    // "hide" = fully collapsed with no height; "reveal" = placeholder only.
+    height: _effectiveVisibility === "hide"
+            ? 0
+            : _effectiveVisibility === "reveal"
+              ? revealPlaceholder.implicitHeight + units.gu(1)
+              : inner.height + units.gu(displayKind === "system" ? 1 : 1.5)
+    visible: _effectiveVisibility !== "hide"
 
     // Leading actions (swipe right): delete - own messages only.
     leadingActions: ownActionsLoader.item
@@ -109,8 +123,58 @@ ListItem {
         }
     }
 
+    // Reveal placeholder — shown when blockedVisibility === "reveal" and user hasn't tapped yet.
+    Item {
+        id: revealPlaceholder
+        anchors {
+            left: parent.left; right: parent.right
+            top: parent.top
+            topMargin: units.gu(0.5)
+            leftMargin: units.gu(2); rightMargin: units.gu(2)
+        }
+        visible: bubble._effectiveVisibility === "reveal"
+        implicitHeight: revealRow.height + units.gu(0.5)
+
+        Row {
+            id: revealRow
+            spacing: units.gu(1)
+            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
+
+            Label {
+                text: bubble.author
+                font.pixelSize: units.gu(1.5)
+                font.bold: true
+                font.strikeout: true
+                color: theme.palette.normal.backgroundSecondaryText
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Label {
+                text: i18n.tr("Message from blocked user")
+                font.pixelSize: units.gu(1.4)
+                font.italic: true
+                color: theme.palette.normal.backgroundSecondaryText
+                elide: Text.ElideRight
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Label {
+                text: i18n.tr("Show")
+                font.pixelSize: units.gu(1.4)
+                color: theme.palette.normal.focus
+                anchors.verticalCenter: parent.verticalCenter
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: bubble._revealedByUser = true
+                }
+            }
+        }
+    }
+
+    // Main content — only rendered when visible to avoid layout cost.
     Column {
         id: inner
+        visible: bubble._effectiveVisibility === "show"
         anchors {
             top: parent.top; left: parent.left; right: parent.right
             topMargin: units.gu(displayKind === "system" ? 0.5 : 0.75)
@@ -125,6 +189,10 @@ ListItem {
                 text: bubble.author
                 font.pixelSize: units.gu(1.6)
                 font.bold: true
+                font.strikeout: bubble.authorBlocked
+                color: bubble.authorBlocked
+                       ? theme.palette.normal.backgroundSecondaryText
+                       : theme.palette.normal.backgroundText
             }
             Label {
                 text: bubble.timestamp
@@ -183,6 +251,55 @@ ListItem {
                 body: ""
                 onMediaClicked: function(url, type) {
                     bubble.mediaClicked(url, type)
+                }
+            }
+        }
+
+        Repeater {
+            model: bubble.richEmbeds || []
+            delegate: Item {
+                width: parent.width
+                implicitHeight: Math.max(embedCol.height, units.gu(2)) + units.gu(1)
+
+                Rectangle {
+                    id: embedBar
+                    anchors {
+                        left: parent.left
+                        top: parent.top
+                        bottom: parent.bottom
+                        bottomMargin: units.gu(1)
+                    }
+                    width: units.dp(4)
+                    color: model.color || theme.palette.normal.base
+                    radius: units.dp(2)
+                }
+
+                Column {
+                    id: embedCol
+                    anchors {
+                        left: embedBar.right
+                        leftMargin: units.gu(1.5)
+                        right: parent.right
+                        top: parent.top
+                    }
+
+                    Label {
+                        width: parent.width
+                        text: model.html || ""
+                        textFormat: Text.RichText
+                        wrapMode: Text.WordWrap
+                        font.pixelSize: units.gu(1.4)
+                        color: theme.palette.normal.backgroundSecondaryText
+                        lineHeight: 1.2
+                        onLinkActivated: {
+                            var prefix = "disports://channel/"
+                            if (link.indexOf(prefix) === 0) {
+                                bubble.channelMentionRequested(link.substring(prefix.length))
+                                return
+                            }
+                            Qt.openUrlExternally(link)
+                        }
+                    }
                 }
             }
         }

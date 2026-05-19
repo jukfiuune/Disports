@@ -7,7 +7,7 @@ A Discord client built for Ubuntu Touch.
 
 ## Installation
 
-Disports can currently be installed on your Ubuntu Touch device via the artifact in GitHub Actions, or by building it yourself using [Clickable](https://clickable-ut.dev).
+Disports can currently be installed on your Ubuntu Touch device via the [Open-Store](https://open-store.io/app/disports.jukfiuu), [GitHub releases](https://github.com/jukfiuune/Disports/releases) or by building it yourself using [Clickable](https://clickable-ut.dev).
 
 ## Logging In
 
@@ -36,6 +36,16 @@ If you still need to use token login, here's how to find your token:
 5. Click on any request that appears, and look in the **Request Headers** section.
 6. Find the `Authorization` header - its value is your token.
 7. Copy it, paste it into the Token field in Disports, and tap **Login**.
+
+## Planned features
+
+- [ ] Uploading attachments (images, videos, etc)
+- [ ] Ping people
+- [ ] Message styling (Markdown)
+- [ ] Nitro features
+- [ ] Offline storage (server messages, DMs, last messages, etc)
+- [ ] Notifications
+- [ ] Voice calls and channels
 
 ## Warnings
 

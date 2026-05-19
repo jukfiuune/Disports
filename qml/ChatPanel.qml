@@ -26,6 +26,7 @@ Item {
     property string editMessageId: ""
     property string editOriginalBody: ""
     property bool inlineGifPlayback: false
+    property int composerMaxLines: 3
     property bool showHeader: true
     property bool showCallButton: false
     property bool initialScrollPending: channelId !== ""
@@ -40,13 +41,9 @@ Item {
     readonly property real composerButtonSize: composerMinHeight
     readonly property real replyBarHeight: replyMessageId !== "" ? units.gu(4.5) : 0
     readonly property real editBarHeight: editMessageId !== "" ? units.gu(4.5) : 0
-    readonly property real composerFieldHeight: Math.max(
-                                                    composerMinHeight,
-                                                    Math.min(
-                                                        composerMaxHeight,
-                                                        msgInput.implicitHeight
-                                                    )
-                                                )
+    readonly property real composerFieldHeight: msgInput.height
+    property real singleLineHeight: 0
+    property real msgInputHeight: 0
     property bool loadingOlder: false
     property bool isOnline: true
     readonly property bool listInteracting: messageList.dragging || messageList.flicking
@@ -189,6 +186,7 @@ Item {
             displayKind: model.displayKind || "default"
             discordMessageType: model.discordMessageType || "Default"
             medias: model.medias || []
+            richEmbeds: model.richEmbeds || []
             reactionsJson: model.reactionsJson || "[]"
             hasReply: !!model.hasReply
             replyMessageId: model.replyMessageId || ""
@@ -199,6 +197,8 @@ Item {
             forwardedAuthor: model.forwardedAuthor || ""
             forwardedBody: model.forwardedBody || ""
             highlighted: chatPanel.highlightedMessageId !== "" && chatPanel.highlightedMessageId === (model.messageId || "")
+            authorBlocked: !!model.authorBlocked
+            blockedVisibility: model.blockedVisibility || "show"
             onReplyRequested: function(messageId) { chatPanel.replyRequested(messageId) }
             onJumpRequested: function(messageId) { chatPanel.jumpToMessage(messageId) }
             onEditRequested: function(messageId, currentBody) {
@@ -272,10 +272,11 @@ Item {
             rightMargin: units.gu(1)
             bottomMargin: units.gu(1) + keyboardInset
         }
-        height: composerPadding * 2 + composerFieldHeight + replyBarHeight + (replyBarHeight > 0 ? units.gu(0.5) : 0) + editBarHeight + (editBarHeight > 0 ? units.gu(0.5) : 0)
+        height: msgInput.height + composerPadding * 2 + replyBarHeight + (replyBarHeight > 0 ? units.gu(0.5) : 0) + editBarHeight + (editBarHeight > 0 ? units.gu(0.5) : 0)
         color: theme.palette.normal.background
 
         ColumnLayout {
+            id: composerLayout
             anchors.fill: parent
             anchors.margins: composerPadding
             spacing: units.gu(0.5)
@@ -304,12 +305,11 @@ Item {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: composerFieldHeight
                 spacing: units.gu(1)
 
                 StyledItem {
-                    Layout.preferredWidth: composerButtonSize
-                    Layout.preferredHeight: composerButtonSize
+                    Layout.preferredWidth: msgInput.implicitHeight
+                    Layout.preferredHeight: msgInput.implicitHeight
                     Layout.alignment: Qt.AlignBottom
 
                     Image {
@@ -355,9 +355,10 @@ Item {
                 TextArea {
                     id: msgInput
                     Layout.fillWidth: true
-                    Layout.preferredHeight: composerFieldHeight
-                    activeFocusOnPress: true
+                    Layout.fillHeight: true
                     autoSize: true
+                    maximumLineCount: chatPanel.composerMaxLines
+                    activeFocusOnPress: true
                     selectByMouse: true
                     mouseSelectionMode: TextEdit.SelectWords
                     wrapMode: TextEdit.WrapAtWordBoundaryOrAnywhere
@@ -377,6 +378,10 @@ Item {
                             text = chatPanel.draftText
                     }
                     onTextChanged: {
+                        if (text.length > 2000) {
+                            text = text.substring(0, 2000)
+                            Popups.PopupUtils.open(charLimitDialogComponent)
+                        }
                         if (text !== chatPanel.draftText)
                             chatPanel.draftEdited(text)
                     }
@@ -400,8 +405,8 @@ Item {
 
                 Item {
                     id: sendBtn
-                    Layout.preferredWidth: composerButtonSize
-                    Layout.preferredHeight: composerButtonSize
+                    Layout.preferredWidth: msgInput.implicitHeight
+                    Layout.preferredHeight: msgInput.implicitHeight
                     Layout.alignment: Qt.AlignBottom
                     visible: msgInput.displayText.trim() !== "" || !chatPanel.isOnline
                     opacity: chatPanel.isOnline ? 1.0 : 0.4
@@ -466,6 +471,34 @@ Item {
                     chatPanel.insertEmoji(text, emojiData)
                 }
                 Popups.PopupUtils.close(emojiDialog)
+            }
+        }
+    }
+
+    Component {
+        id: charLimitDialogComponent
+        Popups.Dialog {
+            id: charLimitDialog
+            title: i18n.tr("Character Limit Exceeded")
+
+            Column {
+                width: parent.width
+                spacing: units.gu(2)
+
+                Label {
+                    width: parent.width
+                    text: i18n.tr("Messages cannot exceed 2000 characters. Your text has been truncated to fit the limit.")
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    font.pixelSize: units.gu(1.8)
+                }
+
+                Button {
+                    width: parent.width
+                    text: i18n.tr("OK")
+                    color: theme.palette.normal.positive
+                    onClicked: Popups.PopupUtils.close(charLimitDialog)
+                }
             }
         }
     }

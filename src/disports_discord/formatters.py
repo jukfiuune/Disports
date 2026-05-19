@@ -181,6 +181,7 @@ class FormattersMixin:
             recipient = recipients[0]
             self.cache_user(recipient)  # type: ignore[attr-defined]
             user_id = recipient.get("id", "")
+            blocked = self.is_blocked(user_id)  # type: ignore[attr-defined]
             contacts.append({
                 "contactId": user_id,
                 "channelId": channel.get("id", ""),
@@ -191,6 +192,7 @@ class FormattersMixin:
                 "unread": self.channel_badge_count(channel),  # type: ignore[attr-defined]
                 "unreadKind": self.channel_unread_kind(channel),  # type: ignore[attr-defined]
                 "sortKey": last_message_sort_value(channel.get("last_message_id")),
+                "blocked": blocked,
             })
         return contacts
 
