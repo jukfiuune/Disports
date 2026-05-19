@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-18 20:38+0000\n"
+"POT-Creation-Date: 2026-05-19 05:37+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Unknown Call"
 msgstr ""
 
-#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:92
+#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:89
 msgid "Chat"
 msgstr ""
 
@@ -37,36 +37,50 @@ msgstr ""
 msgid "Info"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:139
+#: ../qml/ChatPanel.qml:136
 msgid "Load older messages"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:139 ../qml/components/EmojiPickerContent.qml:277
+#: ../qml/ChatPanel.qml:136 ../qml/components/EmojiPickerContent.qml:277
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:286
+#: ../qml/ChatPanel.qml:287
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:286 ../qml/ChatPanel.qml:367
+#: ../qml/ChatPanel.qml:287 ../qml/ChatPanel.qml:368
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:295
+#: ../qml/ChatPanel.qml:296
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:365
+#: ../qml/ChatPanel.qml:366
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:367
+#: ../qml/ChatPanel.qml:368
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:368
+#: ../qml/ChatPanel.qml:369
 msgid "Type a message..."
+msgstr ""
+
+#: ../qml/ChatPanel.qml:482
+msgid "Character Limit Exceeded"
+msgstr ""
+
+#: ../qml/ChatPanel.qml:490
+msgid ""
+"Messages cannot exceed 2000 characters. Your text has been truncated to fit "
+"the limit."
+msgstr ""
+
+#: ../qml/ChatPanel.qml:498
+msgid "OK"
 msgstr ""
 
 #: ../qml/DmPanel.qml:27
@@ -117,6 +131,25 @@ msgstr ""
 msgid "Cancel"
 msgstr ""
 
+#: ../qml/LoginPage.qml:160
+msgid "Warning"
+msgstr ""
+
+#: ../qml/LoginPage.qml:168
+msgid ""
+"Using any unofficial Discord client is against Discord's Terms of Service "
+"and may result in your account being restricted or permanently banned (I've "
+"tried to minimize the risk of this as much as possible)."
+msgstr ""
+
+#: ../qml/LoginPage.qml:176
+msgid "Use Disports at your own risk."
+msgstr ""
+
+#: ../qml/LoginPage.qml:185
+msgid "I understand"
+msgstr ""
+
 #: ../qml/Main.qml:108
 msgid "Scan with the Discord mobile app."
 msgstr ""
@@ -129,19 +162,19 @@ msgstr ""
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:320 disports.desktop.in.h:1
+#: ../qml/Main.qml:332 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:324 ../qml/SettingsPage.qml:30
+#: ../qml/Main.qml:336 ../qml/SettingsPage.qml:42
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:403
+#: ../qml/Main.qml:415
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:408
+#: ../qml/Main.qml:420
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -249,7 +282,7 @@ msgstr ""
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 
-#: ../qml/Sidebar.qml:174
+#: ../qml/Sidebar.qml:175
 msgid "DMs"
 msgstr ""
 
@@ -374,18 +407,18 @@ msgstr ""
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:233
+#: ../qml/logic/ChatLogic.qml:246
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:235
+#: ../qml/logic/ChatLogic.qml:248
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:237
+#: ../qml/logic/ChatLogic.qml:250
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:241
+#: ../qml/logic/ChatLogic.qml:254
 msgid "Message"
 msgstr ""
