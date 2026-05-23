@@ -22,12 +22,23 @@ class DiscordClient:
         # Standard login
         return self._perform_login(token)
 
-    def login_with_captcha(self, token: str, captcha_key: str, rqtoken: str) -> dict[str, Any]:
+    def login_with_captcha(self, token: str, captcha_key: str, rqtoken: str, session_id: str = "") -> dict[str, Any]:
         # Retry login with Captcha headers attached
         headers = {"X-Captcha-Key": captcha_key}
         if rqtoken:
             headers["X-Captcha-Rqtoken"] = rqtoken
+        if session_id:
+            headers["X-Captcha-Session-Id"] = session_id
         return self._perform_login(token, headers=headers)
+
+    def login_with_captcha_qr(self, captcha_key: str, rqtoken: str, session_id: str) -> dict[str, Any]:
+        """Retry the QR remote-auth flow after captcha is solved."""
+        if not self.remote_auth:
+            return {"ok": False, "error": "No active QR login session."}
+        # The result arrives asynchronously via qr_login_token / qr_login_error events
+        self.remote_auth.complete_login_with_captcha(captcha_key, rqtoken, session_id)
+        return {"ok": True}
+
 
     def _perform_login(self, token: str, headers: dict[str, str] | None = None) -> dict[str, Any]:
         # Internal underlying login routine
@@ -43,6 +54,7 @@ class DiscordClient:
                 "sitekey": exc.captcha_sitekey,
                 "rqdata": exc.captcha_rqdata,
                 "rqtoken": exc.captcha_rqtoken,
+                "session_id": exc.captcha_session_id,
             }
         except DiscordHTTPError as exc:
             return {

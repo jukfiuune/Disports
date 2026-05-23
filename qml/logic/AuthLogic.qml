@@ -22,6 +22,8 @@ QtObject {
             appState.captchaSiteKey = result.sitekey || ""
             appState.captchaRqData = result.rqdata || ""
             appState.captchaRqToken = result.rqtoken || ""
+            appState.captchaSessionId = result.session_id || ""
+            appState.captchaKeyErrors = []
             appState.captchaRequired = true
             return
         }
@@ -74,10 +76,29 @@ QtObject {
         appState.captchaRequired = false
         appState.loginBusy = true
         appState.qrStatusText = i18n.tr("Verifying security check...")
-        
-        python.call("discord_client.login_with_captcha", [appState.pendingLoginToken, captchaKey, appState.captchaRqToken], function(result) {
-            _handleLoginResult(appState.pendingLoginToken, result)
-        })
+
+        var isQr = appState.captchaIsQrFlow
+        appState.captchaIsQrFlow = false
+
+        if (isQr) {
+            // QR flow: result arrives asynchronously via qr_login_token / qr_login_error events
+            python.call("discord_client.complete_qr_login_with_captcha",
+                [captchaKey, appState.captchaRqToken, appState.captchaSessionId],
+                function(result) {
+                    if (!result || !result.ok) {
+                        appState.loginBusy = false
+                        appState.loginError = (result && result.error) ? result.error : i18n.tr("Login failed.")
+                        startQrLogin()
+                    }
+                    // On success qr_login_token fires → beginLogin is called
+                })
+        } else {
+            python.call("discord_client.login_with_captcha",
+                [appState.pendingLoginToken, captchaKey, appState.captchaRqToken, appState.captchaSessionId],
+                function(result) {
+                    _handleLoginResult(appState.pendingLoginToken, result)
+                })
+        }
     }
 
     function logout() {

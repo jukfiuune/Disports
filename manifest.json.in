@@ -1,7 +1,7 @@
 {
     "name": "disports.jukfiuu",
     "description": "A Discord client for Ubuntu Touch",
-    "architecture": "$ENV{ARCH}",
+    "architecture": "all",
     "title": "Disports",
     "icon": "assets/logo.svg",
     "hooks": {

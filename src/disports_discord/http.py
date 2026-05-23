@@ -44,11 +44,13 @@ class DiscordCaptchaRequired(Exception):
     def __init__(self, status: int, body: str, payload: dict[str, Any]):
         self.status = status
         self.body = body
+        self.captcha_key: list[str] = payload.get("captcha_key") or []
         self.captcha_sitekey = payload.get("captcha_sitekey", "")
         self.captcha_service = payload.get("captcha_service", "")
         self.captcha_rqdata = payload.get("captcha_rqdata", "")
         self.captcha_rqtoken = payload.get("captcha_rqtoken", "")
-        super().__init__(f"Captcha required (sitekey: {self.captcha_sitekey})")
+        self.captcha_session_id = payload.get("captcha_session_id", "")
+        super().__init__(f"Captcha required (sitekey: {self.captcha_sitekey}, errors: {self.captcha_key})")
 
 class DiscordHTTP:
     def __init__(self) -> None:

@@ -7,6 +7,7 @@ except ImportError:  # pragma: no cover - local verification path
     pyotherside = None
 
 from disports_discord import DiscordClient
+from disports_discord.captcha_server import start_captcha_server
 
 
 def _emit(name: str, payload: dict) -> None:
@@ -24,6 +25,7 @@ def _token_path() -> Path:
 
 
 _client = DiscordClient(emitter=_emit)
+_captcha_server = None
 
 
 def save_token(token: str) -> dict:
@@ -79,8 +81,39 @@ def dev_flags() -> dict:
 def login(token: str) -> dict:
     return _client.login(token)
 
-def login_with_captcha(token: str, captcha_key: str, rqtoken: str) -> dict:
-    return _client.login_with_captcha(token, captcha_key, rqtoken)
+def login_with_captcha(token: str, captcha_key: str, rqtoken: str, session_id: str = "") -> dict:
+    return _client.login_with_captcha(token, captcha_key, rqtoken, session_id)
+
+
+def complete_qr_login_with_captcha(captcha_key: str, rqtoken: str, session_id: str = "") -> dict:
+    """Called after captcha is solved for the QR login flow."""
+    return _client.login_with_captcha_qr(captcha_key, rqtoken, session_id)
+
+
+def start_captcha_flow(sitekey: str, rqdata: str) -> dict:
+    """Start the local captcha HTTP server and return the URL.
+    The solved token is sent back to QML via pyotherside 'captcha_solved' event.
+    """
+    global _captcha_server
+    stop_captcha_flow()
+
+    def _on_solved(token: str) -> None:
+        _emit("captcha_solved", {"token": token})
+
+    _captcha_server, url = start_captcha_server(sitekey, rqdata, _on_solved)
+    return {"ok": True, "url": url}
+
+
+def stop_captcha_flow() -> dict:
+    """Stop the running captcha server if one is active."""
+    global _captcha_server
+    if _captcha_server is not None:
+        try:
+            _captcha_server.shutdown()
+        except Exception:
+            pass
+        _captcha_server = None
+    return {"ok": True}
 
 
 def start_qr_login() -> dict:

@@ -6,8 +6,7 @@
         "keep-display-on",
         "microphone",
         "networking",
-        "video",
-        "webview"
+        "video"
     ],
     "policy_version": 20.04
 }

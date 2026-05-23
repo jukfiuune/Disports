@@ -32,8 +32,12 @@ QtObject {
     property int sidebarRevision: 0
     property bool runningUnderClickableDesktop: false
     property bool captchaRequired: false
+    property bool captchaIsQrFlow: false
     property string captchaSiteKey: ""
     property string captchaRqData: ""
     property string captchaRqToken: ""
+    property string captchaSessionId: ""
+    property string captchaUrl: ""
+    property var captchaKeyErrors: []
     property string pendingLoginToken: ""
 }

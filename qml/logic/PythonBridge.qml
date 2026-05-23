@@ -18,11 +18,13 @@ Python {
     signal qrLoginPending(var data)
     signal qrLoginToken(var data)
     signal qrLoginError(var data)
+    signal qrLoginCaptcha(var data)
     signal guildChannels(var data)
     signal guildSidebar(var data)
     signal guildMemberChunk(var data)
     signal messageReaction(var data)
     signal readyForInit()
+    signal captchaSolved(var data)
 
     Component.onCompleted: {
         addImportPath(Qt.resolvedUrl("../../src/"))
@@ -45,10 +47,12 @@ Python {
         setHandler("qr_login_pending", qrLoginPending)
         setHandler("qr_login_token", qrLoginToken)
         setHandler("qr_login_error", qrLoginError)
+        setHandler("qr_login_captcha", qrLoginCaptcha)
         setHandler("guild_channels", guildChannels)
         setHandler("guild_sidebar", guildSidebar)
         setHandler("guild_member_chunk", guildMemberChunk)
         setHandler("message_reaction", messageReaction)
+        setHandler("captcha_solved", captchaSolved)
     }
 
     onError: console.log("Python error: " + traceback)

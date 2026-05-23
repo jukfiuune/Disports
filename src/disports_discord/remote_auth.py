@@ -15,7 +15,7 @@ from websocket import ABNF
 
 from .errors import GatewayClosed
 from .gateway import DiscordWsClient
-from .http import DiscordHTTP, DiscordHTTPError
+from .http import DiscordHTTP, DiscordHTTPError, DiscordCaptchaRequired
 
 
 REMOTE_AUTH_GATEWAY_URL = "wss://remote-auth-gateway.discord.gg/?v=2"
@@ -72,6 +72,8 @@ class DiscordRemoteAuth:
         self._stop = threading.Event()
         self._private_key: rsa.RSAPrivateKey | None = None
         self._expected_fingerprint = ""
+        self._pending_ticket = ""
+
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -237,12 +239,72 @@ class DiscordRemoteAuth:
         if not ticket or self._stop.is_set():
             return
         assert self._private_key is not None
-        response = self.http.request(
-            "POST",
-            "users/@me/remote-auth/login",
-            json_body={"ticket": ticket},
-            auth=False,
-        )
+        try:
+            response = self.http.request(
+                "POST",
+                "users/@me/remote-auth/login",
+                json_body={"ticket": ticket},
+                auth=False,
+            )
+        except DiscordCaptchaRequired as exc:
+            # Store ticket so we can retry after the user solves the captcha
+            self._pending_ticket = ticket
+            self._emit("qr_login_captcha", {
+                "sitekey": exc.captcha_sitekey,
+                "rqdata": exc.captcha_rqdata,
+                "rqtoken": exc.captcha_rqtoken,
+                "session_id": exc.captcha_session_id,
+                "captcha_key": exc.captcha_key,
+            })
+            return
+        encrypted_token = (response or {}).get("encrypted_token", "")
+        token = self._decrypt_text(encrypted_token)
+        if not token:
+            self._emit("qr_login_error", {"error": "Discord QR login returned an unreadable token."})
+            self.stop()
+            return
+        self._emit("qr_login_token", {"token": token})
+        self.stop()
+
+    def complete_login_with_captcha(
+        self,
+        captcha_key: str,
+        rqtoken: str,
+        session_id: str,
+    ) -> None:
+        """Retry the remote-auth login after the user has solved the captcha."""
+        ticket = self._pending_ticket
+        if not ticket:
+            self._emit("qr_login_error", {"error": "No pending QR login ticket to retry."})
+            return
+        self._pending_ticket = ""
+        headers = {"X-Captcha-Key": captcha_key}
+        if rqtoken:
+            headers["X-Captcha-Rqtoken"] = rqtoken
+        if session_id:
+            headers["X-Captcha-Session-Id"] = session_id
+        try:
+            response = self.http.request(
+                "POST",
+                "users/@me/remote-auth/login",
+                json_body={"ticket": ticket},
+                headers=headers,
+                auth=False,
+            )
+        except DiscordCaptchaRequired as exc:
+            # Captcha solution was rejected — re-emit the new challenge so the user can retry
+            self._pending_ticket = ticket
+            self._emit("qr_login_captcha", {
+                "sitekey": exc.captcha_sitekey,
+                "rqdata": exc.captcha_rqdata,
+                "rqtoken": exc.captcha_rqtoken,
+                "session_id": exc.captcha_session_id,
+                "captcha_key": exc.captcha_key,  # e.g. ["invalid-input-response"]
+            })
+            return
+        except DiscordHTTPError as exc:
+            self._emit("qr_login_error", {"error": f"QR login failed: {exc.display_message()}"})
+            return
         encrypted_token = (response or {}).get("encrypted_token", "")
         token = self._decrypt_text(encrypted_token)
         if not token:

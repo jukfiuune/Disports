@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-19 18:32+0000\n"
+"POT-Creation-Date: 2026-05-20 17:14+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -79,72 +79,92 @@ msgstr ""
 msgid "Direct Messages"
 msgstr ""
 
-#: ../qml/LoginPage.qml:37 ../qml/LoginPage.qml:165
+#: ../qml/LoginPage.qml:41 ../qml/LoginPage.qml:161
 msgid "Sign In"
 msgstr ""
 
-#: ../qml/LoginPage.qml:58
+#: ../qml/LoginPage.qml:62
 msgid "Scan the QR code with the Discord mobile app, or paste a token instead."
 msgstr ""
 
-#: ../qml/LoginPage.qml:88
+#: ../qml/LoginPage.qml:92
 msgid "Preparing QR code..."
 msgstr ""
 
-#: ../qml/LoginPage.qml:88
+#: ../qml/LoginPage.qml:92
 msgid "Tap refresh to try again"
 msgstr ""
 
-#: ../qml/LoginPage.qml:97
+#: ../qml/LoginPage.qml:101
 msgid "Open Discord on your Android or iOS device and scan to sign in."
 msgstr ""
 
-#: ../qml/LoginPage.qml:105
+#: ../qml/LoginPage.qml:109
 msgid "Refresh QR code"
 msgstr ""
 
-#: ../qml/LoginPage.qml:126
+#: ../qml/LoginPage.qml:130
 msgid "Paste a token instead (not recommended)"
 msgstr ""
 
-#: ../qml/LoginPage.qml:149
+#: ../qml/LoginPage.qml:145
 msgid "Manual Login"
 msgstr ""
 
-#: ../qml/LoginPage.qml:150
+#: ../qml/LoginPage.qml:146
 msgid "Paste your Discord account token to sign in directly."
 msgstr ""
 
-#: ../qml/LoginPage.qml:155
+#: ../qml/LoginPage.qml:151
 msgid "Token"
 msgstr ""
 
-#: ../qml/LoginPage.qml:160 ../qml/LoginPage.qml:268
+#: ../qml/LoginPage.qml:156 ../qml/LoginPage.qml:300
 #: ../qml/components/DeleteDialog.qml:22
 msgid "Cancel"
 msgstr ""
 
-#: ../qml/LoginPage.qml:180
+#: ../qml/LoginPage.qml:176
 msgid "Warning"
 msgstr ""
 
-#: ../qml/LoginPage.qml:188
+#: ../qml/LoginPage.qml:184
 msgid ""
 "Using any unofficial Discord client is against Discord's Terms of Service "
 "and may result in your account being restricted or permanently banned (I've "
 "tried to minimize the risk of this as much as possible)."
 msgstr ""
 
-#: ../qml/LoginPage.qml:196
+#: ../qml/LoginPage.qml:192
 msgid "Use Disports at your own risk."
 msgstr ""
 
-#: ../qml/LoginPage.qml:205
+#: ../qml/LoginPage.qml:201
 msgid "I understand"
 msgstr ""
 
-#: ../qml/LoginPage.qml:216
+#: ../qml/LoginPage.qml:212
 msgid "Security Check Required"
+msgstr ""
+
+#: ../qml/LoginPage.qml:221
+msgid ""
+"A security check is required to sign in.\n"
+"\n"
+"Your browser should have opened automatically. If not, tap the button below "
+"to open it."
+msgstr ""
+
+#: ../qml/LoginPage.qml:231
+msgid "(Test mode — no captcha server started.)"
+msgstr ""
+
+#: ../qml/LoginPage.qml:256
+msgid "Previous attempt rejected by Discord:"
+msgstr ""
+
+#: ../qml/LoginPage.qml:293
+msgid "Open Browser"
 msgstr ""
 
 #: ../qml/Main.qml:87
@@ -159,19 +179,19 @@ msgstr ""
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:274 disports.desktop.in.h:1
+#: ../qml/Main.qml:308 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:278 ../qml/SettingsPage.qml:42
+#: ../qml/Main.qml:312 ../qml/SettingsPage.qml:42
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:349
+#: ../qml/Main.qml:383
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:354
+#: ../qml/Main.qml:388
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -380,27 +400,27 @@ msgstr ""
 msgid "Loading your conversations…"
 msgstr ""
 
-#: ../qml/components/SplashView.qml:39 ../qml/logic/AuthLogic.qml:66
+#: ../qml/components/SplashView.qml:39 ../qml/logic/AuthLogic.qml:68
 msgid "Signing in…"
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:34
+#: ../qml/logic/AuthLogic.qml:36 ../qml/logic/AuthLogic.qml:90
 msgid "Login failed."
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:43
+#: ../qml/logic/AuthLogic.qml:45
 msgid "Could not save login securely."
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:76
+#: ../qml/logic/AuthLogic.qml:78
 msgid "Verifying security check..."
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:132
+#: ../qml/logic/AuthLogic.qml:153
 msgid "Generating QR code…"
 msgstr ""
 
-#: ../qml/logic/AuthLogic.qml:136
+#: ../qml/logic/AuthLogic.qml:157
 msgid "Unable to start QR login."
 msgstr ""
 

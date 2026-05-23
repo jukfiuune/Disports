@@ -1,7 +1,6 @@
 import QtQuick 2.7
 import Lomiri.Components 1.3
 import Lomiri.Components.Popups 1.3 as Popups
-import QtWebEngine 1.8
 
 Page {
     id: loginPage
@@ -19,11 +18,16 @@ Page {
         }
     }
 
+    property var _activeCaptchaDialog: null
+
     Connections {
         target: typeof appState !== "undefined" ? appState : null
         onCaptchaRequiredChanged: {
             if (appState.captchaRequired) {
-                __popups.open(captchaDialogComponent)
+                loginPage._activeCaptchaDialog = __popups.open(captchaDialogComponent)
+            } else if (loginPage._activeCaptchaDialog) {
+                Popups.PopupUtils.close(loginPage._activeCaptchaDialog)
+                loginPage._activeCaptchaDialog = null
             }
         }
     }
@@ -128,14 +132,6 @@ Page {
                     var popup = __popups.open(tokenDialogComponent)
                 }
             }
-
-            Button {
-                width: parent.width
-                text: "Open WebEngine Test Dialog"
-                onClicked: {
-                    __popups.open(captchaDialogComponent)
-                }
-            }
         }
     }
 
@@ -215,62 +211,98 @@ Page {
             id: captchaDialog
             title: i18n.tr("Security Check Required")
 
-            Item {
+            Column {
                 width: parent.width
-                height: units.gu(45) // Allow enough height for hCaptcha to open the image grid
+                spacing: units.gu(2)
 
-                WebEngineView {
-                    id: webView
-                    anchors.fill: parent
+                Label {
+                    width: parent.width
+                    visible: typeof appState !== "undefined" && appState.captchaRequired
+                    text: i18n.tr("A security check is required to sign in.\n\nYour browser should have opened automatically. If not, tap the button below to open it.")
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    color: theme.palette.normal.backgroundSecondaryText
+                    font.pixelSize: units.gu(1.8)
+                }
 
-                    Component.onCompleted: {
-                        if (typeof appState === "undefined" || !appState.captchaSiteKey) {
-                            // Render a simple placeholder test page when opened manually
-                            var testHtml = "<html><body style=\"background-color: #36393f; color: #ffffff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; font-family: sans-serif; text-align: center;\">" +
-                                           "<div><h2>QtWebEngine Test Mode</h2><p>Click 'Load Google (Test)' below to verify web navigation works.</p></div>" +
-                                           "</body></html>";
-                            loadHtml(testHtml, "https://discord.com/");
-                            return;
+                Label {
+                    width: parent.width
+                    visible: typeof appState === "undefined" || !appState.captchaRequired
+                    text: i18n.tr("(Test mode — no captcha server started.)")
+                    wrapMode: Text.WordWrap
+                    horizontalAlignment: Text.AlignHCenter
+                    color: theme.palette.normal.backgroundSecondaryText
+                    font.pixelSize: units.gu(1.8)
+                }
+
+                // Shown when Discord rejected a previous captcha solution
+                Rectangle {
+                    width: parent.width
+                    visible: typeof appState !== "undefined"
+                             && appState.captchaKeyErrors
+                             && appState.captchaKeyErrors.length > 0
+                    height: visible ? errorCol.height + units.gu(2) : 0
+                    color: theme.palette.normal.negative
+                    radius: units.gu(1)
+
+                    Column {
+                        id: errorCol
+                        width: parent.width - units.gu(2)
+                        anchors.centerIn: parent
+                        spacing: units.gu(0.5)
+
+                        Label {
+                            width: parent.width
+                            text: i18n.tr("Previous attempt rejected by Discord:")
+                            wrapMode: Text.WordWrap
+                            font.bold: true
+                            color: "white"
+                            font.pixelSize: units.gu(1.6)
                         }
-                        // Crucial: rqdata is mandatory if provided, omit it otherwise.
-                        var rqDataJS = appState.captchaRqData ? "rqdata: '" + appState.captchaRqData + "',\n" : "";
-                        var html = "<html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0\">" +
-                                   "<script src=\"https://js.hcaptcha.com/1/api.js?onload=onHcaptchaLoad&render=explicit&host=discord.com\" async defer></script></head>" +
-                                   "<body style=\"background-color: #36393f; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0;\">" +
-                                   "<div id=\"captcha\"></div>" +
-                                   "<script>function gotToken(token) { window.location.href = 'disports-captcha://solved?token=' + encodeURIComponent(token); }" +
-                                   "window.onHcaptchaLoad = function() { hcaptcha.render('captcha', { sitekey: '" + appState.captchaSiteKey + "', theme: 'dark', callback: gotToken, " + rqDataJS + " }); };</script>" +
-                                   "</body></html>";
-                        
-                        // Render with discord.com as BaseURL to trick Discord CORS validation
-                        loadHtml(html, "https://discord.com/");
-                    }
 
-                    onUrlChanged: {
-                        var urlStr = url.toString();
-                        if (urlStr.indexOf("disports-captcha://solved?token=") === 0) {
-                            var token = decodeURIComponent(urlStr.split("token=")[1]);
-                            Popups.PopupUtils.close(captchaDialog);
-                            loginPage.captchaSolved(token);
+                        Repeater {
+                            model: typeof appState !== "undefined"
+                                   ? (appState.captchaKeyErrors || [])
+                                   : []
+                            Label {
+                                width: errorCol.width
+                                wrapMode: Text.WordWrap
+                                color: "white"
+                                font.pixelSize: units.gu(1.5)
+                                text: {
+                                    var hints = {
+                                        "invalid-input-response":
+                                            "\u2022 invalid-input-response \u2014 token rejected (likely an origin or browser JS issue)",
+                                        "response-already-used-error":
+                                            "\u2022 response-already-used-error \u2014 token already consumed (timing issue)",
+                                        "timeout-or-duplicate":
+                                            "\u2022 timeout-or-duplicate \u2014 took too long or submitted twice",
+                                        "invalid-or-already-used-response":
+                                            "\u2022 invalid-or-already-used-response \u2014 bad or consumed token"
+                                    }
+                                    return hints[modelData] || ("\u2022 " + modelData)
+                                }
+                            }
                         }
                     }
                 }
-            }
 
-            Button {
-                text: "Load Google (Test)"
-                onClicked: {
-                    webView.url = "https://google.com"
+                Button {
+                    width: parent.width
+                    visible: typeof appState !== "undefined" && appState.captchaRequired && appState.captchaUrl !== ""
+                    text: i18n.tr("Open Browser")
+                    color: theme.palette.normal.positive
+                    onClicked: Qt.openUrlExternally(appState.captchaUrl)
                 }
             }
 
             Button {
                 text: i18n.tr("Cancel")
                 onClicked: {
-                    Popups.PopupUtils.close(captchaDialog);
                     if (typeof appState !== "undefined") {
                         appState.captchaRequired = false;
                         appState.loginBusy = false;
+                        appState.captchaUrl = "";
                     }
                     loginPage.captchaCanceled();
                 }

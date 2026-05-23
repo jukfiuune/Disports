@@ -95,6 +95,16 @@ MainView {
             appState.qrStatusText = ""
             appState.loginError = data.error || i18n.tr("QR login failed.")
         }
+        onQrLoginCaptcha: function(data) {
+            appState.loginBusy = false
+            appState.captchaSiteKey = data.sitekey || ""
+            appState.captchaRqData = data.rqdata || ""
+            appState.captchaRqToken = data.rqtoken || ""
+            appState.captchaSessionId = data.session_id || ""
+            appState.captchaKeyErrors = data.captcha_key || []
+            appState.captchaIsQrFlow = true
+            appState.captchaRequired = true
+        }
         onReadyForInit: {
             appState.pythonReady = true
             navigationLogic.refreshUnicodeEmojis()
@@ -105,6 +115,9 @@ MainView {
                 navigationLogic.checkInitialState()
             })
             pythonBridge.call("discord_client.set_preference", ["blockedMessageVisibility", appSettings.blockedMessageVisibility], function(){});
+        }
+        onCaptchaSolved: function(data) {
+            authLogic.submitCaptcha(data.token || "")
         }
     }
 
@@ -153,6 +166,27 @@ MainView {
     Connections {
         target: appState
         onActiveServerIdChanged: navigationLogic.refreshActiveServerEmojis()
+    }
+
+    Connections {
+        target: appState
+        onCaptchaRequiredChanged: {
+            if (appState.captchaRequired) {
+                pythonBridge.call("discord_client.start_captcha_flow",
+                    [appState.captchaSiteKey, appState.captchaRqData],
+                    function(result) {
+                        if (result && result.ok) {
+                            appState.captchaUrl = result.url || ""
+                            Qt.openUrlExternally(appState.captchaUrl)
+                        }
+                    }
+                )
+            } else {
+                pythonBridge.call("discord_client.stop_captcha_flow", [], function() {
+                    appState.captchaUrl = ""
+                })
+            }
+        }
     }
 
     Connections {
