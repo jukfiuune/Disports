@@ -147,7 +147,7 @@ Item {
                             autoPlay: true
                             muted: true
                             loops: MediaPlayer.Infinite
-                            source: mediaRoot.mediaUrl
+                            source: mediaRoot.mediaUrl ? ('gst-pipeline: uridecodebin uri="' + mediaRoot.mediaUrl + '" ! videoconvert ! qtvideosink name="qtvideosink"') : ""
                         }
 
                         VideoOutput {

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-19 16:43+0000\n"
+"POT-Creation-Date: 2026-05-24 08:11+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -37,41 +37,41 @@ msgstr ""
 msgid "Loading…"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:268
+#: ../qml/ChatPanel.qml:294
 msgid "Replying to %1"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:268 ../qml/ChatPanel.qml:349
+#: ../qml/ChatPanel.qml:294 ../qml/ChatPanel.qml:375
 msgid "message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:277
+#: ../qml/ChatPanel.qml:303
 msgid "Editing message"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:347
+#: ../qml/ChatPanel.qml:373
 msgid "Waiting for network..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:349
+#: ../qml/ChatPanel.qml:375
 msgid "Reply to %1..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:350
+#: ../qml/ChatPanel.qml:376
 msgid "Type a message..."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:463
+#: ../qml/ChatPanel.qml:489
 msgid "Character Limit Exceeded"
 msgstr ""
 
-#: ../qml/ChatPanel.qml:471
+#: ../qml/ChatPanel.qml:497
 msgid ""
 "Messages cannot exceed 2000 characters. Your text has been truncated to fit "
 "the limit."
 msgstr ""
 
-#: ../qml/ChatPanel.qml:479
+#: ../qml/ChatPanel.qml:505
 msgid "OK"
 msgstr ""
 
@@ -178,31 +178,31 @@ msgstr ""
 msgid "Open Externally"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:75 ../qml/components/DeleteDialog.qml:14
+#: ../qml/MessageBubble.qml:83 ../qml/components/DeleteDialog.qml:14
 msgid "Delete"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:86
+#: ../qml/MessageBubble.qml:94
 msgid "Reply"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:93
+#: ../qml/MessageBubble.qml:101
 msgid "Edit"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:100
+#: ../qml/MessageBubble.qml:108
 msgid "Copy"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:111
+#: ../qml/MessageBubble.qml:119
 msgid "React"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:153
+#: ../qml/MessageBubble.qml:162
 msgid "Message from blocked user"
 msgstr ""
 
-#: ../qml/MessageBubble.qml:162
+#: ../qml/MessageBubble.qml:171
 msgid "Show"
 msgstr ""
 
@@ -395,18 +395,18 @@ msgstr ""
 msgid "Unable to start QR login."
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:239
+#: ../qml/logic/ChatLogic.qml:348
 msgid "Image"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:241
+#: ../qml/logic/ChatLogic.qml:350
 msgid "Video"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:243
+#: ../qml/logic/ChatLogic.qml:352
 msgid "Audio"
 msgstr ""
 
-#: ../qml/logic/ChatLogic.qml:247
+#: ../qml/logic/ChatLogic.qml:356
 msgid "Message"
 msgstr ""

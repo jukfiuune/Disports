@@ -78,10 +78,14 @@ QtObject {
 
         python.call("discord_client.fetch_messages", [appState.activeChannelId, 50, oldestId], function(messages) {
             if (messages && messages.length > 0) {
+                var oldCount = chatMessageModel.count;
+                _applyGroupingToItems(messages);
                 for (var i = 0; i < messages.length; i++) {
                     chatMessageModel.append(messages[i]);
                 }
                 rebuildMessageIndex()
+                if (oldCount > 0)
+                    _updateGroupingAt(oldCount - 1)
             }
             appState.loadingOlderMessages = false;
         });
@@ -99,14 +103,48 @@ QtObject {
         if (!appState.pythonReady || content.trim() === "" || appState.activeChannelId === "")
             return
 
+        var pendingId = "pending_" + Date.now()
+        var pendingMsg = {
+            messageId: pendingId,
+            channelId: appState.activeChannelId,
+            authorId: appState.myUserId,
+            author: appState.myUsername || "You",
+            timestamp: new Date().toLocaleTimeString(Qt.locale(), "HH:mm"),
+            rawTimestamp: new Date().toISOString(),
+            body: content,
+            rawBody: content,
+            displayKind: "default",
+            discordMessageType: "Default",
+            medias: [],
+            richEmbeds: [],
+            reactionsJson: "[]",
+            hasReply: replyMessageId !== "",
+            replyMessageId: replyMessageId || "",
+            replyAuthor: appState.replyAuthor || "",
+            replyBody: appState.replyBody || "",
+            hasForwarded: false,
+            forwardedLabel: "",
+            forwardedAuthor: "",
+            forwardedBody: "",
+            authorBlocked: false,
+            blockedVisibility: "show",
+            isPending: true
+        }
+        chatMessageModel.insert(0, pendingMsg)
+        rebuildMessageIndex()
+
+        appState.draftText = ""
+        clearReplyTarget()
+
         python.call("discord_client.send_message", [appState.activeChannelId, content, replyMessageId || ""], function(result) {
             if (!result || !result.ok) {
                 console.log("Send failed: " + (result ? result.error : "unknown"))
+                // Remove the pending placeholder on failure
+                removeMessage(pendingId)
                 return
             }
+            removeMessage(pendingId)
             upsertMessage(result.message)
-            appState.draftText = ""
-            clearReplyTarget()
         })
     }
 
@@ -132,6 +170,9 @@ QtObject {
             return
         if (!items)
             items = []
+            
+        if (model === chatMessageModel)
+            _applyGroupingToItems(items)
         
         if (model.count > 0 && model.count === items.length) {
             for (var i = 0; i < items.length; i++) {
@@ -183,13 +224,81 @@ QtObject {
         if (!message || message.channelId !== appState.activeChannelId)
             return
 
+        if ((message.authorId || "") === appState.myUserId && !(message.isPending)) {
+            var pendingIdx = _findPendingByContent(message.body || "")
+            if (pendingIdx >= 0) {
+                chatMessageModel.remove(pendingIdx)
+                rebuildMessageIndex()
+            }
+        }
+
         var idx = messageIndex(message.messageId)
         if (idx >= 0) {
             chatMessageModel.set(idx, message)
+            _updateGroupingAt(idx)
             return
         }
         chatMessageModel.insert(0, message)
         rebuildMessageIndex()
+        _updateGroupingAt(0)
+    }
+
+    function _computeGrouping(current, older) {
+        if (!current || !older) return false;
+        if ((current.authorId || "") !== (older.authorId || "")) return false;
+        if ((current.displayKind || "default") === "system" || (older.displayKind || "default") === "system") return false;
+        if (!!current.hasReply || !!current.hasForwarded) return false;
+        var currentTs = new Date(current.rawTimestamp || "").getTime();
+        var olderTs = new Date(older.rawTimestamp || "").getTime();
+        if (isNaN(currentTs) || isNaN(olderTs)) return false;
+        return (currentTs - olderTs) < 300000 && (currentTs - olderTs) >= 0;
+    }
+
+    function _applyGroupingToItems(items) {
+        for (var i = 0; i < items.length; i++) {
+            var current = items[i];
+            var older = i + 1 < items.length ? items[i + 1] : null;
+            var newer = i - 1 >= 0 ? items[i - 1] : null;
+            current.isGrouped = _computeGrouping(current, older);
+            current.isGroupedWithNext = newer ? _computeGrouping(newer, current) : false;
+        }
+    }
+
+    function _updateGroupingAt(idx) {
+        if (!chatMessageModel || idx < 0 || idx >= chatMessageModel.count) return;
+        var current = chatMessageModel.get(idx);
+        var older = idx + 1 < chatMessageModel.count ? chatMessageModel.get(idx + 1) : null;
+        var newer = idx - 1 >= 0 ? chatMessageModel.get(idx - 1) : null;
+        
+        var isGrouped = _computeGrouping(current, older);
+        if (current.isGrouped !== isGrouped)
+            chatMessageModel.setProperty(idx, "isGrouped", isGrouped);
+            
+        var isGroupedWithNext = newer ? _computeGrouping(newer, current) : false;
+        if (current.isGroupedWithNext !== isGroupedWithNext)
+            chatMessageModel.setProperty(idx, "isGroupedWithNext", isGroupedWithNext);
+            
+        if (older) {
+            var olderIsGroupedWithNext = _computeGrouping(current, older);
+            if (older.isGroupedWithNext !== olderIsGroupedWithNext)
+                chatMessageModel.setProperty(idx + 1, "isGroupedWithNext", olderIsGroupedWithNext);
+        }
+        if (newer) {
+            var newerIsGrouped = _computeGrouping(newer, current);
+            if (newer.isGrouped !== newerIsGrouped)
+                chatMessageModel.setProperty(idx - 1, "isGrouped", newerIsGrouped);
+        }
+    }
+
+    function _findPendingByContent(content) {
+        if (!chatMessageModel || content === "")
+            return -1
+        for (var i = 0; i < chatMessageModel.count; i++) {
+            var item = chatMessageModel.get(i)
+            if (!!item.isPending && (item.body || "") === content)
+                return i
+        }
+        return -1
     }
 
     function removeMessage(messageId) {

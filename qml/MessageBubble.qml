@@ -8,6 +8,7 @@ ListItem {
     property bool isOwn: false
     property string author
     property string timestamp
+    property string rawTimestamp: ""
     property string body
     property string rawBody: ""
     property bool inlineGifPlayback: false
@@ -39,6 +40,9 @@ ListItem {
     property bool authorBlocked: false
     property string blockedVisibility: "show"  // "show" | "reveal" | "hide"
     property bool _revealedByUser: false
+    property bool isPending: false
+    property bool isGrouped: false
+    property bool isGroupedWithNext: false
 
     // Effective visibility: if the user tapped "Show message", treat as show.
     readonly property string _effectiveVisibility:
@@ -53,13 +57,17 @@ ListItem {
     signal reactEmojiRequested(string messageId)
     signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
 
+    opacity: isPending ? 0.5 : 1.0
     divider.visible: false
     // "hide" = fully collapsed with no height; "reveal" = placeholder only.
-    height: _effectiveVisibility === "hide"
-            ? 0
-            : _effectiveVisibility === "reveal"
-              ? revealPlaceholder.implicitHeight + units.gu(1)
-              : inner.height + units.gu(displayKind === "system" ? 1 : 1.5)
+    height: {
+        if (_effectiveVisibility === "hide") return 0;
+        if (_effectiveVisibility === "reveal") return revealPlaceholder.implicitHeight + units.gu(1);
+        
+        var topPad = bubble.isGrouped ? 0.15 : (displayKind === "system" ? 0.5 : 0.75);
+        var botPad = bubble.isGroupedWithNext ? 0.25 : (displayKind === "system" ? 0.5 : 0.75);
+        return inner.height + units.gu(topPad + botPad);
+    }
     visible: _effectiveVisibility !== "hide"
 
     // Leading actions (swipe right): delete - own messages only.
@@ -67,7 +75,7 @@ ListItem {
 
     Loader {
         id: ownActionsLoader
-        active: bubble.isOwn
+        active: bubble.isOwn && !bubble.isPending
         sourceComponent: ListItemActions {
             actions: [
                 Action {
@@ -115,6 +123,7 @@ ListItem {
     trailingActions: ListItemActions {
         actions: {
             var arr = [];
+            if (bubble.isPending) return arr;
             if (bubble.body !== "") arr.push(copyAction);
             if (bubble.isOwn) arr.push(editAction);
             arr.push(replyAction);
@@ -177,13 +186,13 @@ ListItem {
         visible: bubble._effectiveVisibility === "show"
         anchors {
             top: parent.top; left: parent.left; right: parent.right
-            topMargin: units.gu(displayKind === "system" ? 0.5 : 0.75)
+            topMargin: bubble.isGrouped ? units.gu(0.15) : units.gu(displayKind === "system" ? 0.5 : 0.75)
             leftMargin: units.gu(2); rightMargin: units.gu(2)
         }
         spacing: units.gu(0.3)
 
         Row {
-            visible: bubble.displayKind !== "system"
+            visible: bubble.displayKind !== "system" && !bubble.isGrouped
             spacing: units.gu(1)
             Label {
                 text: bubble.author
@@ -399,6 +408,7 @@ ListItem {
         width: parent.width; height: units.dp(1)
         color: theme.palette.normal.base
         opacity: 0.4
+        visible: !bubble.isGroupedWithNext
     }
 
     function previewAuthor() {

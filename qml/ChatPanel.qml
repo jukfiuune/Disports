@@ -161,6 +161,7 @@ Item {
             isOwn: chatPanel.myUserId !== "" && (model.authorId || "") === chatPanel.myUserId
             author: model.author
             timestamp: model.timestamp
+            rawTimestamp: model.rawTimestamp || ""
             body: model.body
             rawBody: model.rawBody || ""
             inlineGifPlayback: chatPanel.inlineGifPlayback
@@ -180,6 +181,31 @@ Item {
             highlighted: chatPanel.highlightedMessageId !== "" && chatPanel.highlightedMessageId === (model.messageId || "")
             authorBlocked: !!model.authorBlocked
             blockedVisibility: model.blockedVisibility || "show"
+            isPending: !!model.isPending
+            isGrouped: {
+                if (index === messageList.count - 1) return false;
+                var prevMsg = chatPanel.messagesModel.get(index + 1);
+                if (!prevMsg) return false;
+                if ((prevMsg.authorId || "") !== (model.authorId || "")) return false;
+                if ((prevMsg.displayKind || "default") === "system" || (model.displayKind || "default") === "system") return false;
+                if (!!model.hasReply || !!model.hasForwarded) return false;
+                var currentTs = new Date(model.rawTimestamp || "");
+                var prevTs = new Date(prevMsg.rawTimestamp || "");
+                if (isNaN(currentTs.getTime()) || isNaN(prevTs.getTime())) return false;
+                return (currentTs.getTime() - prevTs.getTime()) < 300000;
+            }
+            isGroupedWithNext: {
+                if (index === 0) return false;
+                var nextMsg = chatPanel.messagesModel.get(index - 1);
+                if (!nextMsg) return false;
+                if ((nextMsg.authorId || "") !== (model.authorId || "")) return false;
+                if ((nextMsg.displayKind || "default") === "system" || (model.displayKind || "default") === "system") return false;
+                if (!!nextMsg.hasReply || !!nextMsg.hasForwarded) return false;
+                var currentTs = new Date(model.rawTimestamp || "");
+                var nextTs = new Date(nextMsg.rawTimestamp || "");
+                if (isNaN(currentTs.getTime()) || isNaN(nextTs.getTime())) return false;
+                return (nextTs.getTime() - currentTs.getTime()) < 300000;
+            }
             onReplyRequested: function(messageId) { chatPanel.replyRequested(messageId) }
             onJumpRequested: function(messageId) { chatPanel.jumpToMessage(messageId) }
             onEditRequested: function(messageId, currentBody) {

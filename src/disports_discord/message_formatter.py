@@ -206,6 +206,7 @@ class MessageFormatterMixin:
             "initials": self.abbr(display_name, length=2),  # type: ignore[attr-defined]
             "avatarCol": self.avatar_color(author_id_str),  # type: ignore[attr-defined]
             "timestamp": self.format_timestamp(message.get("timestamp")),  # type: ignore[attr-defined]
+            "rawTimestamp": message.get("timestamp") or "",
             "body": content,
             "rawBody": message.get("content", ""),
             "channelId": message.get("channel_id", ""),
