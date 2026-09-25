@@ -66,6 +66,7 @@ MainView {
                 if ((msg.authorId || "") !== appState.myUserId)
                     pythonBridge.call("discord_client.ack_message", [msg.channelId, msg.messageId], function(){});
             }
+            root.maybeNotifyMessage(msg)
         }
         onChannelUnread: function(data) { unreadLogic.applyChannelUnread(data) }
         onMessageUpdate: function(msg) { chatLogic.upsertMessage(msg) }
@@ -105,6 +106,9 @@ MainView {
                 navigationLogic.checkInitialState()
             })
             pythonBridge.call("discord_client.set_preference", ["blockedMessageVisibility", appSettings.blockedMessageVisibility], function(){});
+            pythonBridge.call("discord_client.get_settings", [], function(result) {
+                if (result) appSettings.notificationsEnabled = !!result.notifications
+            });
         }
     }
 
@@ -175,6 +179,26 @@ MainView {
         property string uitkTheme: ""
         property string blockedMessageVisibility: "reveal"
         property int maxComposerLines: 3
+        property bool notificationsEnabled: false
+    }
+
+    function isDmChannel(channelId) {
+        for (var i = 0; i < dmChannelModel.count; i++) {
+            if (dmChannelModel.get(i).channelId === channelId) return true
+        }
+        return false
+    }
+
+    function maybeNotifyMessage(msg) {
+        if (!appSettings.notificationsEnabled) return
+        if (!msg || msg.channelId === appState.activeChannelId) return
+        if (!msg.authorId || msg.authorId === appState.myUserId) return
+        var isDm = root.isDmChannel(msg.channelId)
+        var mentioned = appState.myUserId !== "" && String(msg.rawBody || "").indexOf("<@" + appState.myUserId + ">") >= 0
+        if (!isDm && !mentioned) return
+        var body = String(msg.rawBody || msg.body || "")
+        if (body.length > 200) body = body.substring(0, 200)
+        pythonBridge.call("discord_client.local_notify", [msg.author || (isDm ? "New message" : "Mention"), body], function(result) {})
     }
 
     Connections {
@@ -367,6 +391,8 @@ MainView {
             SettingsPage {
                 stack: pageStack
                 settingsObject: appSettings
+                python: pythonBridge
+                appState: appState
                 onThemeModeSelected: function(tMode) { themeLogic.applyThemePreference(tMode) }
                 onLogoutRequested: authLogic.logout()
             }

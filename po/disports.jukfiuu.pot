@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-24 08:11+0000\n"
+"POT-Creation-Date: 2026-09-20 20:45+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -21,7 +21,7 @@ msgstr ""
 msgid "Chat"
 msgstr ""
 
-#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:46
+#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:48
 msgid "Back"
 msgstr ""
 
@@ -142,31 +142,31 @@ msgstr ""
 msgid "I understand"
 msgstr ""
 
-#: ../qml/Main.qml:87
+#: ../qml/Main.qml:88
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:90
+#: ../qml/Main.qml:91
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:96
+#: ../qml/Main.qml:97
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:268 disports.desktop.in.h:1
+#: ../qml/Main.qml:292 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:272 ../qml/SettingsPage.qml:42
+#: ../qml/Main.qml:296 ../qml/SettingsPage.qml:44
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:343
+#: ../qml/Main.qml:367
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:348
+#: ../qml/Main.qml:372
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -226,51 +226,67 @@ msgstr ""
 msgid "Audio attachment"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:15
+#: ../qml/SettingsPage.qml:17
 msgid "Follow system"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:16
+#: ../qml/SettingsPage.qml:18
 msgid "Light"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:17
+#: ../qml/SettingsPage.qml:19
 msgid "Dark"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:24
+#: ../qml/SettingsPage.qml:26
 msgid "Hide completely"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:25
+#: ../qml/SettingsPage.qml:27
 msgid "Reveal placeholder"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:26
+#: ../qml/SettingsPage.qml:28
 msgid "Show normally"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:67
+#: ../qml/SettingsPage.qml:69
 msgid "Theme"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:112
+#: ../qml/SettingsPage.qml:114
 msgid "Autoplay GIFs"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:131
+#: ../qml/SettingsPage.qml:133
 msgid "Blocked messages"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:167
+#: ../qml/SettingsPage.qml:169
 msgid "Max message box lines"
 msgstr ""
 
 #: ../qml/SettingsPage.qml:196
+msgid "Background"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:216
+msgid "Run in background"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:221
+msgid "Keeps the connection alive when the app is closed"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:277
+msgid "Notifications"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:312
 msgid "Log out"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:207
+#: ../qml/SettingsPage.qml:323
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 

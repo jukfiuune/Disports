@@ -1,0 +1,28 @@
+#!/usr/bin/python3
+
+import json
+import os
+import sys
+import types
+
+in_, out = sys.argv[1:3]
+raw_input = open(in_, encoding="utf-8").read()
+helper_output: dict = {}
+
+try:
+    _mock = types.ModuleType("pyotherside")
+    setattr(_mock, "send", lambda *a, **kw: None)
+    sys.modules["pyotherside"] = _mock
+
+    src_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "src")
+    if src_dir not in sys.path:
+        sys.path.insert(0, src_dir)
+
+    from push_notifications import build_postal_output
+
+    helper_output = build_postal_output(raw_input)
+except Exception:
+    helper_output = {}
+
+with open(out, "w", encoding="utf-8") as f:
+    f.write(json.dumps(helper_output))
