@@ -27,6 +27,11 @@ QtObject {
     property int lastConnectivityStatus: Connectivity.status
     property string qrStatusText: ""
     property bool pythonReady: false
+    property bool connectionReady: false
+    property string connectionPhase: "connecting"
+    property int reconnectDelaySeconds: 0
+    property bool hasCachedSession: false
+    property bool refreshing: false
     property string startupPhase: "initializing" // initializing | checking | syncing | offline | loaded
     property bool isWideLayout: false
     property int sidebarRevision: 0

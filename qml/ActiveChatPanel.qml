@@ -25,6 +25,8 @@ ChatPanel {
     replyAuthor: appState.replyAuthor
     replyBody: appState.replyBody
     loadingOlder: appState.loadingOlderMessages
+    isOnline: appState.connectionReady
+    onInfoRequested: root.openActiveChannelInfo()
 
     // Wire up chatLogic signals
     onSendRequested: function(content, replyId) { chatLogic.postMessage(content, replyId) }

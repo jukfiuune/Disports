@@ -9,6 +9,7 @@ QtObject {
 
     property var chatMessageModel
     property var channelModel
+    property var serverModel
 
     property var chatPageComp
     property var _messageIndexById: ({})
@@ -18,25 +19,44 @@ QtObject {
     function openChat(channelId, name) {
         if (!appState.pythonReady)
             return
+        console.log("Notification navigation: selecting conversation channel="
+                    + channelId + " name=" + name)
         appState.activeChannelId = channelId
         appState.activeChannelName = name
         appState.typingNotice = ""
         appState.draftText = ""
         clearReplyTarget()
         replaceModel(chatMessageModel, [])
-        python.call("discord_client.set_active_channel", [channelId], function() {})
-        python.call("discord_client.fetch_messages", [channelId, 50, ""], function(messages) {
-            messages = messages || []
-            replaceModel(chatMessageModel, messages)
-            if (!appState.isWideLayout && pageStack.currentPage.objectName !== "chatPage")
-                pageStack.push(chatPageComp)
+        if (!appState.isWideLayout
+                && pageStack.currentPage
+                && pageStack.currentPage.objectName !== "chatPage")
+            pageStack.push(chatPageComp)
 
-            if (messages.length > 0) {
-                var latestId = messages[0].messageId
-                python.call("discord_client.mark_seen", [channelId, latestId], function(){})
-                if ((messages[0].authorId || "") !== appState.myUserId)
-                    python.call("discord_client.ack_message", [channelId, latestId], function(){})
+        python.call("discord_client.load_cached_messages", [channelId], function(cachedMessages) {
+            if (appState.activeChannelId !== channelId)
+                return
+            cachedMessages = cachedMessages || []
+            if (cachedMessages.length > 0) {
+                console.log("Offline cache: hydrated channel=" + channelId
+                            + " messages=" + cachedMessages.length)
+                replaceModel(chatMessageModel, cachedMessages)
             }
+
+            python.call("discord_client.fetch_messages", [channelId, 50, ""], function(messages) {
+                if (appState.activeChannelId !== channelId)
+                    return
+                messages = messages || []
+                console.log("Notification navigation: fetched channel=" + channelId
+                            + " messages=" + messages.length)
+                replaceModel(chatMessageModel, messages)
+
+                if (messages.length > 0 && appState.connectionReady) {
+                    var latestId = messages[0].messageId
+                    python.call("discord_client.mark_seen", [channelId, latestId], function(){})
+                    if ((messages[0].authorId || "") !== appState.myUserId)
+                        python.call("discord_client.ack_message", [channelId, latestId], function(){})
+                }
+            })
         })
     }
 
@@ -44,23 +64,41 @@ QtObject {
         if (!appState.pythonReady || channelId === "")
             return
 
+        console.log("Notification navigation: resolving channel=" + channelId)
         python.call("discord_client.resolve_channel", [channelId], function(result) {
             if (!result || !result.ok || !result.channel) {
-                console.log("Resolve channel failed: " + (result ? result.error : "unknown error"))
+                console.log("Notification navigation: resolve failed channel=" + channelId
+                            + " error=" + (result ? result.error : "unknown error")
+                            + " reference=" + (result && result.channel
+                                                ? JSON.stringify(result.channel) : "none"))
                 return
             }
 
             var channel = result.channel
             var guildId = channel.guildId || ""
             var channelName = channel.name || ""
+            console.log("Notification navigation: resolved channel=" + channelId
+                        + " type=" + (channel.channelType || "unknown")
+                        + " guild=" + (guildId || "dm")
+                        + " name=" + channelName)
             if (guildId !== "") {
                 appState.mode = "server"
                 appState.activeServerId = guildId
                 appState.activeServerName = channel.guildName || appState.activeServerName
+                if (serverModel) {
+                    for (var i = 0; i < serverModel.count; i++) {
+                        var server = serverModel.get(i)
+                        if (server.serverId === guildId) {
+                            appState.activeServerIcon = server.iconUrl || ""
+                            break
+                        }
+                    }
+                }
                 replaceModel(channelModel, []) // Clear stale channels immediately
+                openChat(channelId, channelName)
                 python.call("discord_client.fetch_guild_channels", [guildId], function(channels) {
-                    replaceModel(channelModel, channels || [])
-                    openChat(channelId, channelName)
+                    if (appState.activeServerId === guildId)
+                        replaceModel(channelModel, channels || [])
                 })
                 return
             }
@@ -71,7 +109,7 @@ QtObject {
     }
 
     function fetchOlderMessages() {
-        if (!appState.pythonReady || appState.loadingOlderMessages || chatMessageModel.count === 0 || appState.activeChannelId === "") return;
+        if (!appState.pythonReady || !appState.connectionReady || appState.loadingOlderMessages || chatMessageModel.count === 0 || appState.activeChannelId === "") return;
 
         appState.loadingOlderMessages = true;
         var oldestId = chatMessageModel.get(chatMessageModel.count - 1).messageId || "";
@@ -91,11 +129,19 @@ QtObject {
         });
     }
 
-    function refreshActiveChannel() {
-        if (!appState.pythonReady || appState.activeChannelId === "")
+    function refreshActiveChannel(done) {
+        if (!appState.pythonReady || appState.activeChannelId === "") {
+            if (done) done()
             return
-        python.call("discord_client.fetch_messages", [appState.activeChannelId, 50, ""], function(messages) {
+        }
+        var channelId = appState.activeChannelId
+        python.call("discord_client.fetch_messages", [channelId, 50, ""], function(messages) {
+            if (appState.activeChannelId !== channelId) {
+                if (done) done()
+                return
+            }
             replaceModel(chatMessageModel, messages || [])
+            if (done) done()
         })
     }
 
@@ -174,7 +220,9 @@ QtObject {
         if (model === chatMessageModel)
             _applyGroupingToItems(items)
         
-        if (model.count > 0 && model.count === items.length) {
+        if (model === chatMessageModel) {
+            _reconcileMessages(items)
+        } else if (model.count > 0 && model.count === items.length) {
             for (var i = 0; i < items.length; i++) {
                 var newItem = items[i]
                 var keys = Object.keys(newItem)
@@ -193,6 +241,65 @@ QtObject {
             rebuildMessageIndex()
         if (unreadLogic)
             unreadLogic.notifyListReplaced(model)
+    }
+
+    // Nested ListModel roles (attachments and rich embeds) cannot be updated
+    // safely role-by-role, so changed message rows are replaced whole. Rows
+    // that did not change are left alone: the live fetch that follows cache
+    // hydration usually differs by a few new or edited messages, and
+    // rebuilding everything would reset delegates and the scroll position.
+    function _reconcileMessages(items) {
+        var model = chatMessageModel
+        for (var f = 0; f < items.length; f++)
+            items[f].rowFingerprint = JSON.stringify(items[f])
+
+        var offset = -1
+        if (model.count > 0) {
+            var firstId = model.get(0).messageId || ""
+            for (var n = 0; n < items.length; n++) {
+                if ((items[n].messageId || "") === firstId) {
+                    offset = n
+                    break
+                }
+            }
+        }
+        var overlap = offset >= 0 ? Math.min(model.count, items.length - offset) : 0
+        for (var c = 0; c < overlap; c++) {
+            if ((model.get(c).messageId || "") !== (items[offset + c].messageId || "")) {
+                offset = -1
+                break
+            }
+        }
+
+        if (offset < 0) {
+            model.clear()
+            for (var a = 0; a < items.length; a++)
+                model.append(items[a])
+            return
+        }
+
+        // Newest first: messages newer than the current top go in front.
+        for (var t = 0; t < offset; t++)
+            model.insert(t, items[t])
+        for (var r = offset; r < offset + overlap; r++) {
+            var row = model.get(r)
+            if (row.rowFingerprint !== items[r].rowFingerprint) {
+                model.remove(r)
+                model.insert(r, items[r])
+                continue
+            }
+            // Scalar roles patched in place since the row was inserted.
+            var patched = ["isGrouped", "isGroupedWithNext", "reactionsJson"]
+            for (var p = 0; p < patched.length; p++) {
+                var role = patched[p]
+                if (items[r][role] !== undefined && row[role] !== items[r][role])
+                    model.setProperty(r, role, items[r][role])
+            }
+        }
+        if (model.count > items.length)
+            model.remove(items.length, model.count - items.length)
+        for (var e = model.count; e < items.length; e++)
+            model.append(items[e])
     }
 
     function rebuildMessageIndex() {

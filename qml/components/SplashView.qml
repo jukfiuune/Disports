@@ -1,46 +1,33 @@
 import QtQuick 2.7
 import Lomiri.Components 1.3
 
+// Startup renders the exact page component used by the live navigation stack.
+// Cache hydration therefore fills the real models without a visual handoff to
+// a separately maintained approximation.
 Rectangle {
-    id: splashView
+    id: startupView
     anchors.fill: parent
     property string startupPhase: ""
-    visible: startupPhase === "initializing" || startupPhase === "checking" || startupPhase === "syncing"
-    color: "#1f1f1f"
+    property Component pageComponent
+    visible: startupPhase === "initializing"
+             || startupPhase === "checking"
+             || startupPhase === "syncing"
+    color: theme.palette.normal.background
     z: 10000
 
-    Column {
-        anchors.centerIn: parent
-        spacing: units.gu(4)
-
-        Image {
-            source: "../../assets/splash.svg"
-            width: units.gu(20)
-            height: units.gu(15)
-            anchors.horizontalCenter: parent.horizontalCenter
-            fillMode: Image.PreserveAspectFit
-        }
-
-        Column {
-            spacing: units.gu(1)
-            anchors.horizontalCenter: parent.horizontalCenter
-
-            ActivityIndicator {
-                anchors.horizontalCenter: parent.horizontalCenter
-                running: splashView.visible
-            }
-
-            Label {
-                text: {
-                    if (splashView.startupPhase === "initializing")
-                        return i18n.tr("Starting Disports…")
-                    if (splashView.startupPhase === "syncing")
-                        return i18n.tr("Loading your conversations…")
-                    return i18n.tr("Signing in…")
-                }
-                color: "white"
-                font.pixelSize: units.gu(1.5)
-            }
-        }
+    Loader {
+        anchors.fill: parent
+        active: startupView.visible
+        sourceComponent: startupView.pageComponent
     }
+
+    WaitingBar {
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        running: startupView.visible
+        z: 2
+    }
+
+    // This is a visual handoff while session initialization resolves. Avoid
+    // accepting actions against partially initialized state.
+    MouseArea { anchors.fill: parent; z: 3 }
 }

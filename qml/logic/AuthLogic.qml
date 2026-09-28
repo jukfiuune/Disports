@@ -25,8 +25,21 @@ QtObject {
         python.call("discord_client.login", [token], function(result) {
             appState.loginBusy = false
             if (!result || !result.ok) {
+                if (result && result.retryable) {
+                    appState.authenticated = false
+                    appState.loginError = result.error || i18n.tr("Login failed.")
+                    appState.qrStatusText = ""
+                    appState.startupPhase = appState.hasCachedSession ? "loaded" : "offline"
+                    if (appState.hasCachedSession)
+                        appState.authenticated = true
+                    return
+                }
                 if (result && result.clear_saved_token)
                     python.call("discord_client.clear_token", [], function() {})
+                if (result && result.clear_saved_token) {
+                    appState.hasCachedSession = false
+                    appState.connectionReady = false
+                }
                 appSettings.token = ""
                 appState.authenticated = false
                 appState.loginError = result && result.error ? result.error : i18n.tr("Login failed.")
@@ -50,7 +63,7 @@ QtObject {
                 appState.loginError = ""
                 appState.qrImageSource = ""
                 appState.qrStatusText = ""
-                appState.startupPhase = "syncing"
+                appState.startupPhase = appState.hasCachedSession ? "loaded" : "syncing"
                 python.call("discord_client.connect_gateway", [], function() {})
             })
         })
@@ -64,6 +77,8 @@ QtObject {
             python.call("discord_client.clear_token", [], function() {})
         appSettings.token = ""
         appState.authenticated = false
+        appState.connectionReady = false
+        appState.hasCachedSession = false
         appState.loginBusy = false
         appState.loginError = ""
         appState.qrImageSource = ""

@@ -7,6 +7,9 @@ Rectangle {
     property string title: ""
     property bool shown: true
     property real trailingReservedWidth: 0
+    property bool showInfoAction: false
+
+    signal infoRequested()
 
     height: shown ? units.gu(5) : 0
     visible: shown
@@ -31,5 +34,24 @@ Rectangle {
         width: parent.width
         height: units.dp(1)
         color: theme.palette.normal.base
+    }
+
+    Item {
+        anchors { right: parent.right; top: parent.top; bottom: parent.bottom }
+        width: units.gu(5)
+        visible: panelHeader.showInfoAction
+
+        Icon {
+            anchors.centerIn: parent
+            width: units.gu(2.5)
+            height: width
+            name: "info"
+            color: theme.palette.normal.backgroundText
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            onClicked: panelHeader.infoRequested()
+        }
     }
 }

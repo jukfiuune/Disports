@@ -22,6 +22,7 @@ Python {
     signal guildSidebar(var data)
     signal guildMemberChunk(var data)
     signal messageReaction(var data)
+    signal connectionStatus(var data)
     signal readyForInit()
 
     Component.onCompleted: {
@@ -49,6 +50,7 @@ Python {
         setHandler("guild_sidebar", guildSidebar)
         setHandler("guild_member_chunk", guildMemberChunk)
         setHandler("message_reaction", messageReaction)
+        setHandler("connection_status", connectionStatus)
     }
 
     onError: console.log("Python error: " + traceback)

@@ -86,8 +86,15 @@ QtObject {
             }
         }
 
-        python.call("discord_client.fetch_guild_channels", [id], function(channels) {
-            chatLogic.replaceModel(channelModel, channels)
+        python.call("discord_client.load_cached_guild_channels", [id], function(cachedChannels) {
+            if (appState.activeServerId !== id)
+                return
+            if (cachedChannels && cachedChannels.length > 0)
+                chatLogic.replaceModel(channelModel, cachedChannels)
+            python.call("discord_client.fetch_guild_channels", [id], function(channels) {
+                if (appState.activeServerId === id)
+                    chatLogic.replaceModel(channelModel, channels || [])
+            })
         })
     }
 

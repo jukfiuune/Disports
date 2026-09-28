@@ -22,7 +22,7 @@ Page {
             Action {
                 iconName: "info"
                 text: i18n.tr("Info")
-                onTriggered: { /* TODO: channel/contact info sheet */ }
+                onTriggered: root.openActiveChannelInfo()
             }
         ]
     }
@@ -35,5 +35,6 @@ Page {
             bottom: parent.bottom
         }
         showHeader: false
+        showInfoButton: false
     }
 }

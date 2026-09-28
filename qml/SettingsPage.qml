@@ -4,10 +4,11 @@ import Qt.labs.settings 1.0
 
 Page {
     id: settingsPage
+    objectName: "settingsPage"
     property var stack
     property var settingsObject
     property var python
-    property var appState
+    property var sharedAppState: null
     signal themeModeSelected(int themeMode)
     signal logoutRequested()
 
@@ -201,7 +202,7 @@ Page {
             Item {
                 width: parent.width
                 height: units.gu(4.5)
-                visible: appState ? !appState.runningUnderClickableDesktop : true
+                visible: sharedAppState ? !sharedAppState.runningUnderClickableDesktop : true
 
                 Column {
                     anchors {
@@ -244,12 +245,14 @@ Page {
                     }
                     Component.onCompleted: {
                         backgroundToggle.updating = true
+                        notificationsToggle.updating = true
                         python.call("discord_client.get_settings", [], function(result) {
-                            if (result && !result.desktopMode) {
+                            if (result && !result.desktopMode)
                                 backgroundToggle.checked = result.backgroundService
+                            if (result)
                                 notificationsToggle.checked = result.notifications
-                            }
                             backgroundToggle.updating = false
+                            notificationsToggle.updating = false
                         })
                     }
                 }
@@ -258,14 +261,12 @@ Page {
             Rectangle {
                 width: parent.width; height: units.dp(1)
                 color: theme.palette.normal.base
-                visible: notificationsRow.visible
             }
 
             Item {
                 id: notificationsRow
                 width: parent.width
-                height: visible ? units.gu(4.5) : 0
-                visible: backgroundToggle.checked && (appState ? !appState.runningUnderClickableDesktop : true)
+                height: units.gu(4.5)
 
                 Label {
                     anchors {

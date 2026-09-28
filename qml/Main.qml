@@ -18,15 +18,151 @@ MainView {
 
     width:  units.gu(45)
     height: units.gu(75)
+    property string pendingNotificationChannelId: ""
+    // Sentinel forces the first sync to clear stale daemon state if necessary.
+    property string backendVisibleChannelId: "__unknown__"
+    property bool applicationActive: Qt.application.state === Qt.ApplicationActive
 
-    function applyLaunchModeFromArguments() {
+    onApplicationActiveChanged: {
+        root.syncAppForeground()
+        root.syncActiveChatVisibility()
+        if (root.applicationActive) {
+            root.consumeNotificationAction()
+            root.refreshSessionAfterResume()
+        }
+    }
+
+    // The daemon posts notifications only while no app is in the
+    // foreground: Lomiri suspends backgrounded apps, so they cannot.
+    function syncAppForeground() {
+        if (!appState.pythonReady) return
+        pythonBridge.call("discord_client.set_app_foreground", [root.applicationActive], function() {})
+    }
+
+    function isActiveChatVisible() {
+        if (!root.applicationActive
+                || !appState.authenticated
+                || appState.activeChannelId === ""
+                || !pageStack.visible
+                || !pageStack.currentPage)
+            return false
+        if (appState.isWideLayout)
+            return pageStack.currentPage.objectName === "mainPage"
+        return pageStack.currentPage.objectName === "chatPage"
+    }
+
+    function syncActiveChatVisibility() {
+        if (!appState.pythonReady) return
+        var visibleChannelId = root.isActiveChatVisible() ? appState.activeChannelId : ""
+        if (visibleChannelId === root.backendVisibleChannelId) return
+        root.backendVisibleChannelId = visibleChannelId
+        pythonBridge.call("discord_client.set_active_channel", [visibleChannelId], function() {})
+    }
+
+    function channelIdFromUri(rawUri) {
+        var match = String(rawUri || "").match(/^disports:\/\/channel\/([0-9]+)(?:[\/?#]|$)/)
+        return match ? match[1] : ""
+    }
+
+    function openDisportsUri(rawUri) {
+        var channelId = root.channelIdFromUri(rawUri)
+        if (channelId === "") {
+            console.log("Notification navigation: ignored URI without channel id")
+            return
+        }
+        console.log("Notification navigation: received channel=" + channelId)
+        root.pendingNotificationChannelId = channelId
+        root.openPendingNotificationChannel()
+    }
+
+    function openPendingNotificationChannel() {
+        if (root.pendingNotificationChannelId === "")
+            return
+        if (!appState.pythonReady
+                || !appState.authenticated
+                || appState.startupPhase !== "loaded") {
+            console.log("Notification navigation: deferred channel="
+                        + root.pendingNotificationChannelId
+                        + " pythonReady=" + appState.pythonReady
+                        + " authenticated=" + appState.authenticated
+                        + " startupPhase=" + appState.startupPhase)
+            return
+        }
+        var channelId = root.pendingNotificationChannelId
+        root.pendingNotificationChannelId = ""
+        console.log("Notification navigation: opening channel=" + channelId)
+        while (pageStack.depth > 1)
+            pageStack.pop()
+        chatLogic.openChannelById(channelId)
+    }
+
+    function consumeNotificationAction() {
+        if (!appState.pythonReady || !root.applicationActive)
+            return
+        pythonBridge.call("discord_client.take_notification_action", [], function(data) {
+            if (data && data.channelId) {
+                console.log("Notification navigation: consumed live action channel=" + data.channelId)
+                root.openDisportsUri("disports://channel/" + data.channelId)
+            }
+        })
+    }
+
+    function openActiveChannelInfo() {
+        if (appState.activeChannelId === "")
+            return
+        pageStack.push(channelInfoPageComp, {
+            "stack": pageStack,
+            "python": pythonBridge,
+            "channelId": appState.activeChannelId,
+            "fallbackName": appState.activeChannelName
+        })
+    }
+
+    function refreshSessionAfterResume() {
+        if (!appState.pythonReady || !appState.authenticated)
+            return
+        // Events may have been missed while suspended (in daemon mode the
+        // daemon drops clients that stop reading), so resync either way.
+        console.log("Session: foreground refresh")
+        appState.refreshing = true
+        pythonBridge.call("discord_client.resume_session", [], function() {
+            chatLogic.refreshActiveChannel(function() {
+                appState.refreshing = false
+                console.log("Session: foreground conversation refresh complete")
+            })
+        })
+    }
+
+    function applySessionPayload(data, fromCache) {
+        if (!data || !data.me || !data.me.id)
+            return false
+        appState.myUserId = data.me.id || ""
+        appState.myUsername = data.me.username || ""
+        chatLogic.replaceModel(serverModel, data.guilds || [])
+        chatLogic.replaceModel(dmContactModel, data.dmContacts || [])
+        chatLogic.replaceModel(dmGroupModel, data.dmGroups || [])
+        dmLogic.rebuildDmChannelModel()
+        appState.authenticated = true
+        // Cached data can arrive after a live READY event. It hydrates models,
+        // but must never make an already-connected session look disconnected.
+        if (!fromCache)
+            appState.connectionReady = true
+        appState.hasCachedSession = true
+        appState.startupPhase = "loaded"
+        console.log((fromCache ? "Offline cache: hydrated" : "Session: refreshed")
+                    + " guilds=" + (data.guilds || []).length
+                    + " dms=" + ((data.dmContacts || []).length + (data.dmGroups || []).length))
+        root.openPendingNotificationChannel()
+        return true
+    }
+
+    function applyLaunchArguments() {
         var args = Qt.application.arguments || []
         for (var i = 0; i < args.length; i++) {
             var p = String(args[i])
-            if (p.indexOf("install/qml/") >= 0) {
+            if (p.indexOf("install/qml/") >= 0)
                 appState.runningUnderClickableDesktop = true
-                return
-            }
+            root.openDisportsUri(p)
         }
     }
 
@@ -36,14 +172,7 @@ MainView {
     PythonBridge {
         id: pythonBridge
         onReady: function(data) {
-            appState.myUserId = data.me ? (data.me.id || "") : ""
-            appState.myUsername = data.me ? (data.me.username || "") : ""
-            chatLogic.replaceModel(serverModel, data.guilds || [])
-            chatLogic.replaceModel(dmContactModel, data.dmContacts || [])
-            chatLogic.replaceModel(dmGroupModel, data.dmGroups || [])
-            dmLogic.rebuildDmChannelModel()
-            if (appState.authenticated)
-                appState.startupPhase = "loaded"
+            root.applySessionPayload(data, !!(data && data.cached))
         }
         onPrivateChannels: function(data) {
             chatLogic.replaceModel(dmContactModel, data.dmContacts || [])
@@ -60,13 +189,19 @@ MainView {
         onGuildMemberChunk: function(data) {}
         onMessageCreate: function(msg) {
             appState.typingNotice = ""
+            // Notification text rides along with the event; keep it out of
+            // the message model.
+            var notifySummary = msg.notifySummary || ""
+            var notifyBody = msg.notifyBody || ""
+            delete msg.notifySummary
+            delete msg.notifyBody
             chatLogic.upsertMessage(msg)
-            if (msg.channelId === appState.activeChannelId) {
+            if (msg.channelId === appState.activeChannelId && root.isActiveChatVisible()) {
                 pythonBridge.call("discord_client.mark_seen", [msg.channelId, msg.messageId], function(){});
                 if ((msg.authorId || "") !== appState.myUserId)
                     pythonBridge.call("discord_client.ack_message", [msg.channelId, msg.messageId], function(){});
             }
-            root.maybeNotifyMessage(msg)
+            root.maybeNotifyMessage(msg.channelId, notifySummary, notifyBody)
         }
         onChannelUnread: function(data) { unreadLogic.applyChannelUnread(data) }
         onMessageUpdate: function(msg) { chatLogic.upsertMessage(msg) }
@@ -78,6 +213,13 @@ MainView {
         onTyping: function(data) { if (data.channelId === appState.activeChannelId) appState.typingNotice = data.author + " is typing..." }
         onPresence: function(data) { dmLogic.updateContactStatus(data.userId, data.status) }
         onMessageReaction: function(data) { chatLogic.applyReactionUpdate(data) }
+        onConnectionStatus: function(data) {
+            appState.connectionReady = !!(data && data.ready)
+            if (data && data.phase)
+                appState.connectionPhase = String(data.phase)
+            appState.reconnectDelaySeconds = data && data.retrySeconds
+                                             ? Number(data.retrySeconds) : 0
+        }
         onGatewayLog: function(data) {
             var message = (data && data.message) ? String(data.message) : ""
             console.log("Gateway: " + message)
@@ -98,12 +240,17 @@ MainView {
         }
         onReadyForInit: {
             appState.pythonReady = true
+            root.syncAppForeground()
+            root.consumeNotificationAction()
             navigationLogic.refreshUnicodeEmojis()
-            root.applyLaunchModeFromArguments()
-            pythonBridge.call("discord_client.dev_flags", [], function(flags) {
-                if (flags && flags.clickableDesktopMode === true)
-                    appState.runningUnderClickableDesktop = true
-                navigationLogic.checkInitialState()
+            root.applyLaunchArguments()
+            pythonBridge.call("discord_client.load_offline_state", [], function(cached) {
+                root.applySessionPayload(cached, true)
+                pythonBridge.call("discord_client.dev_flags", [], function(flags) {
+                    if (flags && flags.clickableDesktopMode === true)
+                        appState.runningUnderClickableDesktop = true
+                    navigationLogic.checkInitialState()
+                })
             })
             pythonBridge.call("discord_client.set_preference", ["blockedMessageVisibility", appSettings.blockedMessageVisibility], function(){});
             pythonBridge.call("discord_client.get_settings", [], function(result) {
@@ -115,7 +262,7 @@ MainView {
     ChatLogic {
         id: chatLogic
         appState: appState; python: pythonBridge; appSettings: appSettings; pageStack: pageStack
-        chatMessageModel: chatMessageModel; channelModel: channelModel; chatPageComp: chatPageComp
+        chatMessageModel: chatMessageModel; channelModel: channelModel; serverModel: serverModel; chatPageComp: chatPageComp
         onDeleteConfirmRequested: function(messageId) {
             PopupUtils.open(deleteDialogComp, root, { messageId: messageId })
         }
@@ -157,14 +304,37 @@ MainView {
     Connections {
         target: appState
         onActiveServerIdChanged: navigationLogic.refreshActiveServerEmojis()
+        onActiveChannelIdChanged: root.syncActiveChatVisibility()
+        onAuthenticatedChanged: {
+            root.openPendingNotificationChannel()
+            root.syncActiveChatVisibility()
+        }
+        onIsWideLayoutChanged: root.syncActiveChatVisibility()
+        onPythonReadyChanged: root.syncActiveChatVisibility()
+        onStartupPhaseChanged: root.openPendingNotificationChannel()
+    }
+
+    Connections {
+        target: UriHandler
+        onOpened: {
+            for (var i = 0; i < uris.length; i++)
+                root.openDisportsUri(uris[i])
+        }
     }
 
     Connections {
         target: Connectivity
         onStatusChanged: {
+            if (!appState.runningUnderClickableDesktop
+                    && Connectivity.status !== Connectivity.Online)
+                appState.connectionReady = false
             if (Connectivity.status === Connectivity.Online && appState.lastConnectivityStatus !== Connectivity.Online) {
                 if (appState.pythonReady && appState.authenticated) {
-                    pythonBridge.call("discord_client.reconnect", [], function(){});
+                    // The gateway owns its reconnect loop. This is an
+                    // idempotent attach/ensure operation, not a forced reset.
+                    pythonBridge.call("discord_client.connect_gateway", [], function(){});
+                } else if (appState.pythonReady && appState.startupPhase === "offline") {
+                    navigationLogic.checkInitialState();
                 }
             }
             appState.lastConnectivityStatus = Connectivity.status;
@@ -182,23 +352,12 @@ MainView {
         property bool notificationsEnabled: false
     }
 
-    function isDmChannel(channelId) {
-        for (var i = 0; i < dmChannelModel.count; i++) {
-            if (dmChannelModel.get(i).channelId === channelId) return true
-        }
-        return false
-    }
-
-    function maybeNotifyMessage(msg) {
-        if (!appSettings.notificationsEnabled) return
-        if (!msg || msg.channelId === appState.activeChannelId) return
-        if (!msg.authorId || msg.authorId === appState.myUserId) return
-        var isDm = root.isDmChannel(msg.channelId)
-        var mentioned = appState.myUserId !== "" && String(msg.rawBody || "").indexOf("<@" + appState.myUserId + ">") >= 0
-        if (!isDm && !mentioned) return
-        var body = String(msg.rawBody || msg.body || "")
-        if (body.length > 200) body = body.substring(0, 200)
-        pythonBridge.call("discord_client.local_notify", [msg.author || (isDm ? "New message" : "Mention"), body], function(result) {})
+    function maybeNotifyMessage(channelId, summary, body) {
+        // Whether a message deserves a notification (DM / mention, mutes,
+        // blocked users) is decided in Python so the daemon and the app agree.
+        if (!appSettings.notificationsEnabled || summary === "") return
+        if (channelId === appState.activeChannelId && root.isActiveChatVisible()) return
+        pythonBridge.call("discord_client.local_notify", [summary, body, channelId], function(result) {})
     }
 
     Connections {
@@ -250,7 +409,13 @@ MainView {
 
         OfflineBanner {
             id: offlineBanner
-            isOnline: appState.runningUnderClickableDesktop || appState.isOnline
+            networkOnline: appState.runningUnderClickableDesktop || appState.isOnline
+            connectionReady: appState.connectionReady
+            hasCachedSession: appState.hasCachedSession
+            applicationActive: root.applicationActive
+            reconnectPhase: appState.connectionPhase
+            retrySeconds: appState.reconnectDelaySeconds
+            refreshing: appState.refreshing
         }
 
         Item {
@@ -278,16 +443,30 @@ MainView {
                 onVisibleChanged: {
                     if (visible && depth === 0)
                         pageStack.push(mainPageComp)
+                    root.syncActiveChatVisibility()
                 }
+                onCurrentPageChanged: root.syncActiveChatVisibility()
                 Component.onCompleted: {
                     if (depth === 0)
                         pageStack.push(mainPageComp)
                 }
 
+            WaitingBar {
+                anchors {
+                    top: parent.top
+                    left: parent.left
+                    right: parent.right
+                }
+                running: appState.authenticated
+                         && (!appState.connectionReady || appState.refreshing)
+                z: 100
+            }
+
         Component {
             id: mainPageComp
             Page {
                 id: mainPage
+                objectName: "mainPage"
                 header: PageHeader {
                     title: i18n.tr("Disports")
                     trailingActionBar.actions: [
@@ -387,12 +566,16 @@ MainView {
             }
         }
         Component {
+            id: channelInfoPageComp
+            ChannelInfoPage {}
+        }
+        Component {
             id: settingsPageComp
             SettingsPage {
                 stack: pageStack
                 settingsObject: appSettings
                 python: pythonBridge
-                appState: appState
+                sharedAppState: appState
                 onThemeModeSelected: function(tMode) { themeLogic.applyThemePreference(tMode) }
                 onLogoutRequested: authLogic.logout()
             }
@@ -402,7 +585,10 @@ MainView {
     } // end mainLayout
 
     // Splash & Offline Views
-    SplashView { startupPhase: appState.startupPhase }
+    SplashView {
+        startupPhase: appState.startupPhase
+        pageComponent: mainPageComp
+    }
     OfflineView {
         visibleState: appState.startupPhase === "offline"
         onRetryRequested: navigationLogic.checkInitialState()
@@ -410,7 +596,7 @@ MainView {
 
     Component.onCompleted: {
         chatLogic.unreadLogic = unreadLogic
-        root.applyLaunchModeFromArguments()
+        root.applyLaunchArguments()
     }
 
 }
