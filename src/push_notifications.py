@@ -33,6 +33,9 @@ def build_postal_output(raw_payload: str) -> dict:
     timestamp = envelope.get("timestamp")
     if isinstance(timestamp, int):
         card["timestamp"] = timestamp
+    action = str(envelope.get("action") or "").strip()
+    if action:
+        card["actions"] = [action]
 
     notification = {
         "card": card,

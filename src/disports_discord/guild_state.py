@@ -251,6 +251,21 @@ class GuildStateMixin:
             if channel_id:
                 self.channel_by_id[channel_id] = channel
 
+    def upsert_private_channel(self, channel: dict[str, Any]) -> bool:
+        if not isinstance(channel, dict):
+            return False
+        channel_id = str(channel.get("id", "") or "")
+        if not channel_id:
+            return False
+        for index, existing in enumerate(self.private_channels):
+            if str(existing.get("id", "") or "") == channel_id:
+                self.private_channels[index] = channel
+                self.channel_by_id[channel_id] = channel
+                return True
+        self.private_channels.append(channel)
+        self.channel_by_id[channel_id] = channel
+        return True
+
     def upsert_guild_channel(self, channel: dict[str, Any]) -> str | None:
         if not isinstance(channel, dict):
             return None
@@ -394,4 +409,3 @@ class GuildStateMixin:
             or user.get("username")
             or ""
         )
-

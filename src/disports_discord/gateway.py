@@ -39,12 +39,19 @@ class DiscordWsClient:
             sslopt={"cert_reqs": ssl.CERT_REQUIRED},
         )
 
+    @property
+    def connected(self) -> bool:
+        return bool(self._ws is not None and self._ws.connected)
+
     def send_json(self, payload: dict) -> None:
         if not self._ws:
             raise GatewayClosed("WebSocket not connected")
-        data = json.dumps(payload, separators=(",", ":"))
-        with self._send_lock:
-            self._ws.send(data)
+        try:
+            data = json.dumps(payload, separators=(",", ":"))
+            with self._send_lock:
+                self._ws.send(data)
+        except (WebSocketException, OSError) as exc:
+            raise GatewayClosed(str(exc)) from exc
 
     def recv_data(self) -> tuple[int, bytes | str]:
         if not self._ws:
@@ -103,6 +110,10 @@ class DiscordGateway:
         self._thread = threading.Thread(target=self._run_forever, daemon=True)
         self._thread.start()
 
+    @property
+    def connected(self) -> bool:
+        return bool(self._ws is not None and self._ws.connected)
+
     def stop(self) -> None:
         self._stop.set()
         self._reconnect_event.set()
@@ -159,12 +170,22 @@ class DiscordGateway:
                     self.seq = None
             except Exception as exc:
                 self._log(f"Gateway error: {exc}")
+            finally:
+                self._stop_heartbeat()
+                if self._ws:
+                    self._ws.close()
+                    self._ws = None
 
             if self._stop.is_set():
                 break
 
             attempt += 1
-            self._reconnect_event.wait(min(2**attempt, 30))
+            delay = min(2**attempt, 30)
+            self._log(
+                f"Gateway reconnecting in {delay}s "
+                f"(resume={'yes' if self.session_id and self.seq is not None else 'no'})"
+            )
+            self._reconnect_event.wait(delay)
             self._reconnect_event.clear()
 
     def _run_connection(self) -> None:
@@ -175,6 +196,7 @@ class DiscordGateway:
             else GATEWAY_URL
         )
         self._ws = DiscordWsClient(gateway_url)
+        self._log("Gateway connecting")
         self._ws.connect()
         self._inflater = zlib.decompressobj()
         self._compressed_buffer.clear()
@@ -187,8 +209,10 @@ class DiscordGateway:
         self._start_heartbeat()
 
         if self.session_id and self.seq is not None:
+            self._log("Gateway resuming session")
             self._send_resume()
         else:
+            self._log("Gateway identifying new session")
             self._send_identify()
 
         while not self._stop.is_set():
@@ -236,19 +260,31 @@ class DiscordGateway:
 
     def _start_heartbeat(self) -> None:
         self._stop_heartbeat()
-        self._heartbeat_stop.clear()
-        self._heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
+        # Each connection gets its own event. Reusing and clearing the previous
+        # event could wake an old heartbeat thread after a reconnect.
+        stop_event = threading.Event()
+        self._heartbeat_stop = stop_event
+        self._heartbeat_thread = threading.Thread(
+            target=self._heartbeat_loop,
+            args=(stop_event,),
+            daemon=True,
+        )
         self._heartbeat_thread.start()
 
     def _stop_heartbeat(self) -> None:
         self._heartbeat_stop.set()
         self._heartbeat_thread = None
 
-    def _heartbeat_loop(self) -> None:
+    def _heartbeat_loop(self, stop_event: threading.Event) -> None:
         time.sleep(random.random() * min(self._heartbeat_interval, 5.0))
-        while not self._heartbeat_stop.is_set() and not self._stop.is_set():
-            self._send_heartbeat()
-            self._heartbeat_stop.wait(self._heartbeat_interval)
+        while not stop_event.is_set() and not self._stop.is_set():
+            try:
+                self._send_heartbeat()
+            except Exception as exc:
+                if not stop_event.is_set() and not self._stop.is_set():
+                    self._log(f"Heartbeat stopped: {exc}")
+                return
+            stop_event.wait(self._heartbeat_interval)
 
     def _send_heartbeat(self) -> None:
         if not self._ws:

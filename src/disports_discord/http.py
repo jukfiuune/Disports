@@ -41,6 +41,10 @@ class DiscordHTTPError(Exception):
         return f"{' / '.join(parts)}: no response details"
 
 
+class DiscordNetworkError(Exception):
+    """A retryable transport failure before Discord returned a response."""
+
+
 class DiscordHTTP:
     def __init__(self) -> None:
         import threading
@@ -120,13 +124,16 @@ class DiscordHTTP:
         if json_body is not None:
             body = json.dumps(json_body, separators=(",", ":")).encode("utf-8")
 
-        response = self._pool.request(
-            method.upper(),
-            url,
-            body=body,
-            headers=self._headers(headers, include_auth=auth),
-            decode_content=True,
-        )
+        try:
+            response = self._pool.request(
+                method.upper(),
+                url,
+                body=body,
+                headers=self._headers(headers, include_auth=auth),
+                decode_content=True,
+            )
+        except (urllib3.exceptions.HTTPError, OSError) as exc:
+            raise DiscordNetworkError(str(exc)) from exc
 
         if response.status < 400:
             self._respect_rate_limit(response)

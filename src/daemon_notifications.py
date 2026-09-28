@@ -40,13 +40,21 @@ def _truncate(text: str, limit: int = BODY_MAX_LEN) -> str:
     return text[: limit - 1].rstrip() + "…"
 
 
-def build_envelope(summary: str, body: str, tag: str, timestamp: str = "") -> dict:
+def build_envelope(
+    summary: str,
+    body: str,
+    tag: str,
+    timestamp: str = "",
+    action: str = "",
+) -> dict:
     envelope = {
         "event_type": "Message",
         "summary": _truncate(summary, 80),
         "body": _truncate(body),
         "tag": tag,
     }
+    if action:
+        envelope["action"] = action
     parsed = _parse_timestamp(timestamp)
     if parsed is not None:
         envelope["timestamp"] = parsed
@@ -104,25 +112,31 @@ class Notifier:
                 return False
 
     def _call(self, method: str, signature: str, args: tuple) -> bool:
-        if not self._connect():
-            return False
         with self._lock:
-            try:
-                from jeepney import new_method_call
-
-                request = new_method_call(self._address, method, signature, args)
-                self._connection.send_and_get_reply(request, timeout=10.0)
-                self._warned = False
-                return True
-            except Exception as exc:
-                self._warn(f"{method} failed: {exc}")
+            last_error = None
+            for attempt in range(2):
+                if not self._connect():
+                    continue
                 try:
-                    if self._connection is not None:
-                        self._connection.close()
-                except Exception:
-                    pass
-                self._connection = None
-                return False
+                    from jeepney import new_method_call
+
+                    request = new_method_call(self._address, method, signature, args)
+                    self._connection.send_and_get_reply(request, timeout=10.0)
+                    if attempt:
+                        print(f"postal: {method} recovered after reconnect", flush=True)
+                    self._warned = False
+                    return True
+                except Exception as exc:
+                    last_error = exc
+                    try:
+                        if self._connection is not None:
+                            self._connection.close()
+                    except Exception:
+                        pass
+                    self._connection = None
+            if last_error is not None:
+                self._warn(f"{method} failed after reconnect: {last_error}")
+            return False
 
     def post(self, app_id: str, payload: dict) -> bool:
         return self._call("Post", "ss", (app_id, json.dumps(payload)))

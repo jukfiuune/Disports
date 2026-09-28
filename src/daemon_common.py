@@ -4,7 +4,9 @@ import json
 import os
 from pathlib import Path
 
-PROTOCOL_VERSION = 1
+# Bump when an app update requires the already-running daemon process to be
+# reloaded. The app restarts it once on mismatch, then reuses it normally.
+PROTOCOL_VERSION = 5
 
 SOCKET_DIR_NAME = "disports"
 SOCKET_FILE_NAME = "daemon.sock"

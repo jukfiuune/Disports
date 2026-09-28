@@ -10,15 +10,16 @@
 from __future__ import annotations
 
 import argparse
-import html
 import json
 import os
-import re
+import queue
 import signal
 import socket
 import sys
 import threading
+import time
 import traceback
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -28,59 +29,111 @@ from daemon_common import PROTOCOL_VERSION
 from daemon_notifications import Notifier, build_envelope, postal_app_id
 from disports_discord import DiscordClient
 
-USER_MENTION_RE = re.compile(r"<@!?(\d+)>")
+# A client that stops reading (e.g. an app suspended by Lomiri) is dropped
+# once its writes have made no progress for CLIENT_STALL_SECONDS; it
+# reconnects and resyncs when it resumes. Healthy clients can absorb large
+# bursts (member list chunks, presence storms); the hard cap only bounds
+# memory.
+CLIENT_STALL_SECONDS = 10.0
+CLIENT_QUEUE_LIMIT = 50000
+REQUEST_WORKERS = 8
+
+# Methods that replace or tear down the Discord session. They are serialized
+# with the automatic login loop so every path converges on one gateway.
+SESSION_METHODS = {
+    "save_token",
+    "clear_token",
+    "login",
+    "connect_gateway",
+    "disconnect",
+    "reconnect",
+    "start_qr_login",
+    "stop_qr_login",
+}
 
 
-def _plain_text(rich: str) -> str:
-    text = re.sub(r"<[^>]+>", "", str(rich or ""))
-    return html.unescape(text).strip()
+class _ClientConnection:
+    # One attached app process. Writes go through a bounded queue drained by
+    # a dedicated thread, so a client that stops reading can never block the
+    # gateway thread that broadcasts events.
 
+    def __init__(self, conn: socket.socket, on_dead) -> None:
+        self.conn = conn
+        self.foreground = True
+        self._queue: queue.Queue[bytes | None] = queue.Queue(CLIENT_QUEUE_LIMIT)
+        self._on_dead = on_dead
+        self._dead = threading.Event()
+        self._last_progress = time.monotonic()
+        threading.Thread(target=self._write_loop, daemon=True).start()
 
-def _media_label(medias: list) -> str:
-    for media in medias or []:
-        kind = str((media or {}).get("messageType") or "")
-        if kind == "image":
-            return "📷 Photo"
-        if kind == "video":
-            return "🎥 Video"
-        if kind == "audio":
-            return "🎵 Audio"
-        if kind == "link":
-            return "🔗 Link"
-        if kind:
-            return "📎 File"
-    return ""
+    @property
+    def alive(self) -> bool:
+        return not self._dead.is_set()
 
+    def send(self, payload: dict) -> None:
+        if self._dead.is_set():
+            return
+        line = (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
+        stalled = (
+            not self._queue.empty()
+            and time.monotonic() - self._last_progress > CLIENT_STALL_SECONDS
+        )
+        if not stalled:
+            try:
+                self._queue.put_nowait(line)
+                return
+            except queue.Full:
+                pass
+        print("daemon: client stopped reading; dropping it", flush=True)
+        self.close()
 
-def _channel_summary(state, channel_id: str, author: str, text: str):
-    # Returns (summary, body) for a notification from message context.
-    channel = state.get_channel(channel_id) or {}
-    guild_id = state.get_guild_for_channel(channel_id) or ""
-    if guild_id:
-        guild_name = state.guild_name(guild_id) or ""
-        channel_name = str(channel.get("name") or "channel")
-        summary = f"{guild_name} • #{channel_name}" if guild_name else f"#{channel_name}"
-        return summary, f"{author}: {text}"
-    group_name = str(channel.get("name") or "").strip()
-    if not group_name and channel.get("recipients"):
-        group_name = state.group_name(channel)
-    if group_name and group_name != author:
-        return group_name, f"{author}: {text}"
-    return author, text
+    def _write_loop(self) -> None:
+        while not self._dead.is_set():
+            line = self._queue.get()
+            if line is None:
+                break
+            self._last_progress = time.monotonic()
+            try:
+                self.conn.sendall(line)
+                self._last_progress = time.monotonic()
+            except OSError:
+                self.close()
+                break
+
+    def close(self) -> None:
+        if self._dead.is_set():
+            return
+        self._dead.set()
+        try:
+            self._queue.put_nowait(None)
+        except queue.Full:
+            pass
+        try:
+            # Unblocks both the reader thread and a writer stuck in sendall.
+            self.conn.shutdown(socket.SHUT_RDWR)
+        except OSError:
+            pass
+        try:
+            self.conn.close()
+        except OSError:
+            pass
+        self._on_dead(self)
 
 
 class DaemonServer:
     def __init__(self, socket_path) -> None:
         self.socket_path = socket_path
-        self._dispatch_lock = threading.RLock()
+        self._session_lock = threading.RLock()
         self._clients_lock = threading.Lock()
-        self._clients: list[socket.socket] = []
+        self._clients: list[_ClientConnection] = []
+        self._workers = ThreadPoolExecutor(max_workers=REQUEST_WORKERS)
         self._stop = threading.Event()
-        self._next_id = 1
+        self._auto_connect_cancel = threading.Event()
         self._notifications_enabled = daemon_common.read_settings()[
             daemon_common.SETTING_NOTIFICATIONS
         ]
-        self._posted_tags: dict[str, bool] = {}
+        self._posted_tags: set[str] = set()
+        self._tags_lock = threading.Lock()
         self._app_id = postal_app_id()
         self.notifier = Notifier()
         self.client = DiscordClient(emitter=self._on_event)
@@ -105,10 +158,11 @@ class DaemonServer:
             "send_message": self.client.send_message,
             "edit_message": self.client.edit_message,
             "delete_message": self.client.delete_message,
-            "ack_message": self.client.ack_message,
-            "mark_seen": self.client.mark_seen,
-            "set_active_channel": self.client.set_active_channel,
+            "ack_message": self.ack_message,
+            "mark_seen": self.mark_seen,
+            "set_active_channel": self.set_active_channel,
             "resolve_channel": self.client.resolve_channel,
+            "channel_info": self.client.channel_info,
             "add_reaction": self.client.add_reaction,
             "remove_reaction": self.client.remove_reaction,
         }
@@ -138,11 +192,47 @@ class DaemonServer:
             return {"token": ""}
 
     def client_token_clear(self) -> dict:
+        # Logout: drop the live session too, otherwise the daemon keeps
+        # receiving (and notifying about) the old account's messages.
+        self._auto_connect_cancel.set()
+        self.client.disconnect()
         try:
             daemon_common.token_path().unlink()
         except FileNotFoundError:
             pass
+        self.client.cache.clear()
+        self._clear_notifications()
         return {"ok": True}
+
+    # Read tracking: reading a channel anywhere dismisses its notification
+
+    def set_active_channel(self, channel_id: str) -> bool:
+        result = self.client.set_active_channel(channel_id)
+        self._clear_channel_notification(channel_id)
+        return result
+
+    def ack_message(self, channel_id: str, message_id: str) -> dict:
+        result = self.client.ack_message(channel_id, message_id)
+        self._clear_channel_notification(channel_id)
+        return result
+
+    def mark_seen(self, channel_id: str, message_id: str) -> dict:
+        result = self.client.mark_seen(channel_id, message_id)
+        self._clear_channel_notification(channel_id)
+        return result
+
+    def _clear_channel_notification(self, channel_id: str) -> None:
+        channel_id = str(channel_id or "")
+        if not channel_id:
+            return
+        with self._tags_lock:
+            if channel_id not in self._posted_tags:
+                return
+            self._posted_tags.discard(channel_id)
+        try:
+            self.notifier.clear_persistent(self._app_id, [channel_id])
+        except Exception:
+            traceback.print_exc()
 
     # Event broadcast + notifications
 
@@ -151,56 +241,41 @@ class DaemonServer:
         if name == "message_create":
             self._maybe_notify(payload)
 
-    def _maybe_notify(self, message: dict) -> None:
-        if not self._notifications_enabled:
-            return
+    def _app_in_foreground(self) -> bool:
         with self._clients_lock:
-            app_attached = bool(self._clients)
-        if app_attached:
-            return  # the app holds the socket and owns notifications itself
+            return any(client.alive and client.foreground for client in self._clients)
+
+    def _maybe_notify(self, message: dict) -> None:
+        if not self._notifications_enabled or not isinstance(message, dict):
+            return
+        # A foreground app posts its own live notifications. A backgrounded
+        # (and possibly suspended) one cannot, so the daemon takes over.
+        if self._app_in_foreground():
+            return
+        summary = str(message.get("notifySummary") or "")
+        if not summary:
+            return
         try:
-            if not isinstance(message, dict):
-                return
-            if str(message.get("displayKind") or "") == "system":
-                return
-            me = str((self.client.state.me or {}).get("id") or "")
-            if not me:
-                return
-            author_id = str(message.get("authorId") or "")
-            if author_id == me:
-                return
             channel_id = str(message.get("channelId") or "")
-            if not channel_id:
-                return
-
-            is_dm = not (self.client.state.get_guild_for_channel(channel_id) or "")
-            mentioned = any(
-                match.group(1) == me
-                for match in USER_MENTION_RE.finditer(str(message.get("rawBody") or ""))
-            )
-            if not (is_dm or mentioned):
-                return
-
-            text = _plain_text(message.get("body") or "")
-            if not text:
-                text = _media_label(message.get("medias") or [])
-            if not text:
-                return
-
-            summary, body = _channel_summary(
-                self.client.state, channel_id,
-                str(message.get("author") or "Unknown"), text,
-            )
             envelope = build_envelope(
                 summary,
-                body,
+                str(message.get("notifyBody") or ""),
                 tag=channel_id,
                 timestamp=str(message.get("rawTimestamp") or ""),
+                action=f"disports://channel/{channel_id}",
             )
-            if channel_id in self._posted_tags:
+            with self._tags_lock:
+                replace = channel_id in self._posted_tags
+            if replace:
                 self.notifier.clear_persistent(self._app_id, [channel_id])
-            if self.notifier.post(self._app_id, envelope):
-                self._posted_tags[channel_id] = True
+            posted = self.notifier.post(self._app_id, envelope)
+            print(
+                f"notification: postal post channel={channel_id} ok={posted}",
+                flush=True,
+            )
+            if posted:
+                with self._tags_lock:
+                    self._posted_tags.add(channel_id)
         except Exception:
             traceback.print_exc()
 
@@ -214,41 +289,36 @@ class DaemonServer:
         return {"ok": True}
 
     def _clear_notifications(self) -> None:
-        tags = list(self._posted_tags)
-        self._posted_tags.clear()
+        with self._tags_lock:
+            tags = list(self._posted_tags)
+            self._posted_tags.clear()
         try:
             self.notifier.clear_persistent(self._app_id, tags)
             self.notifier.set_counter(self._app_id, 0, False)
         except Exception:
             traceback.print_exc()
 
-    # Event broadcast
-
     def _broadcast(self, name: str, payload: dict) -> None:
-        line = json.dumps({"event": name, "data": payload}, separators=(",", ":"))
         with self._clients_lock:
-            dead: list[socket.socket] = []
-            for conn in self._clients:
-                try:
-                    conn.sendall((line + "\n").encode("utf-8"))
-                except OSError:
-                    dead.append(conn)
-            for conn in dead:
-                self._clients.remove(conn)
-        if dead:
-            for conn in dead:
-                try:
-                    conn.close()
-                except OSError:
-                    pass
+            clients = list(self._clients)
+        for client in clients:
+            client.send({"event": name, "data": payload})
+
+    def _remove_client(self, client: _ClientConnection) -> None:
+        with self._clients_lock:
+            if client in self._clients:
+                self._clients.remove(client)
+            detached = not self._clients
+        if detached:
+            self.client.set_active_channel("")
 
     # Request handling
 
-    def _handle_line(self, conn: socket.socket, raw: bytes) -> None:
+    def _handle_line(self, client: _ClientConnection, raw: bytes) -> None:
         try:
             request = json.loads(raw.decode("utf-8"))
         except ValueError as exc:
-            self._send(conn, {"id": None, "ok": False, "error": f"Bad request: {exc}", "exception": True})
+            client.send({"id": None, "ok": False, "error": f"Bad request: {exc}", "exception": True})
             return
 
         request_id = request.get("id")
@@ -256,7 +326,7 @@ class DaemonServer:
         args = request.get("args") or []
 
         if method == "ping":
-            self._send(conn, {
+            client.send({
                 "id": request_id,
                 "ok": True,
                 "result": {
@@ -266,9 +336,14 @@ class DaemonServer:
             })
             return
 
+        if method == "set_app_foreground":
+            client.foreground = bool(args[0]) if args else True
+            client.send({"id": request_id, "ok": True, "result": True})
+            return
+
         handler = self.methods.get(method)
         if handler is None:
-            self._send(conn, {
+            client.send({
                 "id": request_id,
                 "ok": False,
                 "error": f"Unknown method: {method}",
@@ -276,32 +351,33 @@ class DaemonServer:
             })
             return
 
-        with self._dispatch_lock:
-            try:
-                result = handler(*args)
-            except Exception as exc:
-                traceback.print_exc()
-                self._send(conn, {
-                    "id": request_id,
-                    "ok": False,
-                    "error": str(exc),
-                    "exception": True,
-                })
-                return
+        # Run off the connection's reader thread so slow Discord requests do
+        # not hold up unrelated calls from the same app.
+        self._workers.submit(self._run_request, client, request_id, method, handler, args)
 
-        self._send(conn, {"id": request_id, "ok": True, "result": result})
-
-    def _send(self, conn: socket.socket, payload: dict) -> None:
+    def _run_request(self, client, request_id, method, handler, args) -> None:
         try:
-            conn.sendall((json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8"))
-        except OSError:
-            pass
+            if method in SESSION_METHODS:
+                with self._session_lock:
+                    result = handler(*args)
+            else:
+                result = handler(*args)
+        except Exception as exc:
+            traceback.print_exc()
+            client.send({
+                "id": request_id,
+                "ok": False,
+                "error": str(exc),
+                "exception": True,
+            })
+            return
+        client.send({"id": request_id, "ok": True, "result": result})
 
-    def _serve_connection(self, conn: socket.socket) -> None:
-        conn.settimeout(None)
+    def _serve_connection(self, client: _ClientConnection) -> None:
+        conn = client.conn
         buffer = bytearray()
         try:
-            while not self._stop.is_set():
+            while not self._stop.is_set() and client.alive:
                 chunk = conn.recv(65536)
                 if not chunk:
                     break
@@ -313,17 +389,11 @@ class DaemonServer:
                     line = bytes(buffer[:newline])
                     del buffer[: newline + 1]
                     if line.strip():
-                        self._handle_line(conn, line)
+                        self._handle_line(client, line)
         except OSError:
             pass
         finally:
-            with self._clients_lock:
-                if conn in self._clients:
-                    self._clients.remove(conn)
-            try:
-                conn.close()
-            except OSError:
-                pass
+            client.close()
 
     # Lifecycle
 
@@ -331,13 +401,41 @@ class DaemonServer:
         token = self.client_token_load().get("token", "")
         if not token:
             return
-        result = self.client.login(token)
-        if result.get("ok"):
-            try:
-                self.client.connect_gateway()
-                print("daemon: gateway connected", flush=True)
-            except Exception as exc:
-                print(f"daemon: gateway connect failed: {exc}", flush=True)
+        delay = 2
+        self._auto_connect_cancel.clear()
+        while not self._stop.is_set() and not self._auto_connect_cancel.is_set():
+            # Serialize each attempt with session RPCs so notification
+            # launches and background recovery converge on one gateway.
+            with self._session_lock:
+                if self._auto_connect_cancel.is_set():
+                    return
+                result = self.client.login(token)
+                if result.get("ok"):
+                    try:
+                        self.client.connect_gateway()
+                        print("daemon: gateway connected", flush=True)
+                        return
+                    except Exception as exc:
+                        result = {
+                            "ok": False,
+                            "error": str(exc),
+                            "retryable": True,
+                        }
+
+            if not result.get("retryable"):
+                print(
+                    f"daemon: automatic login stopped: {result.get('error', 'unknown error')}",
+                    flush=True,
+                )
+                return
+            print(
+                f"daemon: Discord unavailable; retrying in {delay}s: "
+                f"{result.get('error', 'network error')}",
+                flush=True,
+            )
+            if self._auto_connect_cancel.wait(delay) or self._stop.is_set():
+                return
+            delay = min(delay * 2, 60)
 
     def run(self) -> None:
         self.socket_path.parent.mkdir(parents=True, exist_ok=True)
@@ -362,9 +460,11 @@ class DaemonServer:
                 continue
             except OSError:
                 break
+            conn.settimeout(None)
+            client = _ClientConnection(conn, self._remove_client)
             with self._clients_lock:
-                self._clients.append(conn)
-            threading.Thread(target=self._serve_connection, args=(conn,), daemon=True).start()
+                self._clients.append(client)
+            threading.Thread(target=self._serve_connection, args=(client,), daemon=True).start()
 
         server.close()
         try:
@@ -375,6 +475,11 @@ class DaemonServer:
 
     def stop(self) -> None:
         self._stop.set()
+        self._auto_connect_cancel.set()
+        try:
+            self.client.flush_cache()
+        except Exception:
+            pass
         try:
             self._clear_notifications()
         except Exception:

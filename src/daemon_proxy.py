@@ -19,6 +19,17 @@ class DaemonUnavailable(Exception):
     pass
 
 
+class DaemonProtocolMismatch(DaemonUnavailable):
+    pass
+
+
+class DaemonTimeout(Exception):
+    # The daemon is alive but slow (e.g. Discord is unreachable). Deliberately
+    # not a DaemonUnavailable: falling back to the embedded client here would
+    # start a second gateway next to the daemon's.
+    pass
+
+
 class DaemonProxy:
     def __init__(self, emitter) -> None:
         self.emitter = emitter
@@ -61,7 +72,10 @@ class DaemonProxy:
             raise
         if not isinstance(handshake, dict) or handshake.get("protocol") != PROTOCOL_VERSION:
             self.close()
-            raise DaemonUnavailable("Daemon protocol mismatch")
+            actual = handshake.get("protocol") if isinstance(handshake, dict) else "unknown"
+            raise DaemonProtocolMismatch(
+                f"Daemon protocol mismatch (app={PROTOCOL_VERSION}, daemon={actual})"
+            )
 
     def close(self) -> None:
         self._closed.set()
@@ -141,7 +155,7 @@ class DaemonProxy:
         if not done.wait(CALL_TIMEOUT):
             with self._pending_lock:
                 self._pending.pop(request_id, None)
-            raise DaemonUnavailable(f"Timeout waiting for {method}")
+            raise DaemonTimeout(f"Timeout waiting for {method}")
 
         response = slot[1]
         if response is None:

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import socket
 import subprocess
 import time
 from pathlib import Path
@@ -88,7 +89,7 @@ def is_active() -> bool:
     return result.returncode == 0
 
 
-def install_and_start() -> str:
+def install_and_start() -> None:
     # Writes the unit file, reloads systemd and starts the daemon.
     dest = unit_dest_path()
     dest.parent.mkdir(parents=True, exist_ok=True)
@@ -105,6 +106,12 @@ def install_and_start() -> str:
     result = _run(["systemctl", "--user", "enable", SERVICE_UNIT])
     if result.returncode != 0:
         raise RuntimeError(f"enable failed: {result.stdout.strip()}")
+
+
+def restart() -> None:
+    result = _run(["systemctl", "--user", "restart", SERVICE_UNIT])
+    if result.returncode != 0:
+        raise RuntimeError(f"restart failed: {result.stdout.strip()}")
 
 
 def stop_and_remove() -> str:
@@ -124,11 +131,26 @@ def stop_and_remove() -> str:
     return f"Removed {SERVICE_UNIT}" if removed else ""
 
 
+def _socket_accepts() -> bool:
+    path = daemon_common.socket_path()
+    if not path.exists():
+        return False
+    probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    probe.settimeout(1.0)
+    try:
+        probe.connect(str(path))
+        return True
+    except OSError:
+        return False  # stale socket file from a previous daemon
+    finally:
+        probe.close()
+
+
 def wait_for_socket(timeout: float = _UNIT_WAIT_TIMEOUT) -> bool:
     # Waits until the daemon socket accepts a connection.
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        if daemon_common.socket_path().exists():
+        if _socket_accepts():
             return True
         time.sleep(_UNIT_WAIT_INTERVAL)
     return False
