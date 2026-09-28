@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-09-20 20:45+0000\n"
+"POT-Creation-Date: 2026-09-25 08:25+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,12 +17,73 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:87
-msgid "Chat"
+#: ../qml/ChannelInfoPage.qml:21 ../qml/ChannelInfoPage.qml:29
+msgid "Channel information is unavailable."
 msgstr ""
 
-#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:48
+#: ../qml/ChannelInfoPage.qml:39
+msgid "User info"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:40
+msgid "Channel info"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:40
+msgid "Group info"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:44 ../qml/ChatPage.qml:16
+#: ../qml/SettingsPage.qml:48
 msgid "Back"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:121
+msgid "Showing saved information"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:130
+msgid "Blocked user"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:131
+msgid "Status: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:131
+msgid "offline"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:139
+msgid "Server: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:145
+msgid "Category: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:151
+msgid "Type: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:163
+msgid "Age-restricted channel"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:169
+msgid "Members (%1)"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:190
+msgid "Unknown user"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:202
+msgid "ID: %1"
+msgstr ""
+
+#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:87
+msgid "Chat"
 msgstr ""
 
 #: ../qml/ChatPage.qml:24
@@ -371,8 +432,48 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: ../qml/components/OfflineBanner.qml:32
-msgid "No network connection"
+#: ../qml/components/OfflineBanner.qml:85
+msgid "Connected"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:87
+msgid "Offline - showing saved conversations"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:88
+msgid "connecting to Discord"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:90
+msgid "refreshing the conversation"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:92
+msgid "retrying in %1 seconds"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:94
+msgid "resuming in %1 seconds"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:96
+msgid "resuming your session"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:98
+msgid "starting a new session"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:100
+msgid "connection interrupted"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:102
+msgid "restoring the gateway"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:103
+msgid "Reconnecting - %1"
 msgstr ""
 
 #: ../qml/components/OfflineView.qml:29
@@ -383,15 +484,7 @@ msgstr ""
 msgid "Retry"
 msgstr ""
 
-#: ../qml/components/SplashView.qml:36
-msgid "Starting Disports…"
-msgstr ""
-
-#: ../qml/components/SplashView.qml:38
-msgid "Loading your conversations…"
-msgstr ""
-
-#: ../qml/components/SplashView.qml:39 ../qml/logic/AuthLogic.qml:23
+#: ../qml/logic/AuthLogic.qml:23
 msgid "Signing in…"
 msgstr ""
 
