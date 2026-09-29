@@ -15,7 +15,7 @@
             "push-helper": "push.json"
         }
     },
-    "version": "0.8.5",
+    "version": "0.8.6",
     "maintainer": "Martin Filipov <jukfiuune@gmail.com>",
     "framework" : "$ENV{CLICK_FRAMEWORK}"
 }
