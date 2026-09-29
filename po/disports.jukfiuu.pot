@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: disports.jukfiuu\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-05-24 08:11+0000\n"
+"POT-Creation-Date: 2026-09-25 08:25+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -17,12 +17,73 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:87
-msgid "Chat"
+#: ../qml/ChannelInfoPage.qml:21 ../qml/ChannelInfoPage.qml:29
+msgid "Channel information is unavailable."
 msgstr ""
 
-#: ../qml/ChatPage.qml:16 ../qml/SettingsPage.qml:46
+#: ../qml/ChannelInfoPage.qml:39
+msgid "User info"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:40
+msgid "Channel info"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:40
+msgid "Group info"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:44 ../qml/ChatPage.qml:16
+#: ../qml/SettingsPage.qml:48
 msgid "Back"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:121
+msgid "Showing saved information"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:130
+msgid "Blocked user"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:131
+msgid "Status: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:131
+msgid "offline"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:139
+msgid "Server: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:145
+msgid "Category: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:151
+msgid "Type: %1"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:163
+msgid "Age-restricted channel"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:169
+msgid "Members (%1)"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:190
+msgid "Unknown user"
+msgstr ""
+
+#: ../qml/ChannelInfoPage.qml:202
+msgid "ID: %1"
+msgstr ""
+
+#: ../qml/ChatPage.qml:11 ../qml/ChatPanel.qml:87
+msgid "Chat"
 msgstr ""
 
 #: ../qml/ChatPage.qml:24
@@ -142,31 +203,31 @@ msgstr ""
 msgid "I understand"
 msgstr ""
 
-#: ../qml/Main.qml:87
+#: ../qml/Main.qml:88
 msgid "Scan with the Discord mobile app."
 msgstr ""
 
-#: ../qml/Main.qml:90
+#: ../qml/Main.qml:91
 msgid "Confirm the login on your phone."
 msgstr ""
 
-#: ../qml/Main.qml:96
+#: ../qml/Main.qml:97
 msgid "QR login failed."
 msgstr ""
 
-#: ../qml/Main.qml:268 disports.desktop.in.h:1
+#: ../qml/Main.qml:292 disports.desktop.in.h:1
 msgid "Disports"
 msgstr ""
 
-#: ../qml/Main.qml:272 ../qml/SettingsPage.qml:42
+#: ../qml/Main.qml:296 ../qml/SettingsPage.qml:44
 msgid "Settings"
 msgstr ""
 
-#: ../qml/Main.qml:343
+#: ../qml/Main.qml:367
 msgid "Select a conversation"
 msgstr ""
 
-#: ../qml/Main.qml:348
+#: ../qml/Main.qml:372
 msgid "Choose a DM, group, or channel to start chatting."
 msgstr ""
 
@@ -226,51 +287,67 @@ msgstr ""
 msgid "Audio attachment"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:15
+#: ../qml/SettingsPage.qml:17
 msgid "Follow system"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:16
+#: ../qml/SettingsPage.qml:18
 msgid "Light"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:17
+#: ../qml/SettingsPage.qml:19
 msgid "Dark"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:24
+#: ../qml/SettingsPage.qml:26
 msgid "Hide completely"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:25
+#: ../qml/SettingsPage.qml:27
 msgid "Reveal placeholder"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:26
+#: ../qml/SettingsPage.qml:28
 msgid "Show normally"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:67
+#: ../qml/SettingsPage.qml:69
 msgid "Theme"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:112
+#: ../qml/SettingsPage.qml:114
 msgid "Autoplay GIFs"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:131
+#: ../qml/SettingsPage.qml:133
 msgid "Blocked messages"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:167
+#: ../qml/SettingsPage.qml:169
 msgid "Max message box lines"
 msgstr ""
 
 #: ../qml/SettingsPage.qml:196
+msgid "Background"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:216
+msgid "Run in background"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:221
+msgid "Keeps the connection alive when the app is closed"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:277
+msgid "Notifications"
+msgstr ""
+
+#: ../qml/SettingsPage.qml:312
 msgid "Log out"
 msgstr ""
 
-#: ../qml/SettingsPage.qml:207
+#: ../qml/SettingsPage.qml:323
 msgid "Disports - a Discord client for Ubuntu Touch"
 msgstr ""
 
@@ -355,8 +432,48 @@ msgstr ""
 msgid "Close"
 msgstr ""
 
-#: ../qml/components/OfflineBanner.qml:32
-msgid "No network connection"
+#: ../qml/components/OfflineBanner.qml:85
+msgid "Connected"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:87
+msgid "Offline - showing saved conversations"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:88
+msgid "connecting to Discord"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:90
+msgid "refreshing the conversation"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:92
+msgid "retrying in %1 seconds"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:94
+msgid "resuming in %1 seconds"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:96
+msgid "resuming your session"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:98
+msgid "starting a new session"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:100
+msgid "connection interrupted"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:102
+msgid "restoring the gateway"
+msgstr ""
+
+#: ../qml/components/OfflineBanner.qml:103
+msgid "Reconnecting - %1"
 msgstr ""
 
 #: ../qml/components/OfflineView.qml:29
@@ -367,15 +484,7 @@ msgstr ""
 msgid "Retry"
 msgstr ""
 
-#: ../qml/components/SplashView.qml:36
-msgid "Starting Disports…"
-msgstr ""
-
-#: ../qml/components/SplashView.qml:38
-msgid "Loading your conversations…"
-msgstr ""
-
-#: ../qml/components/SplashView.qml:39 ../qml/logic/AuthLogic.qml:23
+#: ../qml/logic/AuthLogic.qml:23
 msgid "Signing in…"
 msgstr ""
 

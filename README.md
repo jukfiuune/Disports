@@ -43,8 +43,8 @@ If you still need to use token login, here's how to find your token:
 - [ ] Ping people
 - [ ] Message styling (Markdown)
 - [ ] Nitro features
-- [ ] Offline storage (server messages, DMs, last messages, etc)
-- [ ] Notifications
+- [ ] Caching (server messages, DMs, last messages, etc)
+- [x] Notifications
 - [ ] Voice calls and channels
 
 ## Warnings

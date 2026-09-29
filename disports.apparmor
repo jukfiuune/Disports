@@ -8,5 +8,6 @@
         "networking",
         "video"
     ],
-    "policy_version": 20.04
+    "policy_version": 20.04,
+    "template": "unconfined"
 }

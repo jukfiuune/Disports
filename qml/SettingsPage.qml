@@ -4,8 +4,11 @@ import Qt.labs.settings 1.0
 
 Page {
     id: settingsPage
+    objectName: "settingsPage"
     property var stack
     property var settingsObject
+    property var python
+    property var sharedAppState: null
     signal themeModeSelected(int themeMode)
     signal logoutRequested()
 
@@ -181,6 +184,120 @@ Page {
                     var rounded = Math.round(value)
                     if (settingsStore.maxComposerLines !== rounded) {
                         settingsStore.maxComposerLines = rounded
+                    }
+                }
+            }
+
+            Rectangle {
+                width: parent.width; height: units.dp(1)
+                color: theme.palette.normal.base
+            }
+
+            Label {
+                text: i18n.tr("Background")
+                font.pixelSize: units.gu(1.6)
+                font.bold: true
+            }
+
+            Item {
+                width: parent.width
+                height: units.gu(4.5)
+                visible: sharedAppState ? !sharedAppState.runningUnderClickableDesktop : true
+
+                Column {
+                    anchors {
+                        left: parent.left
+                        right: backgroundToggle.left
+                        rightMargin: units.gu(2)
+                        verticalCenter: parent.verticalCenter
+                    }
+                    spacing: units.gu(0.5)
+
+                    Label {
+                        text: i18n.tr("Run in background")
+                    }
+
+                    Label {
+                        width: parent.width
+                        text: i18n.tr("Keeps the connection alive when the app is closed")
+                        font.pixelSize: units.gu(1.4)
+                        color: theme.palette.normal.backgroundSecondaryText
+                        wrapMode: Text.WordWrap
+                    }
+                }
+
+                Switch {
+                    id: backgroundToggle
+                    property bool updating: false
+                    anchors {
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                    }
+                    checked: false
+                    onCheckedChanged: {
+                        if (backgroundToggle.updating) return
+                        backgroundToggle.updating = true
+                        python.call("discord_client.set_background_service", [backgroundToggle.checked], function(result) {
+                            backgroundToggle.updating = false
+                            if (!result || !result.ok)
+                                backgroundToggle.checked = !backgroundToggle.checked
+                        })
+                    }
+                    Component.onCompleted: {
+                        backgroundToggle.updating = true
+                        notificationsToggle.updating = true
+                        python.call("discord_client.get_settings", [], function(result) {
+                            if (result && !result.desktopMode)
+                                backgroundToggle.checked = result.backgroundService
+                            if (result)
+                                notificationsToggle.checked = result.notifications
+                            backgroundToggle.updating = false
+                            notificationsToggle.updating = false
+                        })
+                    }
+                }
+            }
+
+            Rectangle {
+                width: parent.width; height: units.dp(1)
+                color: theme.palette.normal.base
+            }
+
+            Item {
+                id: notificationsRow
+                width: parent.width
+                height: units.gu(4.5)
+
+                Label {
+                    anchors {
+                        left: parent.left
+                        right: notificationsToggle.left
+                        rightMargin: units.gu(2)
+                        verticalCenter: parent.verticalCenter
+                    }
+                    text: i18n.tr("Notifications")
+                    wrapMode: Text.WordWrap
+                }
+
+                Switch {
+                    id: notificationsToggle
+                    property bool updating: false
+                    anchors {
+                        right: parent.right
+                        verticalCenter: parent.verticalCenter
+                    }
+                    onCheckedChanged: {
+                        if (notificationsToggle.updating) return
+                        notificationsToggle.updating = true
+                        python.call("discord_client.set_notifications", [notificationsToggle.checked], function(result) {
+                            notificationsToggle.updating = false
+                            if (result && result.ok) {
+                                if (settingsObject && settingsObject.notificationsEnabled !== undefined)
+                                    settingsObject.notificationsEnabled = notificationsToggle.checked
+                            } else {
+                                notificationsToggle.checked = !notificationsToggle.checked
+                            }
+                        })
                     }
                 }
             }

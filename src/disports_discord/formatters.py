@@ -319,6 +319,67 @@ class FormattersMixin:
             "openable": self.channel_is_openable(channel or {}),
             "channelType": self.channel_type_name(channel_type),
         }
+
+    def format_channel_info(self, channel_id: str) -> dict[str, Any]:
+        channel = self.get_channel(channel_id)  # type: ignore[attr-defined]
+        if not channel:
+            return {}
+
+        channel_type = int(channel.get("type", -1))
+        guild_id = self.get_guild_for_channel(channel_id) or str(channel.get("guild_id", "") or "")  # type: ignore[attr-defined]
+        recipients = list(channel.get("recipients", []) or [])
+        members = []
+        for recipient in recipients:
+            user_id = str(recipient.get("id", "") or "")
+            name = self.display_name(recipient) or "Unknown"
+            members.append({
+                "userId": user_id,
+                "name": name,
+                "iconUrl": self.user_avatar_url(user_id, recipient.get("avatar")),
+                "status": self.presences.get(user_id, "offline"),  # type: ignore[attr-defined]
+                "blocked": self.is_blocked(user_id),  # type: ignore[attr-defined]
+            })
+
+        if channel_type == 1:
+            person = members[0] if members else {}
+            return {
+                "kind": "user",
+                "channelId": channel_id,
+                "name": person.get("name") or self.channel_display_name(channel, with_prefix=False),
+                "iconUrl": person.get("iconUrl", ""),
+                "status": person.get("status", "offline"),
+                "userId": person.get("userId", ""),
+                "blocked": bool(person.get("blocked")),
+                "members": members,
+            }
+
+        if channel_type == 3:
+            name = str(channel.get("name", "") or "") or self.group_name(channel)
+            return {
+                "kind": "group",
+                "channelId": channel_id,
+                "name": name,
+                "iconUrl": self.group_dm_icon_url(channel_id, channel.get("icon")),
+                "memberCount": len(members),
+                "members": members,
+            }
+
+        parent_id = str(channel.get("parent_id", "") or "")
+        parent = self.get_channel(parent_id) if parent_id else None  # type: ignore[attr-defined]
+        guild = self.guild_by_id.get(guild_id, {}) if guild_id else {}  # type: ignore[attr-defined]
+        return {
+            "kind": "channel",
+            "channelId": channel_id,
+            "name": str(channel.get("name", "") or ""),
+            "channelType": self.channel_type_name(channel_type),
+            "guildId": guild_id,
+            "guildName": self.guild_name(guild_id),  # type: ignore[attr-defined]
+            "iconUrl": self.guild_icon_url(guild_id, guild.get("icon")),
+            "category": str((parent or {}).get("name", "") or ""),
+            "topic": str(channel.get("topic", "") or ""),
+            "nsfw": bool(channel.get("nsfw")),
+            "members": [],
+        }
     # Pure display / static helpers
     @staticmethod
     def abbr(name: str, length: int = 2) -> str:
@@ -392,7 +453,9 @@ class FormattersMixin:
     def channel_type_name(channel_type: int) -> str:
         return {
             0: "text",
+            1: "dm",
             2: "voice",
+            3: "group_dm",
             5: "announcement",
             10: "announcement_thread",
             11: "public_thread",
@@ -425,14 +488,21 @@ class FormattersMixin:
 
     @staticmethod
     def channel_is_openable(channel: dict[str, Any]) -> bool:
-        return int(channel.get("type", -1)) in (0, 5, 10, 11, 12)
+        # Voice and stage channels also have message conversations in modern
+        # Discord, so notification channel IDs for them are valid destinations.
+        return int(channel.get("type", -1)) in (0, 1, 2, 3, 5, 10, 11, 12, 13)
 
     def channel_display_name(self, channel: dict[str, Any] | None, with_prefix: bool = True) -> str:
         if not channel:
             return "#unknown"
         channel_type = int(channel.get("type", -1))
         name = str(channel.get("name", "") or "")
-        if channel_type in (0, 5, 10, 11, 12):
+        if channel_type == 1:
+            recipients = channel.get("recipients", []) or []
+            return self.display_name(recipients[0]) if recipients else "Direct message"
+        if channel_type == 3:
+            return name or self.group_name(channel)
+        if channel_type in (0, 2, 5, 10, 11, 12, 13):
             return f"#{name}" if with_prefix and name else name
         return name
 

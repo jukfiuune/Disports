@@ -7,7 +7,12 @@
     "hooks": {
         "disports": {
             "apparmor": "disports.apparmor",
-            "desktop":  "disports.desktop"
+            "desktop":  "disports.desktop",
+            "urls":     "disports.dispatcher"
+        },
+        "push": {
+            "apparmor": "push.apparmor",
+            "push-helper": "push.json"
         }
     },
     "version": "0.8.5",

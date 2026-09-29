@@ -28,6 +28,7 @@ Item {
     property bool inlineGifPlayback: false
     property int composerMaxLines: 3
     property bool showHeader: true
+    property bool showInfoButton: true
     property bool initialScrollPending: channelId !== ""
     property bool anchoredToBottom: true
     property bool userHasScrolled: false
@@ -59,6 +60,7 @@ Item {
     signal channelMentionRequested(string channelId)
     signal emojiInserted(var emojiData)
     signal reactionToggleRequested(string messageId, string apiString, bool alreadyReacted)
+    signal infoRequested()
 
     onChannelIdChanged: {
         initialScrollPending = channelId !== ""
@@ -85,6 +87,9 @@ Item {
         }
         shown: showHeader
         title: chatPanel.channelName !== "" ? chatPanel.channelName : i18n.tr("Chat")
+        showInfoAction: chatPanel.showInfoButton && chatPanel.channelId !== ""
+        trailingReservedWidth: showInfoAction ? units.gu(5) : 0
+        onInfoRequested: chatPanel.infoRequested()
     }
 
     ListView {

@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import re
+import time
 from typing import Any, Callable
 from urllib.parse import quote
 
 from .emoji_catalog import unicode_emoji_catalog
 from .gateway import DiscordGateway
-from .http import DiscordHTTP, DiscordHTTPError
+from .http import DiscordHTTP, DiscordHTTPError, DiscordNetworkError
+from .notification_text import notification_for
+from offline_cache import OfflineCache
 from .remote_auth import DiscordRemoteAuth
 from .state import DiscordState
 
@@ -17,9 +21,33 @@ class DiscordClient:
         self.emitter = emitter
         self.gateway: DiscordGateway | None = None
         self.remote_auth: DiscordRemoteAuth | None = None
+        self._gateway_ready = False
+        self.cache = OfflineCache()
+        # Snapshot writes are throttled: unread badges change on every
+        # message, and re-serializing the whole session each time on the
+        # gateway thread is too slow for busy servers.
+        self._cache_dirty: set[str] = set()
+        self._cache_saved_at: dict[str, float] = {}
 
     def login(self, token: str) -> dict[str, Any]:
         self.stop_qr_login()
+        # Reopening the UI while the background daemon is connected must attach
+        # to the existing session. Re-authenticating here used to wipe READY
+        # state, then connect_gateway() replaced the live gateway entirely.
+        if self.http.token == token and self.state.me:
+            print(
+                "session: reusing authenticated state and existing gateway",
+                flush=True,
+            )
+            return {
+                "ok": True,
+                "username": self.state.display_name(self.state.me),
+                "id": self.state.me.get("id", ""),
+            }
+        if self.gateway:
+            self.gateway.stop()
+            self.gateway = None
+        self._gateway_ready = False
         self.http.set_token(token)
         self.state.reset()
         try:
@@ -29,6 +57,12 @@ class DiscordClient:
                 "ok": False,
                 "error": self._api_error(exc),
                 "clear_saved_token": exc.status == 401,
+            }
+        except DiscordNetworkError as exc:
+            return {
+                "ok": False,
+                "error": f"Discord is temporarily unreachable: {exc}",
+                "retryable": True,
             }
 
         self.state.set_me(me)
@@ -42,20 +76,52 @@ class DiscordClient:
         if not self.http.token:
             raise RuntimeError("No Discord token set")
         if self.gateway:
-            self.gateway.stop()
+            # DiscordGateway owns a persistent reconnect loop. start() is
+            # idempotent while that loop is alive, so preserve its session.
+            print("session: attaching to existing gateway", flush=True)
+            self.gateway.start()
+            if self.gateway.connected:
+                # Looks connected, but may be a zombie (network lost while
+                # suspended): confirm with an immediate heartbeat.
+                self.gateway.probe()
+            else:
+                # Called when the network comes back: skip the rest of the
+                # backoff wait and reconnect now.
+                self.gateway.reconnect()
+            if self._gateway_ready:
+                print("session: delivering cached READY snapshot", flush=True)
+                snapshot = self.state.format_ready_payload()
+                snapshot["cached"] = True
+                self._emit("ready", snapshot)
+            # Readiness is only ever reported on proof from Discord (READY,
+            # RESUMED or an acknowledged probe). "The socket looks open" is
+            # not proof: after losing the network it stays open until a
+            # heartbeat fails, which made the UI claim "Connected" offline.
+            if not self.gateway.connected:
+                self._emit("connection_status", {"ready": False, "phase": "connecting"})
+            return True
         self.gateway = DiscordGateway(
             self.http.token,
             self._handle_gateway_event,
             self._handle_gateway_log,
         )
-        self.state._send_gateway = self.gateway.guild_subscribe_raw
-        self.gateway.start()
+        try:
+            self.state._send_gateway = self.gateway.guild_subscribe_raw
+            self.gateway.start()
+        except Exception:
+            # Never leave a half-built gateway behind: callers treat a
+            # non-None gateway as a running session.
+            self.gateway = None
+            self.state._send_gateway = None
+            raise
         return True
 
     def disconnect(self) -> bool:
         if self.gateway:
             self.gateway.stop()
             self.gateway = None
+        self._gateway_ready = False
+        self._cache_dirty.clear()
         self.state._send_gateway = None
         self.stop_qr_login()
         self.http.set_token(None)
@@ -85,7 +151,7 @@ class DiscordClient:
         def fetch_guild():
             try:
                 return self.http.request("GET", f"guilds/{guild_id}")
-            except DiscordHTTPError:
+            except (DiscordHTTPError, DiscordNetworkError):
                 return None
 
         def fetch_member():
@@ -93,19 +159,21 @@ class DiscordClient:
                 return None
             try:
                 return self.http.request("GET", f"guilds/{guild_id}/members/{me_id}")
-            except DiscordHTTPError:
+            except (DiscordHTTPError, DiscordNetworkError):
                 return None
 
         def fetch_channels():
             try:
                 return self.http.request("GET", f"guilds/{guild_id}/channels") or []
+            except DiscordNetworkError:
+                return None
             except DiscordHTTPError:
                 return []
 
         def fetch_threads():
             try:
                 return self.http.request("GET", f"guilds/{guild_id}/threads/active") or {}
-            except DiscordHTTPError:
+            except (DiscordHTTPError, DiscordNetworkError):
                 return {}
 
         with ThreadPoolExecutor(max_workers=4) as executor:
@@ -118,6 +186,9 @@ class DiscordClient:
             member_data = fut_member.result()
             channels = fut_channels.result()
             active_threads = fut_threads.result()
+
+        if channels is None:
+            return self.cache.load_guild_channels(guild_id)
 
         self.state.set_guild_context(guild_id, guild_data, member_data)
         merged_channels = self._merge_guild_channels(
@@ -133,7 +204,9 @@ class DiscordClient:
             "guild_sidebar",
             {"guilds": self.state.format_sidebar_guild_rows()},
         )
-        return self.state.format_guild_channel_list(guild_id)
+        formatted = self.state.format_guild_channel_list(guild_id)
+        self.cache.save_guild_channels(guild_id, formatted)
+        return formatted
 
     def fetch_guild_emojis(self, guild_id: str) -> list[dict[str, Any]]:
         if not guild_id:
@@ -141,7 +214,7 @@ class DiscordClient:
         if guild_id not in self.state.guild_emojis:
             try:
                 emojis = self.http.request("GET", f"guilds/{guild_id}/emojis") or []
-            except DiscordHTTPError:
+            except (DiscordHTTPError, DiscordNetworkError):
                 return []
             self.state.set_guild_emojis(guild_id, emojis)
         return self.state.format_guild_emoji_list(guild_id)
@@ -156,13 +229,23 @@ class DiscordClient:
         params: dict[str, Any] = {"limit": limit}
         if before:
             params["before"] = before
-        messages = self.http.request(
-            "GET",
-            f"channels/{channel_id}/messages",
-            params=params,
-        )
+        try:
+            messages = self.http.request(
+                "GET",
+                f"channels/{channel_id}/messages",
+                params=params,
+            )
+        except DiscordNetworkError:
+            return self.cache.load_messages(channel_id) if not before else []
         self._request_missing_members(channel_id, messages or [])
-        return self.state.format_messages(messages or [])
+        formatted = self.state.format_messages(messages or [])
+        if not before:
+            self.cache.save_messages(
+                channel_id,
+                formatted,
+                self.state.format_channel_reference(channel_id),
+            )
+        return formatted
 
     def send_message(
         self,
@@ -192,7 +275,9 @@ class DiscordClient:
             return {"ok": False, "error": self._api_error(exc)}
         if self.state.apply_private_channel_activity(message):
             self._emit("private_channels", self.state.format_private_channel_payload())
-        return {"ok": True, "message": self.state.format_message(message)}
+        formatted = self.state.format_message(message)
+        self.cache.upsert_message(channel_id, formatted)
+        return {"ok": True, "message": formatted}
 
     def edit_message(
         self,
@@ -210,7 +295,9 @@ class DiscordClient:
             )
         except DiscordHTTPError as exc:
             return {"ok": False, "error": self._api_error(exc)}
-        return {"ok": True, "message": self.state.format_message(message)}
+        formatted = self.state.format_message(message)
+        self.cache.upsert_message(channel_id, formatted, insert_if_missing=False)
+        return {"ok": True, "message": formatted}
 
     def delete_message(
         self,
@@ -224,6 +311,7 @@ class DiscordClient:
             )
         except DiscordHTTPError as exc:
             return {"ok": False, "error": self._api_error(exc)}
+        self.cache.remove_messages(channel_id, [message_id])
         return {"ok": True}
 
     def add_reaction(
@@ -304,9 +392,22 @@ class DiscordClient:
             return {"ok": False, "error": "Missing channel id."}
 
         channel = self.state.get_channel(channel_id)
+        print(
+            f"notification: resolve channel={channel_id} cache={'hit' if channel else 'miss'}",
+            flush=True,
+        )
         if not channel:
             try:
                 channel = self.http.request("GET", f"channels/{channel_id}")
+            except DiscordNetworkError:
+                cached = self.cache.load_channel_reference(channel_id)
+                if cached.get("openable"):
+                    print(
+                        f"notification: resolved channel={channel_id} from offline cache",
+                        flush=True,
+                    )
+                    return {"ok": True, "channel": cached, "cached": True}
+                return {"ok": False, "error": "Channel is unavailable while offline."}
             except DiscordHTTPError as exc:
                 return {"ok": False, "error": self._api_error(exc)}
             guild_id = str((channel or {}).get("guild_id", "") or "")
@@ -315,24 +416,113 @@ class DiscordClient:
                 if not any(str(entry.get("id", "") or "") == channel_id for entry in existing):
                     existing.append(channel)
                     self.state.set_guild_channels(guild_id, existing)
+            elif channel:
+                self.state.upsert_private_channel(channel)
+
+            print(
+                f"notification: fetched channel={channel_id} "
+                f"type={(channel or {}).get('type', 'unknown')} "
+                f"guild={(channel or {}).get('guild_id', '') or 'dm'}",
+                flush=True,
+            )
 
         guild_id = str((channel or {}).get("guild_id", "") or "") or self.state.get_guild_for_channel(channel_id) or ""
         if guild_id and not self.state.guild_name(guild_id):
             try:
                 guild_data = self.http.request("GET", f"guilds/{guild_id}")
-            except DiscordHTTPError:
+            except (DiscordHTTPError, DiscordNetworkError):
                 guild_data = None
             if guild_data:
                 self.state.set_guild_context(guild_id, guild_data, self.state.guild_members.get(guild_id))
 
         reference = self.state.format_channel_reference(channel_id)
         if not reference.get("openable"):
+            print(
+                f"notification: channel not openable channel={channel_id} "
+                f"type={reference.get('channelType', 'unknown')}",
+                flush=True,
+            )
             return {"ok": False, "error": "This channel type is not openable yet.", "channel": reference}
+        self.cache.update_channel_reference(channel_id, reference)
+        print(
+            f"notification: resolved channel={channel_id} "
+            f"type={reference.get('channelType', 'unknown')} "
+            f"guild={reference.get('guildId') or 'dm'}",
+            flush=True,
+        )
         return {"ok": True, "channel": reference}
+
+    def channel_info(self, channel_id: str) -> dict[str, Any]:
+        resolved = self.resolve_channel(channel_id)
+        if not resolved.get("ok"):
+            return resolved
+
+        info = self.state.format_channel_info(channel_id)
+        if info:
+            return {"ok": True, "info": info, "cached": bool(resolved.get("cached"))}
+
+        reference = resolved.get("channel") or self.cache.load_channel_reference(channel_id)
+        ready = self.cache.load_ready()
+        for contact in ready.get("dmContacts", []) or []:
+            if str(contact.get("channelId", "") or "") == str(channel_id):
+                return {
+                    "ok": True,
+                    "cached": True,
+                    "info": {
+                        "kind": "user",
+                        "channelId": channel_id,
+                        "name": contact.get("name", ""),
+                        "iconUrl": contact.get("iconUrl", ""),
+                        "status": contact.get("status", "offline"),
+                        "userId": contact.get("contactId", ""),
+                        "blocked": bool(contact.get("blocked")),
+                        "members": [],
+                    },
+                }
+        for group in ready.get("dmGroups", []) or []:
+            if str(group.get("channelId", "") or "") == str(channel_id):
+                return {
+                    "ok": True,
+                    "cached": True,
+                    "info": {
+                        "kind": "group",
+                        "channelId": channel_id,
+                        "name": group.get("name", ""),
+                        "iconUrl": group.get("iconUrl", ""),
+                        "memberCount": 0,
+                        "members": [],
+                    },
+                }
+        return {
+            "ok": True,
+            "cached": True,
+            "info": {
+                "kind": "channel",
+                "channelId": channel_id,
+                "name": reference.get("name", ""),
+                "channelType": reference.get("channelType", "unknown"),
+                "guildId": reference.get("guildId", ""),
+                "guildName": reference.get("guildName", ""),
+                "iconUrl": "",
+                "category": "",
+                "topic": "",
+                "nsfw": False,
+                "members": [],
+            },
+        }
 
     def reconnect(self) -> None:
         if self.gateway:
             self.gateway.reconnect()
+
+    def set_network_available(self, online: bool) -> None:
+        self.http.offline = not online
+        if not self.gateway:
+            return
+        if online:
+            self.gateway.reconnect()  # skip the rest of the backoff wait
+        else:
+            self.gateway.network_lost()
 
     def _handle_gateway_event(self, event_type: str, data: dict[str, Any]) -> None:
         if data is None:
@@ -344,7 +534,18 @@ class DiscordClient:
         if event_type == "READY":
             self.state.apply_ready(data)
             self.state.apply_relationships(data.get("relationships") or [])
-            self._emit("ready", self.state.format_ready_payload())
+            self._gateway_ready = True
+            self.http.offline = False
+            ready_payload = self.state.format_ready_payload()
+            self.cache.save_ready(ready_payload)
+            self._cache_dirty.discard("ready")
+            self._cache_saved_at["ready"] = time.monotonic()
+            self._emit("ready", ready_payload)
+            return
+
+        if event_type == "RESUMED":
+            self.http.offline = False
+            self._emit("connection_status", {"ready": True})
             return
 
         if event_type in ("USER_SETTINGS_UPDATE", "user_settings_update"):
@@ -432,14 +633,36 @@ class DiscordClient:
             elif guild_id:
                 self._emit_guild_channels(guild_id)
                 
-            self._emit("message_create", self.state.format_message(data))
+            formatted_message = self.state.format_message(data)
+            self.cache.upsert_message(str(channel_id or ""), formatted_message)
+            # Notification text travels with the event (not the cache) so the
+            # daemon and the app apply identical rules and wording.
+            event = dict(formatted_message)
+            try:
+                notification = notification_for(self.state, data, formatted_message)
+            except Exception as exc:
+                print(f"notification: rule evaluation failed: {exc}", flush=True)
+                notification = None
+            event["notifySummary"] = notification["summary"] if notification else ""
+            event["notifyBody"] = notification["body"] if notification else ""
+            self._emit("message_create", event)
             return
 
         if event_type == "MESSAGE_UPDATE":
-            self._emit("message_update", self.state.format_message(data))
+            formatted_message = self.state.format_message(data)
+            formatted_message = self.cache.merge_message_update(
+                str(data.get("channel_id", "") or ""),
+                formatted_message,
+                data,
+            )
+            self._emit("message_update", formatted_message)
             return
 
         if event_type == "MESSAGE_DELETE":
+            self.cache.remove_messages(
+                str(data.get("channel_id", "") or ""),
+                [str(data.get("id", "") or "")],
+            )
             self._emit(
                 "message_delete",
                 {
@@ -450,6 +673,10 @@ class DiscordClient:
             return
 
         if event_type == "MESSAGE_DELETE_BULK":
+            self.cache.remove_messages(
+                str(data.get("channel_id", "") or ""),
+                [str(message_id) for message_id in (data.get("ids", []) or [])],
+            )
             self._emit(
                 "message_bulk_delete",
                 {
@@ -483,11 +710,13 @@ class DiscordClient:
 
         if event_type == "RELATIONSHIP_ADD":
             self.state.apply_relationship_add(data)
+            self._save_ready_throttled(force=True)
             self._emit("relationships_update", self.state.format_private_channel_payload())
             return
 
         if event_type == "RELATIONSHIP_REMOVE":
             self.state.apply_relationship_remove(data)
+            self._save_ready_throttled(force=True)
             self._emit("relationships_update", self.state.format_private_channel_payload())
             return
 
@@ -505,14 +734,43 @@ class DiscordClient:
             )
             if updated is not None:
                 import json
+                reactions_json = json.dumps(updated, separators=(",", ":"))
+                self.cache.patch_message(
+                    channel_id,
+                    message_id,
+                    {"reactionsJson": reactions_json},
+                )
                 self._emit("message_reaction", {
                     "messageId": message_id,
                     "channelId": channel_id,
-                    "reactionsJson": json.dumps(updated, separators=(",", ":")),
+                    "reactionsJson": reactions_json,
                 })
             return
 
     def _handle_gateway_log(self, message: str) -> None:
+        lowered = message.lower()
+        status: dict[str, Any] | None = None
+        if "gateway reconnecting" in lowered:
+            delay_match = re.search(r"in (\d+)s", lowered)
+            status = {
+                "ready": False,
+                "phase": "resume_wait" if "resume=yes" in lowered else "retry_wait",
+                "retrySeconds": int(delay_match.group(1)) if delay_match else 0,
+            }
+        elif "gateway resuming session" in lowered:
+            status = {"ready": False, "phase": "resuming"}
+        elif "gateway identifying new session" in lowered:
+            status = {"ready": False, "phase": "identifying"}
+        elif "gateway connecting" in lowered:
+            status = {"ready": False, "phase": "connecting"}
+        elif "gateway error" in lowered:
+            status = {"ready": False, "phase": "interrupted"}
+        elif "heartbeat stopped" in lowered:
+            status = {"ready": False, "phase": "heartbeat"}
+        elif "gateway connection verified" in lowered:
+            status = {"ready": True}
+        if status:
+            self._emit("connection_status", status)
         self._emit("gateway_log", {"message": message})
 
     def _emit(self, name: str, payload: dict[str, Any]) -> None:
@@ -534,13 +792,57 @@ class DiscordClient:
             "guildUnreadKind": self.state.guild_unread_kind(guild_id) if guild_id else "none",
             "dmUnread": self.state.get_dm_unread_count() if not guild_id else 0
         })
+        self._save_ready_throttled()
+
+    CACHE_SAVE_INTERVAL = 15.0
+
+    def _throttle_due(self, key: str, force: bool) -> bool:
+        now = time.monotonic()
+        if not force and now - self._cache_saved_at.get(key, 0.0) < self.CACHE_SAVE_INTERVAL:
+            self._cache_dirty.add(key)
+            return False
+        self._cache_saved_at[key] = now
+        self._cache_dirty.discard(key)
+        return True
+
+    def _save_ready_throttled(self, force: bool = False) -> None:
+        if not self._gateway_ready or not self._throttle_due("ready", force):
+            return
+        try:
+            self.cache.save_ready(self.state.format_ready_payload())
+        except Exception as exc:
+            print(f"cache: ready snapshot save failed: {exc}", flush=True)
+
+    def _save_guild_channels_throttled(self, guild_id: str, formatted: list, force: bool = False) -> None:
+        if not self._gateway_ready or not self._throttle_due(f"guild:{guild_id}", force):
+            return
+        try:
+            self.cache.save_guild_channels(guild_id, formatted)
+        except Exception as exc:
+            print(f"cache: guild channel save failed: {exc}", flush=True)
+
+    def flush_cache(self) -> None:
+        # Writes snapshots skipped by the throttle (daemon shutdown).
+        if not self._gateway_ready:
+            return
+        for key in list(self._cache_dirty):
+            if key == "ready":
+                self._save_ready_throttled(force=True)
+            elif key.startswith("guild:"):
+                guild_id = key[len("guild:"):]
+                self._save_guild_channels_throttled(
+                    guild_id, self.state.format_guild_channel_list(guild_id), force=True
+                )
 
     def _emit_guild_channels(self, guild_id: str) -> None:
+        formatted = self.state.format_guild_channel_list(guild_id)
+        self._save_guild_channels_throttled(guild_id, formatted)
+        self._save_ready_throttled()
         self._emit(
             "guild_channels",
             {
                 "guildId": guild_id,
-                "list": self.state.format_guild_channel_list(guild_id),
+                "list": formatted,
             },
         )
 

@@ -41,10 +41,19 @@ class DiscordHTTPError(Exception):
         return f"{' / '.join(parts)}: no response details"
 
 
+class DiscordNetworkError(Exception):
+    """A retryable transport failure before Discord returned a response."""
+
+
 class DiscordHTTP:
     def __init__(self) -> None:
         import threading
         self.token: str | None = None
+        # Set while the system reports no network. Requests then fail at
+        # once instead of hanging in DNS / connect timeouts: callers run on
+        # PyOtherSide's single worker thread, so one stuck request would
+        # stall every other call from the UI (even cache reads).
+        self.offline = False
         self._pool = urllib3.PoolManager(
             timeout=urllib3.Timeout(connect=10.0, read=30.0),
             retries=False,
@@ -110,6 +119,8 @@ class DiscordHTTP:
         auth: bool = True,
         _429_attempts: int = 4,
     ) -> Any:
+        if self.offline:
+            raise DiscordNetworkError("No network connection")
         self._wait_if_needed()
 
         url = f"{API_BASE}/{path.lstrip('/')}"
@@ -120,13 +131,16 @@ class DiscordHTTP:
         if json_body is not None:
             body = json.dumps(json_body, separators=(",", ":")).encode("utf-8")
 
-        response = self._pool.request(
-            method.upper(),
-            url,
-            body=body,
-            headers=self._headers(headers, include_auth=auth),
-            decode_content=True,
-        )
+        try:
+            response = self._pool.request(
+                method.upper(),
+                url,
+                body=body,
+                headers=self._headers(headers, include_auth=auth),
+                decode_content=True,
+            )
+        except (urllib3.exceptions.HTTPError, OSError) as exc:
+            raise DiscordNetworkError(str(exc)) from exc
 
         if response.status < 400:
             self._respect_rate_limit(response)

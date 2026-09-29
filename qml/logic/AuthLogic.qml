@@ -25,8 +25,23 @@ QtObject {
         python.call("discord_client.login", [token], function(result) {
             appState.loginBusy = false
             if (!result || !result.ok) {
+                if (result && result.retryable) {
+                    appState.loginError = result.error || i18n.tr("Login failed.")
+                    appState.qrStatusText = ""
+                    appState.startupPhase = appState.hasCachedSession ? "loaded" : "offline"
+                    appState.authenticated = appState.hasCachedSession
+                    if (appState.hasCachedSession) {
+                        // Browse the cache; keep retrying in the background.
+                        python.call("discord_client.resume_session", [], function() {})
+                    }
+                    return
+                }
                 if (result && result.clear_saved_token)
                     python.call("discord_client.clear_token", [], function() {})
+                if (result && result.clear_saved_token) {
+                    appState.hasCachedSession = false
+                    appState.gatewayReady = false
+                }
                 appSettings.token = ""
                 appState.authenticated = false
                 appState.loginError = result && result.error ? result.error : i18n.tr("Login failed.")
@@ -50,10 +65,20 @@ QtObject {
                 appState.loginError = ""
                 appState.qrImageSource = ""
                 appState.qrStatusText = ""
-                appState.startupPhase = "syncing"
+                appState.startupPhase = appState.hasCachedSession ? "loaded" : "syncing"
                 python.call("discord_client.connect_gateway", [], function() {})
             })
         })
+    }
+
+    function resumeCachedSession() {
+        python.call("discord_client.resume_session", [], function() {})
+    }
+
+    // The saved token was rejected by Discord (background sign-in).
+    function handleSessionInvalid(error) {
+        logout()
+        appState.loginError = error || i18n.tr("Login failed.")
     }
 
     function logout() {
@@ -64,6 +89,8 @@ QtObject {
             python.call("discord_client.clear_token", [], function() {})
         appSettings.token = ""
         appState.authenticated = false
+        appState.gatewayReady = false
+        appState.hasCachedSession = false
         appState.loginBusy = false
         appState.loginError = ""
         appState.qrImageSource = ""

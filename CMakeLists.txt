@@ -27,6 +27,12 @@ install(DIRECTORY src DESTINATION ${DATA_DIR})
 
 install(DIRECTORY qml DESTINATION ${DATA_DIR})
 
+# Push notifications
+install(FILES disports.dispatcher DESTINATION ${DATA_DIR})
+install(FILES pushexec PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ DESTINATION ${DATA_DIR})
+install(FILES push.json DESTINATION ${DATA_DIR})
+install(FILES push.apparmor DESTINATION ${DATA_DIR})
+
 # Python Deps
 install(FILES "build-python-deps.sh" DESTINATION ${DATA_DIR})
 install(FILES "requirements.txt" DESTINATION ${DATA_DIR})

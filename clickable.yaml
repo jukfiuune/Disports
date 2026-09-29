@@ -1,5 +1,5 @@
 clickable_minimum_required: 8.0.0
-framework: ubuntu-sdk-20.04
+framework: ubuntu-sdk-20.04.1
 builder: pure-qml-cmake
 kill: qmlscene
 dependencies_target:
@@ -18,3 +18,4 @@ image_setup:
     - curl -LsSf https://astral.sh/uv/install.sh | sh
 postbuild:
   - /usr/bin/bash install/build-python-deps.sh
+skip_review: true

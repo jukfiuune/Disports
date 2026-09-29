@@ -29,7 +29,19 @@ QtObject {
         if (!appState.pythonReady) return;
 
         if (!appState.runningUnderClickableDesktop && Connectivity.status !== Connectivity.Online) {
-            appState.startupPhase = "offline";
+            // With a cached session the app opens normally for browsing;
+            // the session starts once the network returns (see the
+            // Connectivity handler in Main.qml).
+            appState.startupPhase = appState.hasCachedSession ? "loaded" : "offline";
+            return;
+        }
+
+        if (appState.hasCachedSession) {
+            // The cached session is already on screen. Sign in in the
+            // background: a blocking login would hold up PyOtherSide's only
+            // worker thread (and so every cache read) until Discord answers.
+            appState.startupPhase = "loaded";
+            authLogic.resumeCachedSession();
             return;
         }
 
@@ -38,7 +50,8 @@ QtObject {
             if (fromFile !== "") {
                 if (appSettings.token !== "")
                     appSettings.token = "";
-                appState.startupPhase = "checking";
+                // Keep a cached session on screen while signing in.
+                appState.startupPhase = appState.hasCachedSession ? "loaded" : "checking";
                 authLogic.beginLogin(fromFile);
                 return;
             }
@@ -51,7 +64,7 @@ QtObject {
                         authLogic.startQrLogin();
                         return;
                     }
-                    appState.startupPhase = "checking";
+                    appState.startupPhase = appState.hasCachedSession ? "loaded" : "checking";
                     authLogic.beginLogin(leg);
                 });
                 return;
@@ -86,9 +99,7 @@ QtObject {
             }
         }
 
-        python.call("discord_client.fetch_guild_channels", [id], function(channels) {
-            chatLogic.replaceModel(channelModel, channels)
-        })
+        chatLogic.loadServerChannels(id)
     }
 
     function refreshActiveServerEmojis() {
@@ -100,6 +111,9 @@ QtObject {
             appState.activeServerEmojis = []
             return
         }
+        // Network call: wait for the connection (refreshed when it returns).
+        if (!appState.connectionReady)
+            return
         python.call("discord_client.fetch_guild_emojis", [appState.activeServerId], function(emojis) {
             appState.activeServerEmojis = emojis || []
         })
