@@ -68,6 +68,18 @@ class DiscordWsClient:
             return self.recv_data()
         return opcode, payload
 
+    def abort(self) -> None:
+        # Tears the socket down without a close handshake. Safe to call from
+        # another thread: the blocked recv in the gateway loop fails at once,
+        # which is what we want for a connection that silently died.
+        ws = self._ws
+        if ws is None:
+            return
+        try:
+            ws.abort()
+        except Exception:
+            pass
+
     def close(self) -> None:
         if not self._ws:
             return
@@ -101,6 +113,14 @@ class DiscordGateway:
         self._inflater = zlib.decompressobj()
         self._compressed_buffer = bytearray()
         self._reconnect_event = threading.Event()
+        # "Live" means READY/RESUMED was received on the current socket. A
+        # TCP connection can look open long after the network is gone, so
+        # this, together with heartbeat ACK tracking, is what "connected"
+        # reports.
+        self._live = False
+        self._ack_pending = False
+        self._probe_serial = 0
+        self._probe_waiting = False
 
     def start(self) -> None:
         if self._thread and self._thread.is_alive():
@@ -112,7 +132,50 @@ class DiscordGateway:
 
     @property
     def connected(self) -> bool:
-        return bool(self._ws is not None and self._ws.connected)
+        return bool(self._live and self._ws is not None and self._ws.connected)
+
+    def probe(self, timeout: float = 6.0) -> None:
+        # Verifies the connection now instead of at the next scheduled
+        # heartbeat (up to ~41s away, or never if the process was suspended):
+        # sends a heartbeat and drops the socket if Discord does not ACK it.
+        ws = self._ws
+        if ws is None or not self.connected:
+            return
+        if self._probe_waiting:
+            return  # keep the outstanding probe's deadline; do not extend it
+        self._probe_serial += 1
+        serial = self._probe_serial
+        try:
+            self._probe_waiting = True
+            self._ack_pending = True
+            self._send_heartbeat()
+        except Exception as exc:
+            self._drop_dead_connection(f"probe failed: {exc}")
+            return
+
+        def check() -> None:
+            if serial == self._probe_serial and self._ack_pending and self._ws is ws:
+                self._drop_dead_connection("probe not acknowledged")
+
+        timer = threading.Timer(timeout, check)
+        timer.daemon = True
+        timer.start()
+
+    def network_lost(self) -> None:
+        # A socket cannot survive losing its network (or switching to
+        # another one), so do not wait for heartbeats to notice.
+        if self._ws is not None:
+            self._drop_dead_connection("network lost")
+
+    def _drop_dead_connection(self, reason: str) -> None:
+        if self._stop.is_set():
+            return
+        self._live = False
+        self._probe_waiting = False
+        self._log(f"Heartbeat stopped: {reason}")
+        ws = self._ws
+        if ws is not None:
+            ws.abort()
 
     def stop(self) -> None:
         self._stop.set()
@@ -171,6 +234,7 @@ class DiscordGateway:
             except Exception as exc:
                 self._log(f"Gateway error: {exc}")
             finally:
+                self._live = False
                 self._stop_heartbeat()
                 if self._ws:
                     self._ws.close()
@@ -190,6 +254,8 @@ class DiscordGateway:
 
     def _run_connection(self) -> None:
         self._reconnect_event.clear()
+        self._live = False
+        self._ack_pending = False
         gateway_url = (
             build_gateway_url(self.resume_gateway_url)
             if self.resume_gateway_url
@@ -245,7 +311,16 @@ class DiscordGateway:
             if event_type == "READY":
                 self.session_id = data.get("session_id")
                 self.resume_gateway_url = data.get("resume_gateway_url") or GATEWAY_URL
+            if event_type in ("READY", "RESUMED"):
+                self._live = True
             self.event_handler(event_type, data)
+            return
+
+        if op == 11:
+            self._ack_pending = False
+            if self._probe_waiting:
+                self._probe_waiting = False
+                self._log("Gateway connection verified")
             return
 
         if op == 1:
@@ -278,7 +353,13 @@ class DiscordGateway:
     def _heartbeat_loop(self, stop_event: threading.Event) -> None:
         time.sleep(random.random() * min(self._heartbeat_interval, 5.0))
         while not stop_event.is_set() and not self._stop.is_set():
+            if self._ack_pending:
+                # The previous heartbeat was never acknowledged: the
+                # connection is a zombie (typically the network went away).
+                self._drop_dead_connection("no acknowledgement from Discord")
+                return
             try:
+                self._ack_pending = True
                 self._send_heartbeat()
             except Exception as exc:
                 if not stop_event.is_set() and not self._stop.is_set():

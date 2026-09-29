@@ -44,7 +44,6 @@ SESSION_METHODS = {
     "save_token",
     "clear_token",
     "login",
-    "connect_gateway",
     "disconnect",
     "reconnect",
     "start_qr_login",
@@ -129,6 +128,9 @@ class DaemonServer:
         self._workers = ThreadPoolExecutor(max_workers=REQUEST_WORKERS)
         self._stop = threading.Event()
         self._auto_connect_cancel = threading.Event()
+        self._auto_connect_thread: threading.Thread | None = None
+        # Wakes the retry loop early (the app regained network / foreground).
+        self._auto_connect_kick = threading.Event()
         self._notifications_enabled = daemon_common.read_settings()[
             daemon_common.SETTING_NOTIFICATIONS
         ]
@@ -147,9 +149,10 @@ class DaemonServer:
             "login": self.client.login,
             "start_qr_login": self.client.start_qr_login,
             "stop_qr_login": self.client.stop_qr_login,
-            "connect_gateway": self.client.connect_gateway,
+            "connect_gateway": self.connect_gateway,
             "disconnect": self.client.disconnect,
             "reconnect": self.client.reconnect,
+            "set_network_available": self.set_network_available,
             "fetch_private_channels": self.client.fetch_private_channels,
             "fetch_guild_channels": self.client.fetch_guild_channels,
             "fetch_guild_emojis": self.client.fetch_guild_emojis,
@@ -195,6 +198,7 @@ class DaemonServer:
         # Logout: drop the live session too, otherwise the daemon keeps
         # receiving (and notifying about) the old account's messages.
         self._auto_connect_cancel.set()
+        self._auto_connect_kick.set()
         self.client.disconnect()
         try:
             daemon_common.token_path().unlink()
@@ -203,6 +207,25 @@ class DaemonServer:
         self.client.cache.clear()
         self._clear_notifications()
         return {"ok": True}
+
+    def connect_gateway(self) -> bool:
+        # The app calls this when it regains network or returns to the
+        # foreground. It must answer promptly (the app waits on it from
+        # PyOtherSide's only worker thread), so a missing login is started or
+        # woken in the background instead of being attempted here.
+        if not self.client.state.me:
+            if not self.client_token_load().get("token", ""):
+                raise RuntimeError("No Discord token set")
+            self._start_auto_connect()
+            return False
+        with self._session_lock:
+            return self.client.connect_gateway()
+
+    def set_network_available(self, online: bool) -> bool:
+        self.client.set_network_available(bool(online))
+        if online:
+            self.connect_gateway()
+        return True
 
     # Read tracking: reading a channel anywhere dismisses its notification
 
@@ -311,6 +334,9 @@ class DaemonServer:
             detached = not self._clients
         if detached:
             self.client.set_active_channel("")
+            # Network state comes from the app. Without it the daemon must
+            # not keep refusing requests on a stale "offline".
+            self.client.set_network_available(True)
 
     # Request handling
 
@@ -397,12 +423,20 @@ class DaemonServer:
 
     # Lifecycle
 
+    def _start_auto_connect(self) -> None:
+        if self._auto_connect_thread and self._auto_connect_thread.is_alive():
+            self._auto_connect_kick.set()
+            return
+        self._auto_connect_cancel.clear()
+        self._auto_connect_kick.clear()
+        self._auto_connect_thread = threading.Thread(target=self._auto_connect, daemon=True)
+        self._auto_connect_thread.start()
+
     def _auto_connect(self) -> None:
         token = self.client_token_load().get("token", "")
         if not token:
             return
         delay = 2
-        self._auto_connect_cancel.clear()
         while not self._stop.is_set() and not self._auto_connect_cancel.is_set():
             # Serialize each attempt with session RPCs so notification
             # launches and background recovery converge on one gateway.
@@ -427,15 +461,23 @@ class DaemonServer:
                     f"daemon: automatic login stopped: {result.get('error', 'unknown error')}",
                     flush=True,
                 )
+                if result.get("clear_saved_token"):
+                    self._on_event("session_invalid", {"error": result.get("error", "")})
                 return
+            self._on_event(
+                "connection_status",
+                {"ready": False, "phase": "retry_wait", "retrySeconds": delay},
+            )
             print(
                 f"daemon: Discord unavailable; retrying in {delay}s: "
                 f"{result.get('error', 'network error')}",
                 flush=True,
             )
-            if self._auto_connect_cancel.wait(delay) or self._stop.is_set():
+            kicked = self._auto_connect_kick.wait(delay)
+            self._auto_connect_kick.clear()
+            if self._auto_connect_cancel.is_set() or self._stop.is_set():
                 return
-            delay = min(delay * 2, 60)
+            delay = 2 if kicked else min(delay * 2, 60)
 
     def run(self) -> None:
         self.socket_path.parent.mkdir(parents=True, exist_ok=True)
@@ -451,7 +493,7 @@ class DaemonServer:
         server.settimeout(0.5)
         print(f"daemon: listening on {self.socket_path}", flush=True)
 
-        threading.Thread(target=self._auto_connect, daemon=True).start()
+        self._start_auto_connect()
 
         while not self._stop.is_set():
             try:
@@ -476,6 +518,7 @@ class DaemonServer:
     def stop(self) -> None:
         self._stop.set()
         self._auto_connect_cancel.set()
+        self._auto_connect_kick.set()
         try:
             self.client.flush_cache()
         except Exception:
@@ -485,6 +528,10 @@ class DaemonServer:
         except Exception:
             pass
         self.notifier.close()
+        with self._clients_lock:
+            clients = list(self._clients)
+        for client in clients:
+            client.close()
         try:
             if self.client.gateway:
                 self.client.gateway.stop()

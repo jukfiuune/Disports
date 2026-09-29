@@ -32,6 +32,14 @@ MainView {
         }
     }
 
+    // Tells Python about network loss/regain: offline, API calls fail at
+    // once (serving the cache) and the dead gateway socket is dropped; back
+    // online, the session reconnects (or starts) without waiting out backoff.
+    function syncNetworkState(online) {
+        if (!appState.pythonReady || appState.runningUnderClickableDesktop) return
+        pythonBridge.call("discord_client.set_network_available", [online], function() {})
+    }
+
     // The daemon posts notifications only while no app is in the
     // foreground: Lomiri suspends backgrounded apps, so they cannot.
     function syncAppForeground() {
@@ -146,7 +154,7 @@ MainView {
         // Cached data can arrive after a live READY event. It hydrates models,
         // but must never make an already-connected session look disconnected.
         if (!fromCache)
-            appState.connectionReady = true
+            appState.gatewayReady = true
         appState.hasCachedSession = true
         appState.startupPhase = "loaded"
         console.log((fromCache ? "Offline cache: hydrated" : "Session: refreshed")
@@ -213,8 +221,11 @@ MainView {
         onTyping: function(data) { if (data.channelId === appState.activeChannelId) appState.typingNotice = data.author + " is typing..." }
         onPresence: function(data) { dmLogic.updateContactStatus(data.userId, data.status) }
         onMessageReaction: function(data) { chatLogic.applyReactionUpdate(data) }
+        onSessionInvalid: function(data) {
+            authLogic.handleSessionInvalid(data && data.error ? String(data.error) : "")
+        }
         onConnectionStatus: function(data) {
-            appState.connectionReady = !!(data && data.ready)
+            appState.gatewayReady = !!(data && data.ready)
             if (data && data.phase)
                 appState.connectionPhase = String(data.phase)
             appState.reconnectDelaySeconds = data && data.retrySeconds
@@ -249,6 +260,8 @@ MainView {
                 pythonBridge.call("discord_client.dev_flags", [], function(flags) {
                     if (flags && flags.clickableDesktopMode === true)
                         appState.runningUnderClickableDesktop = true
+                    if (!appState.runningUnderClickableDesktop && !appState.isOnline)
+                        root.syncNetworkState(false)
                     navigationLogic.checkInitialState()
                 })
             })
@@ -304,6 +317,18 @@ MainView {
     Connections {
         target: appState
         onActiveServerIdChanged: navigationLogic.refreshActiveServerEmojis()
+        onConnectionReadyChanged: {
+            console.log("Session: connectionReady=" + appState.connectionReady
+                        + " gatewayReady=" + appState.gatewayReady
+                        + " networkOnline=" + appState.isOnline)
+            if (!appState.connectionReady)
+                return
+            // Everything shown while disconnected came from the cache.
+            chatLogic.refreshActiveChannel()
+            if (appState.mode === "server" && appState.activeServerId !== "")
+                chatLogic.loadServerChannels(appState.activeServerId)
+            navigationLogic.refreshActiveServerEmojis()
+        }
         onActiveChannelIdChanged: root.syncActiveChatVisibility()
         onAuthenticatedChanged: {
             root.openPendingNotificationChannel()
@@ -325,19 +350,18 @@ MainView {
     Connections {
         target: Connectivity
         onStatusChanged: {
-            if (!appState.runningUnderClickableDesktop
-                    && Connectivity.status !== Connectivity.Online)
-                appState.connectionReady = false
-            if (Connectivity.status === Connectivity.Online && appState.lastConnectivityStatus !== Connectivity.Online) {
-                if (appState.pythonReady && appState.authenticated) {
-                    // The gateway owns its reconnect loop. This is an
-                    // idempotent attach/ensure operation, not a forced reset.
-                    pythonBridge.call("discord_client.connect_gateway", [], function(){});
-                } else if (appState.pythonReady && appState.startupPhase === "offline") {
-                    navigationLogic.checkInitialState();
-                }
-            }
-            appState.lastConnectivityStatus = Connectivity.status;
+            var online = Connectivity.status === Connectivity.Online
+            var wasOnline = appState.lastConnectivityStatus === Connectivity.Online
+            appState.lastConnectivityStatus = Connectivity.status
+            console.log("Connectivity: status=" + Connectivity.status + " online=" + online)
+            if (online === wasOnline)
+                return
+            if (!online)
+                appState.gatewayReady = false
+            root.syncNetworkState(online)
+            if (online && appState.pythonReady && !appState.authenticated
+                    && appState.startupPhase === "offline")
+                navigationLogic.checkInitialState()
         }
     }
 
@@ -457,7 +481,9 @@ MainView {
                     left: parent.left
                     right: parent.right
                 }
+                // Offline there is nothing in progress; the banner explains.
                 running: appState.authenticated
+                         && (appState.runningUnderClickableDesktop || appState.isOnline)
                          && (!appState.connectionReady || appState.refreshing)
                 z: 100
             }

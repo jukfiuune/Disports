@@ -80,20 +80,40 @@ class DiscordClient:
             # idempotent while that loop is alive, so preserve its session.
             print("session: attaching to existing gateway", flush=True)
             self.gateway.start()
+            if self.gateway.connected:
+                # Looks connected, but may be a zombie (network lost while
+                # suspended): confirm with an immediate heartbeat.
+                self.gateway.probe()
+            else:
+                # Called when the network comes back: skip the rest of the
+                # backoff wait and reconnect now.
+                self.gateway.reconnect()
             if self._gateway_ready:
                 print("session: delivering cached READY snapshot", flush=True)
                 snapshot = self.state.format_ready_payload()
                 snapshot["cached"] = True
                 self._emit("ready", snapshot)
-                self._emit("connection_status", {"ready": self.gateway.connected})
+            # Readiness is only ever reported on proof from Discord (READY,
+            # RESUMED or an acknowledged probe). "The socket looks open" is
+            # not proof: after losing the network it stays open until a
+            # heartbeat fails, which made the UI claim "Connected" offline.
+            if not self.gateway.connected:
+                self._emit("connection_status", {"ready": False, "phase": "connecting"})
             return True
         self.gateway = DiscordGateway(
             self.http.token,
             self._handle_gateway_event,
             self._handle_gateway_log,
         )
-        self.state._send_gateway = self.gateway.guild_subscribe_raw
-        self.gateway.start()
+        try:
+            self.state._send_gateway = self.gateway.guild_subscribe_raw
+            self.gateway.start()
+        except Exception:
+            # Never leave a half-built gateway behind: callers treat a
+            # non-None gateway as a running session.
+            self.gateway = None
+            self.state._send_gateway = None
+            raise
         return True
 
     def disconnect(self) -> bool:
@@ -495,6 +515,15 @@ class DiscordClient:
         if self.gateway:
             self.gateway.reconnect()
 
+    def set_network_available(self, online: bool) -> None:
+        self.http.offline = not online
+        if not self.gateway:
+            return
+        if online:
+            self.gateway.reconnect()  # skip the rest of the backoff wait
+        else:
+            self.gateway.network_lost()
+
     def _handle_gateway_event(self, event_type: str, data: dict[str, Any]) -> None:
         if data is None:
             data = {}
@@ -506,6 +535,7 @@ class DiscordClient:
             self.state.apply_ready(data)
             self.state.apply_relationships(data.get("relationships") or [])
             self._gateway_ready = True
+            self.http.offline = False
             ready_payload = self.state.format_ready_payload()
             self.cache.save_ready(ready_payload)
             self._cache_dirty.discard("ready")
@@ -514,6 +544,7 @@ class DiscordClient:
             return
 
         if event_type == "RESUMED":
+            self.http.offline = False
             self._emit("connection_status", {"ready": True})
             return
 
@@ -736,6 +767,8 @@ class DiscordClient:
             status = {"ready": False, "phase": "interrupted"}
         elif "heartbeat stopped" in lowered:
             status = {"ready": False, "phase": "heartbeat"}
+        elif "gateway connection verified" in lowered:
+            status = {"ready": True}
         if status:
             self._emit("connection_status", status)
         self._emit("gateway_log", {"message": message})

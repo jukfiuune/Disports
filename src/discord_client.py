@@ -151,6 +151,8 @@ def _attach_daemon(resync: bool) -> DaemonProxy:
         proxy = _connect_proxy()
         try:
             proxy.call("set_app_foreground", [_app_foreground])
+            if _client.http.offline:
+                proxy.call("set_network_available", [False])
         except Exception:
             pass
         if _client.gateway or _client.http.token:
@@ -206,21 +208,73 @@ def _reattach_loop() -> None:
             continue
 
 
-def _ensure_embedded_ready() -> bool:
-    # Log the embedded client in from the shared token file if needed.
+def _embedded_login() -> dict:
+    # Logs the embedded client in from the shared token file if needed and
+    # makes sure its gateway runs. Returns the login result.
     token = (load_token().get("token") or "").strip()
     if not token:
-        return False
-    if _client.http.token != token:
+        return {"ok": False, "error": "No saved token."}
+    # A failed login leaves the token set but no user: that is not a session.
+    if _client.http.token != token or not _client.state.me:
         result = _client.login(token)
         if not result.get("ok"):
-            return False
-    if _client.state.me and _client.gateway is None:
+            return result
+    if _client.gateway is None:
         try:
             _client.connect_gateway()
-        except Exception:
-            pass
-    return True
+        except Exception as exc:
+            return {"ok": False, "error": str(exc), "retryable": True}
+    return {"ok": True}
+
+
+def _ensure_embedded_session() -> None:
+    # Non-blocking: the call that needs the session proceeds right away
+    # (serving the cache if offline) while the login runs in the background.
+    if not (_client.state.me and _client.gateway is not None):
+        _start_embedded_auto_connect()
+
+
+_embedded_connect_lock = threading.Lock()
+_embedded_connect_thread: threading.Thread | None = None
+# Wakes the retry loop early (network regained, app foregrounded).
+_embedded_connect_kick = threading.Event()
+
+
+def _start_embedded_auto_connect() -> None:
+    # Starts (or wakes) the background login for the embedded client. Login
+    # needs the network, so it must never run on PyOtherSide's single worker
+    # thread: while it waits on DNS/connect timeouts, every other UI call
+    # (even reading the cache) would queue behind it.
+    global _embedded_connect_thread
+    with _embedded_connect_lock:
+        if _embedded_connect_thread and _embedded_connect_thread.is_alive():
+            _embedded_connect_kick.set()
+            return
+        _embedded_connect_kick.clear()
+        _embedded_connect_thread = threading.Thread(
+            target=_embedded_auto_connect_loop, daemon=True
+        )
+        _embedded_connect_thread.start()
+
+
+def _embedded_auto_connect_loop() -> None:
+    delay = 2
+    while _mode == "embedded":
+        result = _embedded_login()
+        if result.get("ok"):
+            print("session: embedded session started", flush=True)
+            return
+        if not result.get("retryable"):
+            print(f"session: automatic login stopped: {result.get('error', '')}", flush=True)
+            if result.get("clear_saved_token"):
+                _emit("session_invalid", {"error": result.get("error", "")})
+            return
+        _emit("connection_status", {"ready": False, "phase": "retry_wait", "retrySeconds": delay})
+        if _embedded_connect_kick.wait(delay):
+            _embedded_connect_kick.clear()
+            delay = 2
+        else:
+            delay = min(delay * 2, 60)
 
 
 def _backend():
@@ -250,7 +304,7 @@ def _call(method: str, *args):
     backend = _backend()
     if backend is _client:
         if _background_enabled:
-            _ensure_embedded_ready()
+            _ensure_embedded_session()
         return getattr(_client, method)(*args)
     try:
         return backend.call(method, list(args))
@@ -263,7 +317,7 @@ def _call(method: str, *args):
     backend = _backend()
     if backend is not _client:
         return backend.call(method, list(args))
-    _ensure_embedded_ready()
+    _ensure_embedded_session()
     return getattr(_client, method)(*args)
 
 
@@ -301,14 +355,44 @@ def disconnect() -> bool:
 
 
 def resume_session() -> dict:
-    # Foreground refresh: (re)attach to whichever backend owns the gateway
-    # and have it re-emit its session snapshot. Never raises, so the UI can
+    # Foreground refresh / network regained: (re)attach to whichever backend
+    # owns the gateway, verify it is really alive, and start the session if
+    # the app was opened offline from its cache. Never raises, so the UI can
     # always clear its "refreshing" state.
+    # Never does network I/O itself: the session is (re)started in the
+    # background and readiness arrives as events.
     try:
-        _call("connect_gateway")
-        return {"ok": True}
+        backend = _backend()
+        if backend is not _client:
+            # The daemon starts its own login in the background if needed.
+            return {"ok": bool(backend.call("connect_gateway"))}
+        if _client.state.me and _client.gateway is not None:
+            _client.connect_gateway()
+            return {"ok": True}
+        _start_embedded_auto_connect()
+        return {"ok": False, "pending": True}
     except Exception as exc:
         return {"ok": False, "error": str(exc)}
+
+
+def set_network_available(online: bool) -> dict:
+    # Mirrors the system's network state (Lomiri Connectivity). Offline, API
+    # calls fail at once (serving the cache) and the gateway socket, which
+    # cannot survive losing its network, is dropped instead of waiting for
+    # heartbeats to time out. Back online, reconnect without backoff.
+    online = bool(online)
+    print(f"session: network {'available' if online else 'lost'}", flush=True)
+    _client.set_network_available(online)
+    with _backend_lock:
+        proxy = _proxy if _mode == "daemon" else None
+    if proxy is not None and proxy.connected:
+        try:
+            proxy.call("set_network_available", [online])
+        except Exception:
+            pass
+    if online:
+        return resume_session()
+    return {"ok": True}
 
 
 def reconnect() -> bool:
@@ -613,6 +697,6 @@ def set_background_service(enabled: bool) -> dict:
         _background_enabled = True
         return {"ok": False, "error": f"Could not stop daemon: {exc}"}
     _degrade_to_embedded()
-    _ensure_embedded_ready()
+    _ensure_embedded_session()
     daemon_common.write_setting(daemon_common.SETTING_BACKGROUND_SERVICE, False)
     return {"ok": True, "mode": "embedded"}

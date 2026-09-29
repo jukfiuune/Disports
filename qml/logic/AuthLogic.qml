@@ -26,19 +26,21 @@ QtObject {
             appState.loginBusy = false
             if (!result || !result.ok) {
                 if (result && result.retryable) {
-                    appState.authenticated = false
                     appState.loginError = result.error || i18n.tr("Login failed.")
                     appState.qrStatusText = ""
                     appState.startupPhase = appState.hasCachedSession ? "loaded" : "offline"
-                    if (appState.hasCachedSession)
-                        appState.authenticated = true
+                    appState.authenticated = appState.hasCachedSession
+                    if (appState.hasCachedSession) {
+                        // Browse the cache; keep retrying in the background.
+                        python.call("discord_client.resume_session", [], function() {})
+                    }
                     return
                 }
                 if (result && result.clear_saved_token)
                     python.call("discord_client.clear_token", [], function() {})
                 if (result && result.clear_saved_token) {
                     appState.hasCachedSession = false
-                    appState.connectionReady = false
+                    appState.gatewayReady = false
                 }
                 appSettings.token = ""
                 appState.authenticated = false
@@ -69,6 +71,16 @@ QtObject {
         })
     }
 
+    function resumeCachedSession() {
+        python.call("discord_client.resume_session", [], function() {})
+    }
+
+    // The saved token was rejected by Discord (background sign-in).
+    function handleSessionInvalid(error) {
+        logout()
+        appState.loginError = error || i18n.tr("Login failed.")
+    }
+
     function logout() {
         if (appState.pythonReady)
             python.call("discord_client.disconnect", [], function() {})
@@ -77,7 +89,7 @@ QtObject {
             python.call("discord_client.clear_token", [], function() {})
         appSettings.token = ""
         appState.authenticated = false
-        appState.connectionReady = false
+        appState.gatewayReady = false
         appState.hasCachedSession = false
         appState.loginBusy = false
         appState.loginError = ""

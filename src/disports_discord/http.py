@@ -49,6 +49,11 @@ class DiscordHTTP:
     def __init__(self) -> None:
         import threading
         self.token: str | None = None
+        # Set while the system reports no network. Requests then fail at
+        # once instead of hanging in DNS / connect timeouts: callers run on
+        # PyOtherSide's single worker thread, so one stuck request would
+        # stall every other call from the UI (even cache reads).
+        self.offline = False
         self._pool = urllib3.PoolManager(
             timeout=urllib3.Timeout(connect=10.0, read=30.0),
             retries=False,
@@ -114,6 +119,8 @@ class DiscordHTTP:
         auth: bool = True,
         _429_attempts: int = 4,
     ) -> Any:
+        if self.offline:
+            raise DiscordNetworkError("No network connection")
         self._wait_if_needed()
 
         url = f"{API_BASE}/{path.lstrip('/')}"

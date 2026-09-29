@@ -42,6 +42,13 @@ QtObject {
                 replaceModel(chatMessageModel, cachedMessages)
             }
 
+            // Offline the cache is all there is. Network calls also share
+            // PyOtherSide's single worker thread, so a request stuck on
+            // timeouts would hold up every chat opened after it. The chat is
+            // refreshed once the connection is back (see Main.qml).
+            if (!appState.connectionReady)
+                return
+
             python.call("discord_client.fetch_messages", [channelId, 50, ""], function(messages) {
                 if (appState.activeChannelId !== channelId)
                     return
@@ -96,10 +103,7 @@ QtObject {
                 }
                 replaceModel(channelModel, []) // Clear stale channels immediately
                 openChat(channelId, channelName)
-                python.call("discord_client.fetch_guild_channels", [guildId], function(channels) {
-                    if (appState.activeServerId === guildId)
-                        replaceModel(channelModel, channels || [])
-                })
+                loadServerChannels(guildId)
                 return
             }
 
@@ -129,8 +133,24 @@ QtObject {
         });
     }
 
+    // Cached channel list first, then the live one when connected.
+    function loadServerChannels(guildId) {
+        python.call("discord_client.load_cached_guild_channels", [guildId], function(cachedChannels) {
+            if (appState.activeServerId !== guildId)
+                return
+            if (cachedChannels && cachedChannels.length > 0)
+                replaceModel(channelModel, cachedChannels)
+            if (!appState.connectionReady)
+                return
+            python.call("discord_client.fetch_guild_channels", [guildId], function(channels) {
+                if (appState.activeServerId === guildId && channels && channels.length > 0)
+                    replaceModel(channelModel, channels)
+            })
+        })
+    }
+
     function refreshActiveChannel(done) {
-        if (!appState.pythonReady || appState.activeChannelId === "") {
+        if (!appState.pythonReady || appState.activeChannelId === "" || !appState.connectionReady) {
             if (done) done()
             return
         }

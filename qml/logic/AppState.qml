@@ -27,7 +27,12 @@ QtObject {
     property int lastConnectivityStatus: Connectivity.status
     property string qrStatusText: ""
     property bool pythonReady: false
-    property bool connectionReady: false
+    // Set from gateway events only. connectionReady additionally requires
+    // the network, so losing it shows up immediately even while the socket
+    // has not noticed yet.
+    property bool gatewayReady: false
+    readonly property bool connectionReady: gatewayReady
+                                            && (runningUnderClickableDesktop || isOnline)
     property string connectionPhase: "connecting"
     property int reconnectDelaySeconds: 0
     property bool hasCachedSession: false

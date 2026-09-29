@@ -23,6 +23,7 @@ Python {
     signal guildMemberChunk(var data)
     signal messageReaction(var data)
     signal connectionStatus(var data)
+    signal sessionInvalid(var data)
     signal readyForInit()
 
     Component.onCompleted: {
@@ -51,6 +52,7 @@ Python {
         setHandler("guild_member_chunk", guildMemberChunk)
         setHandler("message_reaction", messageReaction)
         setHandler("connection_status", connectionStatus)
+        setHandler("session_invalid", sessionInvalid)
     }
 
     onError: console.log("Python error: " + traceback)
