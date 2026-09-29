@@ -5,6 +5,9 @@ A Discord client built for Ubuntu Touch.
 > [!IMPORTANT]
 > Using any unofficial Discord client is against Discord's [Terms of Service](https://discord.com/terms) and may result in your account being restricted or permanently banned. **Use Disports at your own risk.**
 
+> [!NOTE]
+> Disports is planning a Qt6 - C++ transition in order to provide a smoother, faster, and voice-capable experience.
+
 ## Installation
 
 Disports can currently be installed on your Ubuntu Touch device via the [Open-Store](https://open-store.io/app/disports.jukfiuu), [GitHub releases](https://github.com/jukfiuune/Disports/releases) or by building it yourself using [Clickable](https://clickable-ut.dev).
@@ -43,7 +46,7 @@ If you still need to use token login, here's how to find your token:
 - [ ] Ping people
 - [ ] Message styling (Markdown)
 - [ ] Nitro features
-- [ ] Caching (server messages, DMs, last messages, etc)
+- [x] Caching (server messages, DMs, last messages, etc)
 - [x] Notifications
 - [ ] Voice calls and channels
 
