@@ -96,15 +96,31 @@ MainView {
             appState.loginError = data.error || i18n.tr("QR login failed.")
         }
         onReadyForInit: {
-            appState.pythonReady = true
-            navigationLogic.refreshUnicodeEmojis()
-            root.applyLaunchModeFromArguments()
-            pythonBridge.call("discord_client.dev_flags", [], function(flags) {
-                if (flags && flags.clickableDesktopMode === true)
-                    appState.runningUnderClickableDesktop = true
-                navigationLogic.checkInitialState()
+            // Back from Disports 1.0: its sign-in and settings first.
+            pythonBridge.call("discord_client.migrate_from_new_version", [], function(result) {
+                if (result && result.migrated) {
+                    var s = result.settings || {}
+                    if (s.themeMode !== undefined)
+                        themeLogic.applyThemePreference(s.themeMode)
+                    if (s.inlineGifPlayback !== undefined)
+                        appSettings.inlineGifPlayback = s.inlineGifPlayback
+                    if (s.blockedMessageVisibility !== undefined)
+                        appSettings.blockedMessageVisibility = s.blockedMessageVisibility
+                    if (s.maxComposerLines !== undefined)
+                        appSettings.maxComposerLines = s.maxComposerLines
+                    // They know about the new version already.
+                    appSettings.communityNoticeShown = true
+                }
+                appState.pythonReady = true
+                navigationLogic.refreshUnicodeEmojis()
+                root.applyLaunchModeFromArguments()
+                pythonBridge.call("discord_client.dev_flags", [], function(flags) {
+                    if (flags && flags.clickableDesktopMode === true)
+                        appState.runningUnderClickableDesktop = true
+                    navigationLogic.checkInitialState()
+                })
+                pythonBridge.call("discord_client.set_preference", ["blockedMessageVisibility", appSettings.blockedMessageVisibility], function(){});
             })
-            pythonBridge.call("discord_client.set_preference", ["blockedMessageVisibility", appSettings.blockedMessageVisibility], function(){});
         }
     }
 
@@ -114,6 +130,22 @@ MainView {
         chatMessageModel: chatMessageModel; channelModel: channelModel; chatPageComp: chatPageComp
         onDeleteConfirmRequested: function(messageId) {
             PopupUtils.open(deleteDialogComp, root, { messageId: messageId })
+        }
+    }
+
+    Component {
+        id: communityNoticeComp
+        CommunityNotice {}
+    }
+
+    // Once, when the app is past the splash screen.
+    Connections {
+        target: appState
+        onStartupPhaseChanged: {
+            if (appState.startupPhase === "loaded" && !appSettings.communityNoticeShown) {
+                appSettings.communityNoticeShown = true
+                PopupUtils.open(communityNoticeComp, root)
+            }
         }
     }
 
@@ -175,6 +207,8 @@ MainView {
         property string uitkTheme: ""
         property string blockedMessageVisibility: "reveal"
         property int maxComposerLines: 3
+        // The one-time message about the Telegram group (CommunityNotice).
+        property bool communityNoticeShown: false
     }
 
     Connections {

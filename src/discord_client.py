@@ -63,6 +63,69 @@ def clear_token() -> dict:
     return {"ok": True}
 
 
+def _new_version_paths() -> dict:
+    """Where Disports 1.0 (the Qt 6 rewrite) keeps its sign-in, settings
+    and caches. Same app, so the same folders as this version."""
+    app_dir = _token_path().parent.name
+    config = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
+    cache = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
+    return {
+        "settings": _token_path().parent / "settings.json",
+        "preferences": Path(config) / app_dir / "preferences.ini",
+        "caches": [Path(cache) / app_dir / name for name in ("offline", "pictures", "sounds")],
+    }
+
+
+def migrate_from_new_version() -> dict:
+    """Someone went back from Disports 1.0 to this version: carry over the
+    sign-in (unless this version has one) and the settings both versions
+    have, then remove what 1.0 left behind, as 1.0 does with ours. 1.0
+    carries them forward again if they install it later.
+
+    Returns {"migrated": bool, "settings": {...}} with the settings for
+    the QML side (themeMode, inlineGifPlayback, blockedMessageVisibility,
+    maxComposerLines)."""
+    import configparser
+    import json
+    import shutil
+
+    paths = _new_version_paths()
+    if not paths["settings"].is_file() and not paths["preferences"].is_file():
+        return {"migrated": False, "settings": {}}
+
+    try:
+        token = str(json.loads(paths["settings"].read_text(encoding="utf-8")).get("Token") or "").strip()
+    except (OSError, ValueError, AttributeError):
+        token = ""
+    if token and not load_token()["token"]:
+        save_token(token)
+
+    settings = {}
+    ini = configparser.ConfigParser(interpolation=None)
+    try:
+        ini.read(paths["preferences"], encoding="utf-8")
+        if ini.has_option("appearance", "theme"):
+            settings["themeMode"] = min(2, max(0, ini.getint("appearance", "theme")))
+        if ini.has_option("chat", "autoplayGifs"):
+            settings["inlineGifPlayback"] = ini.getboolean("chat", "autoplayGifs")
+        if ini.get("chat", "blockedMessages", fallback="") in ("hide", "reveal", "show"):
+            settings["blockedMessageVisibility"] = ini.get("chat", "blockedMessages")
+        if ini.has_option("chat", "composerMaxLines"):
+            settings["maxComposerLines"] = min(6, max(1, ini.getint("chat", "composerMaxLines")))
+    except (configparser.Error, ValueError):
+        pass
+
+    # Nothing of 1.0 is kept: not a second copy of the token either.
+    for path in (paths["settings"], paths["preferences"]):
+        try:
+            path.unlink()
+        except OSError:
+            pass
+    for folder in paths["caches"]:
+        shutil.rmtree(folder, ignore_errors=True)
+    return {"migrated": True, "settings": settings}
+
+
 def set_preference(key: str, value: str) -> None:
     _client.set_preference(key, value)
 
