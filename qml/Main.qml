@@ -138,11 +138,12 @@ MainView {
         CommunityNotice {}
     }
 
-    // Once, when the app is past the splash screen.
+    // Once, when the app is past the splash screen and signed in (the
+    // sign-in page has its own warning dialog).
     Connections {
         target: appState
         onStartupPhaseChanged: {
-            if (appState.startupPhase === "loaded" && !appSettings.communityNoticeShown) {
+            if (appState.startupPhase === "loaded" && appState.authenticated && !appSettings.communityNoticeShown) {
                 appSettings.communityNoticeShown = true
                 PopupUtils.open(communityNoticeComp, root)
             }

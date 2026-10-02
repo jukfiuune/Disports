@@ -69,10 +69,17 @@ def _new_version_paths() -> dict:
     app_dir = _token_path().parent.name
     config = os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
     cache = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
+    data = _token_path().parent
+    caches = [Path(cache) / app_dir / name for name in ("offline", "pictures", "sounds", "QtWebEngine")]
+    # Qt 6's compiled QML and graphics caches: this version (Qt 5) rebuilds
+    # its own, and shouldn't have to tell them apart.
+    caches.append(Path(cache) / app_dir / "qmlcache")
+    caches += sorted((Path(cache) / app_dir).glob("qtpipelinecache-*"))
     return {
-        "settings": _token_path().parent / "settings.json",
+        "settings": data / "settings.json",
         "preferences": Path(config) / app_dir / "preferences.ini",
-        "caches": [Path(cache) / app_dir / name for name in ("offline", "pictures", "sounds")],
+        # The captcha page's web data (Qt WebEngine).
+        "caches": caches + [data / "QtWebEngine"],
     }
 
 
