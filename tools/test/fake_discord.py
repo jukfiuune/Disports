@@ -196,6 +196,14 @@ for i, text in ((395, "Replying to a recent one"), (10, "Replying to an old one"
     old = HISTORY_MSGS[TEXT][i]
     HISTORY_MSGS[TEXT].append(message(TEXT, ME, text, type=19, referenced_message=old,
                                       message_reference={"type": 0, "message_id": old["id"], "channel_id": TEXT}))
+# Quiet Server's #chat: links to channels and to a message, as the official
+# client shares them; #muted-hidden can't be opened, so it stays a link.
+HISTORY_MSGS[QUIET_CHAN] = [
+    message(QUIET_CHAN, ALICE, "Channels: <#1105>, https://discord.com/channels/%s/%s and "
+                               "https://discord.com/channels/%s/%s" % (GUILD, TEXT, GUILD, HIDDEN)),
+    message(QUIET_CHAN, ALICE, "Look at this: https://discord.com/channels/%s/%s/%s"
+                               % (GUILD, TEXT, HISTORY_MSGS[TEXT][395]["id"])),
+]
 
 def apng():
     """The APNG sticker: 64x64, red, then a green square drawn over its middle

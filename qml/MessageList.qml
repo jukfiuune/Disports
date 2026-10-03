@@ -92,6 +92,17 @@ ListView {
         loadNextPage()
     }
 
+    // A link to a message: gone to once its channel's messages are in.
+    property string requestedId: ""
+
+    function goToRequested() {
+        if (requestedId === "" || Session.loadingMessages || count === 0)
+            return
+        const id = requestedId
+        requestedId = ""
+        jumpToMessage(id)
+    }
+
     function loadNextPage() {
         seekPages++
         Session.loadOlderMessages()
@@ -111,9 +122,18 @@ ListView {
                 Qt.callLater(list.jumpToMessage, list.seekingId)
             if (list.openingAtNew)
                 Qt.callLater(list.openAtNew)
+            if (list.requestedId !== "")
+                Qt.callLater(list.goToRequested)
         }
         function onCurrentChannelChanged() { list.seekingId = "" }
+        function onMessageRequested(messageId) {
+            list.openingAtNew = false
+            list.followNewest = false
+            list.requestedId = messageId
+            Qt.callLater(list.goToRequested)
+        }
         function onChannelOpened() {
+            list.requestedId = ""
             if (Session.atNewest) {
                 list.scrollToNewest()
             } else {
@@ -188,7 +208,9 @@ ListView {
     }
     onFlickEnded: followNewest = atYEnd
     onCountChanged: {
-        if (openingAtNew)
+        if (requestedId !== "")
+            Qt.callLater(goToRequested)
+        else if (openingAtNew)
             Qt.callLater(openAtNew)
         else if (followNewest)
             scrollToNewest()

@@ -35,7 +35,7 @@ LomiriShape {
             Session.messages.revealSpoiler(card.messageId, parseInt(link.substring(8)))
             return
         }
-        if (link)
+        if (link && !Session.openChannelLink(link))
             Qt.openUrlExternally(link)
     }
 

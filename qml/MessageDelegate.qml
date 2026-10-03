@@ -177,7 +177,7 @@ ListItem {
     function openLink(link) {
         if (link.indexOf("spoiler:") === 0)
             Session.messages.revealSpoiler(messageId, parseInt(link.substring(8)))
-        else
+        else if (!Session.openChannelLink(link))
             Qt.openUrlExternally(link)
     }
 

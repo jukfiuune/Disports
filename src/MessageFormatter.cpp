@@ -14,6 +14,7 @@
 #include "discord/state/ProfileCache.hpp"
 
 #include "DiscordUrls.h"
+#include "models/ChannelListModel.h"
 
 namespace {
 
@@ -28,6 +29,24 @@ QString channelName(Snowflake channel)
     if (!instance)
         return QStringLiteral("channel");
     return QString::fromStdString(instance->LookupChannelNameGlobally(channel));
+}
+
+// A channel the account can open, named as the official client names it in
+// a link ("#general", "@Alice"); empty when it can't be opened.
+QString channelLinkLabel(Snowflake id, Snowflake* guild = nullptr)
+{
+    DiscordInstance* instance = GetDiscordInstance();
+    Channel* channel = instance ? instance->GetChannel(id) : nullptr;
+    if (!channel || (!channel->IsDM() && !channel->HasPermission(PERM_VIEW_CHANNEL)))
+        return QString();
+    if (guild)
+        *guild = channel->m_parentGuild;
+    const QString name = ChannelListModel::displayName(*channel);
+    if (channel->m_channelType == Channel::DM)
+        return QLatin1Char('@') + name;
+    if (channel->m_channelType == Channel::GROUPDM)
+        return name;
+    return QLatin1Char('#') + name;
 }
 
 QString roleName(Snowflake role, Snowflake guild)
@@ -137,6 +156,24 @@ QString replaceTokens(QString text, Snowflake guild, bool rich, Protected* store
                     : m.captured(1);
     });
 
+    // Links to channels and messages the account can open show as the
+    // channel's name (and a bubble for a message), and open it in the app
+    // (Session::openChannelLink); others stay links for the browser.
+    auto channelLink = [&](const QString& url, const QString& label) {
+        return rich ? html(QStringLiteral("<a href=\"%1\" style=\"text-decoration:none\"><b>%2</b></a>")
+                               .arg(url, label.toHtmlEscaped()))
+                    : label;
+    };
+    static const QRegularExpression discordLink(DiscordUrls::channelLinkPattern());
+    replaceAll(discordLink, [&](const QRegularExpressionMatch& m) {
+        QString label = channelLinkLabel(DiscordUrls::fromId(m.captured(2)));
+        if (label.isEmpty())
+            return m.captured(0);
+        if (!m.captured(3).isEmpty())
+            label += QStringLiteral(" \u203A \U0001F4AC");
+        return channelLink(m.captured(0), label);
+    });
+
     if (rich) {
         replaceAll(link, [&](const QRegularExpressionMatch& m) {
             return html(QStringLiteral("<a href=\"%1\">%1</a>").arg(m.captured(0)));
@@ -150,7 +187,12 @@ QString replaceTokens(QString text, Snowflake guild, bool rich, Protected* store
         return mention(QLatin1Char('@') + roleName(DiscordUrls::fromId(m.captured(1)), guild));
     });
     replaceAll(channel, [&](const QRegularExpressionMatch& m) {
-        return mention(QLatin1Char('#') + channelName(DiscordUrls::fromId(m.captured(1))));
+        const Snowflake id = DiscordUrls::fromId(m.captured(1));
+        Snowflake channelGuild = 0;
+        const QString label = channelLinkLabel(id, &channelGuild);
+        if (label.isEmpty())
+            return mention(QLatin1Char('#') + channelName(id));
+        return channelLink(DiscordUrls::channelLink(channelGuild, id), label);
     });
     replaceAll(emoji, [&](const QRegularExpressionMatch& m) {
         if (!rich)

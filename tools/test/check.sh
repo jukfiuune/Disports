@@ -254,13 +254,23 @@ scenario_unread() {     # opens at the "Unread messages" bar; read once scrolled
     expect unread "REST ack 1109 $newest\$"
 }
 
+scenario_links() {      # discord.com/channels links: a message in #text opens there; #muted-hidden can't
+    STEPS="sleep 7;click 465 739;sleep 2" "$HERE/run.sh" links 10000 DISPORTS_OPEN_CHANNEL=5001 "${WIDE[@]}"
+    expect links 'REST history 1110'
+    STEPS="sleep 7;click 650 716;sleep 1" "$HERE/run.sh" links-hidden 8500 DISPORTS_OPEN_CHANNEL=5001 "${WIDE[@]}"
+    if grep -a -q 'REST history 1102' "$LOG"; then
+        echo "   FAIL links: opened a channel it can't see"
+        FAILED=1
+    fi
+}
+
 scenario_permissions() { # read-only, no history, no files, slowmode
     for channel in 1103 1104 1106 1105; do
         STEPS="sleep 5" "$HERE/run.sh" permissions-$channel 6500 DISPORTS_OPEN_CHANNEL=$channel "${WIDE[@]}"
     done
 }
 
-ALL=(channels mentions upload zoom nicknames dmcall call switch threads reply login captcha migration profile voicechat stickers unread permissions)
+ALL=(channels mentions upload zoom nicknames dmcall call switch threads reply login captcha migration profile voicechat stickers unread links permissions)
 SCENARIOS=("${@:-${ALL[@]}}")
 [ $# -eq 0 ] && SCENARIOS=("${ALL[@]}")
 

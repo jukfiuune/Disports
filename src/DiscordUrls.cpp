@@ -1,5 +1,6 @@
 #include "DiscordUrls.h"
 
+#include <QRegularExpression>
 #include <QStringList>
 
 #include "discord/network/DiscordAPI.hpp"
@@ -74,6 +75,33 @@ QString initials(const QString& name)
             break;
     }
     return result.isEmpty() ? name.left(2) : result;
+}
+
+const QString& channelLinkPattern()
+{
+    static const QString pattern(QStringLiteral(
+        "https?://(?:(?:ptb|canary|www)\\.)?discord(?:app)?\\.com/channels/(@me|\\d+)/(\\d+)(?:/(\\d+))?/?"));
+    return pattern;
+}
+
+QString channelLink(Snowflake guild, Snowflake channel, Snowflake message)
+{
+    QString url = QStringLiteral("https://discord.com/channels/%1/%2")
+                      .arg(guild ? id(guild) : QStringLiteral("@me"), id(channel));
+    if (message)
+        url += QLatin1Char('/') + id(message);
+    return url;
+}
+
+bool parseChannelLink(const QString& url, ChannelLink& link)
+{
+    static const QRegularExpression re(QRegularExpression::anchoredPattern(channelLinkPattern()));
+    const QRegularExpressionMatch m = re.match(url.trimmed());
+    if (!m.hasMatch())
+        return false;
+    link.channel = fromId(m.captured(2));
+    link.message = fromId(m.captured(3));
+    return link.channel != 0;
 }
 
 }

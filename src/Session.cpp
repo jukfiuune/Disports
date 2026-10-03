@@ -523,6 +523,22 @@ void Session::openChannel(const QString& channelId)
     markCurrentChannelRead();
 }
 
+bool Session::openChannelLink(const QString& url)
+{
+    DiscordUrls::ChannelLink link;
+    if (!m_instance || !DiscordUrls::parseChannelLink(url, link))
+        return false;
+    Channel* channel = m_instance->GetChannel(link.channel);
+    if (!channel || (!channel->IsDM() && !channel->HasPermission(PERM_VIEW_CHANNEL))) {
+        showNotice(tr("You don't have access to this channel."));
+        return true;
+    }
+    openChannel(DiscordUrls::id(link.channel));
+    if (link.message)
+        emit messageRequested(DiscordUrls::id(link.message));
+    return true;
+}
+
 void Session::coreSelectedGuildChanged()
 {
     m_channels->reload();

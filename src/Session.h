@@ -162,6 +162,10 @@ public:
     Q_INVOKABLE void selectDirectMessages();
     Q_INVOKABLE void selectGuild(const QString& guildId);
     Q_INVOKABLE void openChannel(const QString& channelId);
+    // A discord.com/channels/... link (DiscordUrls::parseChannelLink):
+    // opens the channel, and goes to the message if it names one, as the
+    // official client does. False when it isn't one, for the browser.
+    Q_INVOKABLE bool openChannelLink(const QString& url);
     Q_INVOKABLE void loadOlderMessages();
     Q_INVOKABLE void markCurrentChannelRead();
     // See describeChannel() in ChannelInfo.h.
@@ -225,6 +229,8 @@ signals:
     // Another channel was opened (currentChannelChanged also comes with
     // other changes). messages.firstNewIndex says where its new ones start.
     void channelOpened();
+    // Show this message of the open channel (a link to it was opened).
+    void messageRequested(const QString& messageId);
     void membersChanged();
 
 private:

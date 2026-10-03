@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Disports\n"
 "Report-Msgid-Bugs-To: https://github.com/jukfiuune/Disports/issues\n"
-"POT-Creation-Date: 2026-10-03 11:15+0300\n"
+"POT-Creation-Date: 2026-10-03 11:38+0300\n"
 "PO-Revision-Date: 2026-10-01 16:00+0300\n"
 "Last-Translator: Martin Filipov\n"
 "Language-Team: Bulgarian\n"
@@ -825,6 +825,10 @@ msgstr ""
 #: src/Session.cpp
 msgid "Your session has expired. Please sign in again."
 msgstr "Сесията ти изтече. Моля, влез отново."
+
+#: src/Session.cpp
+msgid "You don't have access to this channel."
+msgstr "Нямаш достъп до този канал."
 
 #: src/Session.cpp
 msgid "The message could not be edited."

@@ -32,4 +32,17 @@ QString lottieSticker(Snowflake sticker);
 // Up to two initials for a server without an icon ("Ubuntu Touch" -> "UT").
 QString initials(const QString& name);
 
+// A link to a channel, or to a message in it, as the official client
+// shares them: https://discord.com/channels/<server or @me>/<channel>[/<message>]
+// (also ptb., canary. and discordapp.com).
+struct ChannelLink {
+    Snowflake channel = 0;
+    Snowflake message = 0;
+};
+QString channelLink(Snowflake guild, Snowflake channel, Snowflake message = 0);
+// Whether `url` is one; `link` gets what it points at.
+bool parseChannelLink(const QString& url, ChannelLink& link);
+// Finds them in text (see MessageFormatter).
+const QString& channelLinkPattern();
+
 }
