@@ -27,8 +27,41 @@ ListView {
         return atYEnd || originY + contentHeight - contentY - height < units.gu(1)
     }
 
+    // Scroll anchoring, as browsers do: away from the newest message, the
+    // message in the middle of the screen keeps its place while rows
+    // around it change height (pictures and link previews arriving). The
+    // list is laid out from the bottom, so without this a picture loading
+    // below it would push it, and everything above, up the screen.
+    property string anchorId: ""
+    property real anchorOffset: 0
+
+    function setAnchor(index) {
+        const item = index >= 0 ? itemAtIndex(index) : null
+        anchorId = item ? item.messageId : ""
+        anchorOffset = item ? item.y - contentY : 0
+    }
+
+    function anchorOnScreen() {
+        if (followNewest)
+            anchorId = ""
+        else
+            setAnchor(indexAt(width / 2, contentY + height / 2))
+    }
+
+    function keepAnchor() {
+        if (anchorId === "" || followNewest || moving)
+            return
+        const item = itemAtIndex(Session.messages.indexOfMessage(anchorId))
+        if (!item)
+            return
+        const target = item.y - anchorOffset
+        if (Math.abs(contentY - target) > 0.5)
+            contentY = target
+    }
+
     function scrollToNewest() {
         cancelFlick()
+        anchorId = ""
         openingAtNew = false
         followNewest = true
         updateAtNewest()
@@ -56,6 +89,7 @@ ListView {
             return
         }
         positionViewAtIndex(index, ListView.Center)
+        setAnchor(index)
         // All of it fits: already at the newest.
         Qt.callLater(function() { list.followNewest = list.nearNewest() })
     }
@@ -82,6 +116,7 @@ ListView {
             seekingId = ""
             followNewest = false
             positionViewAtIndex(index, ListView.Center)
+            setAnchor(index)
             highlightedId = id
             highlightTimer.restart()
             return
@@ -236,6 +271,7 @@ ListView {
     }
     onMovementEnded: {
         followNewest = nearNewest()
+        anchorOnScreen()
         updateVisibleRange()
     }
     onFlickEnded: followNewest = nearNewest()
@@ -249,9 +285,12 @@ ListView {
         else if (followNewest)
             scrollToNewest()
     }
+    onOriginYChanged: keepAnchor()
     onContentHeightChanged: {
         if (followNewest && started)
             scrollToNewest()
+        else
+            keepAnchor()
         updateVisibleRange()
     }
     onHeightChanged: {

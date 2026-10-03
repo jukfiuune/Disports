@@ -506,10 +506,14 @@ class Rest(BaseHTTPRequestHandler):
         m = re.match(r"/stickers/(\d+)\.(png|gif)$", path)
         if m and m.group(1) in ("7001", "7004"):
             picture = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "build", "test", "files", "sticker.png")
+            # MEDIA_DELAY=<seconds>: pictures arrive late, as on a slow network.
+            time.sleep(float(os.environ.get("MEDIA_DELAY", "0")))
             if os.path.exists(picture):
                 return self.reply(200, raw=open(picture, "rb").read(), content_type="image/png")
         if path.startswith("/files/media/"):
             picture = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "build", "test", "files", "sticker.png")
+            # MEDIA_DELAY=<seconds>: pictures arrive late, as on a slow network.
+            time.sleep(float(os.environ.get("MEDIA_DELAY", "0")))
             if os.path.exists(picture):
                 return self.reply(200, raw=open(picture, "rb").read(), content_type="image/png")
         m = re.match(r"/files/(\d+)/(.+)$", path)
