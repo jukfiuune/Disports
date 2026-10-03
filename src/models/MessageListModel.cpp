@@ -129,6 +129,7 @@ QVariant MessageListModel::data(const QModelIndex& index, int role) const
                    : QStringLiteral("<b>%1</b> used <b>/%2</b>").arg(str(m.m_interactionUserName).toHtmlEscaped(),
                                                                      str(m.m_interactionName).toHtmlEscaped());
     case ForwardedRole: return m.m_bIsForward;
+    case FirstNewRole:  return index.row() == m_firstNew;
     case StickersRole:  return systemRow ? QVariantList() : MessageContent::stickers(m);
     case PollRole:      return MessageContent::poll(m);
     case JumboRole:     return !systemRow && !m.m_bIsForward && isJumbo(m);
@@ -166,6 +167,7 @@ QHash<int, QByteArray> MessageListModel::roleNames() const
         {SeparatedRole, "separated"},
         {BlockedRole, "blocked"},
         {ReplyIdRole, "replyId"},
+        {FirstNewRole, "firstNew"},
     };
 }
 
@@ -175,6 +177,7 @@ void MessageListModel::setChannel(Snowflake guild, Snowflake channel)
         return;
     m_guild = guild;
     m_channel = channel;
+    m_newSince = 0;
     clear();
     sync();
 }
@@ -190,6 +193,7 @@ void MessageListModel::clear()
     m_reachedStart = false;
     emit countChanged();
     emit hasOlderChanged();
+    updateFirstNew();
 }
 
 std::vector<MessageListModel::Row> MessageListModel::readCache(Snowflake& olderGap, bool& reachedStart) const
@@ -341,6 +345,46 @@ void MessageListModel::sync()
         m_reachedStart = reachedStart;
         emit hasOlderChanged();
     }
+    updateFirstNew();
+}
+
+void MessageListModel::setNewSince(Snowflake message)
+{
+    if (m_newSince == message)
+        return;
+    m_newSince = message;
+    updateFirstNew();
+}
+
+// The oldest message after m_newSince that someone else sent. When it is
+// the oldest one loaded and there is more history, the line can't be placed
+// yet: the first new one may be further back.
+void MessageListModel::updateFirstNew()
+{
+    int first = -1;
+    bool any = false;
+    if (m_newSince) {
+        for (int i = int(m_rows.size()) - 1; i >= 0; --i) {
+            const Message& m = *m_rows[size_t(i)].message;
+            if (m.m_snowflake <= m_newSince || m.m_type == MessageType::SENDING_MESSAGE
+                || (m_ownUser && m.m_author_snowflake == m_ownUser))
+                continue;
+            any = true;
+            if (i < int(m_rows.size()) - 1 || !m_olderGap)
+                first = i;
+            break;
+        }
+    }
+    if (first == m_firstNew && any == m_hasNew)
+        return;
+    const int old = m_firstNew;
+    m_firstNew = first;
+    m_hasNew = any;
+    for (int row : {old, first}) {
+        if (row >= 0 && row < int(m_rows.size()))
+            emit dataChanged(index(row), index(row), {FirstNewRole});
+    }
+    emit firstNewChanged();
 }
 
 MessagePtr MessageListModel::olderGap() const

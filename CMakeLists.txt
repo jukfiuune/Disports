@@ -150,6 +150,7 @@ qt_add_qml_module(disports
         qml/MessageDelegate.qml
         qml/PanelHeader.qml
         qml/UnreadBadge.qml
+        qml/ScrollDownButton.qml
         qml/ConnectionBanner.qml
         qml/SettingsPage.qml
         qml/EmojiPicker.qml

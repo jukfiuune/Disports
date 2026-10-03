@@ -35,6 +35,7 @@ ListItem {
     required property bool separated
     required property bool blocked
     required property string replyId
+    required property bool firstNew
 
     signal replyRequested(string messageId, string author, string text)
     // Tapped the message this one replies to.
@@ -74,11 +75,11 @@ ListItem {
     // System lines get even room above and below; messages a bit more
     // above, where a new author starts.
     height: hiddenBlocked ? 0
-          : placeholder ? placeholderLabel.height + units.gu(1.2)
+          : newBar.height + (placeholder ? placeholderLabel.height + units.gu(1.2)
           : isSystem ? content.height + units.gu(1.2)
           : grouped ? content.height + units.gu(0.3)
           // At least as tall as the avatar, so it never runs into the next row.
-          : Math.max(content.height, avatar.visible ? avatar.height : 0) + units.gu(1.2)
+          : Math.max(content.height, avatar.visible ? avatar.height : 0) + units.gu(1.2))
     visible: !hiddenBlocked
 
     divider.visible: false
@@ -127,10 +128,32 @@ ListItem {
         ]
     }
 
+    // Above the first message not seen yet, as in TELEports.
+    Item {
+        id: newBar
+        anchors { top: parent.top; left: parent.left; right: parent.right }
+        height: bubble.firstNew ? units.gu(4) : 0
+        visible: bubble.firstNew
+
+        Rectangle {
+            anchors { left: parent.left; right: parent.right; verticalCenter: parent.verticalCenter }
+            height: units.gu(3)
+            // Suru's information colour.
+            color: theme.palette.normal.background.hslLightness < 0.5 ? "#19b6ee" : "#335280"
+            opacity: 0.8
+        }
+
+        Label {
+            anchors.centerIn: parent
+            text: i18n.tr("Unread messages")
+            color: "white"
+        }
+    }
+
     // A line above every message that is not grouped with the one above it
     // (another author, or the same one after a while).
     Rectangle {
-        visible: bubble.separated
+        visible: bubble.separated && !bubble.firstNew
         anchors { top: parent.top; left: parent.left; right: parent.right; leftMargin: units.gu(2); rightMargin: units.gu(2) }
         height: units.dp(1)
         color: theme.palette.normal.base
@@ -186,7 +209,7 @@ ListItem {
             top: parent.top
             leftMargin: bubble.contentLeft
             rightMargin: units.gu(2)
-            topMargin: units.gu(0.6)
+            topMargin: newBar.height + units.gu(0.6)
         }
         text: bubble.linkStyle + i18n.tr("Message from a blocked user") + " · <a href=\"show\">" + i18n.tr("Show") + "</a>"
               + " <font size=\"1\" color=\"" + theme.palette.normal.backgroundSecondaryText + "\">" + bubble.timestamp + "</font>"
@@ -223,7 +246,7 @@ ListItem {
             left: parent.left
             top: parent.top
             leftMargin: units.gu(2)
-            topMargin: units.gu(0.8)
+            topMargin: newBar.height + units.gu(0.8)
         }
         width: bubble.avatarSize
         height: bubble.avatarSize
@@ -245,7 +268,7 @@ ListItem {
             top: parent.top
             leftMargin: bubble.contentLeft
             rightMargin: units.gu(2)
-            topMargin: bubble.isSystem ? units.gu(0.6) : bubble.grouped ? units.gu(0.15) : units.gu(0.8)
+            topMargin: newBar.height + (bubble.isSystem ? units.gu(0.6) : bubble.grouped ? units.gu(0.15) : units.gu(0.8))
         }
         spacing: units.gu(0.3)
 

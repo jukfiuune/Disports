@@ -6,7 +6,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Disports\n"
 "Report-Msgid-Bugs-To: https://github.com/jukfiuune/Disports/issues\n"
-"POT-Creation-Date: 2026-10-02 13:17+0300\n"
+"POT-Creation-Date: 2026-10-03 11:15+0300\n"
 "PO-Revision-Date: 2026-10-01 16:00+0300\n"
 "Last-Translator: Martin Filipov\n"
 "Language-Team: Bulgarian\n"
@@ -301,6 +301,10 @@ msgstr "Отговори"
 #: qml/MessageDelegate.qml
 msgid "Show"
 msgstr "Покажи"
+
+#: qml/MessageDelegate.qml
+msgid "Unread messages"
+msgstr "Непрочетени съобщения"
 
 #: qml/MessageList.qml
 msgid "It isn't in the last %1 messages. Keep looking?"

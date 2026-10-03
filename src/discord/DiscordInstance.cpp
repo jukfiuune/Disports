@@ -2908,7 +2908,10 @@ void DiscordInstance::HandleMessageInsertOrUpdate(Json& j, bool bIsUpdate)
 
 	bool updateAck = false;
 
-	if (m_CurrentChannel == channelId && pChan->m_lastViewedMsg == oldSentMsg)
+	// Only our own messages count as read here. The frontend
+	// acknowledges the rest once they are seen; advancing them here meant
+	// they were never acknowledged, and came back unread after a reconnect.
+	if (pChan->m_lastViewedMsg == oldSentMsg && msg.m_author_snowflake == m_mySnowflake)
 		pChan->m_lastViewedMsg = pChan->m_lastSentMsg;
 	else
 		updateAck = true;

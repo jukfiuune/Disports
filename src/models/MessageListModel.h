@@ -27,6 +27,11 @@ class MessageListModel : public QAbstractListModel
     // The theme's colours for formatted text, from QML: {muted, code,
     // spoiler, text} (see MessageFormatter::Palette).
     Q_PROPERTY(QVariantMap palette READ palette WRITE setPalette NOTIFY paletteChanged)
+    // The first message not seen yet (the "Unread messages" bar goes above
+    // it), or -1; and whether there are any, also when the first one is
+    // further back than loaded.
+    Q_PROPERTY(int firstNewIndex READ firstNewIndex NOTIFY firstNewChanged)
+    Q_PROPERTY(bool hasNew READ hasNew NOTIFY firstNewChanged)
 
 public:
     enum Roles {
@@ -57,6 +62,7 @@ public:
         SeparatedRole,     // not grouped with the message above: separator
         BlockedRole,       // from a user the account blocked
         ReplyIdRole,       // the message replied to, if it is in this channel
+        FirstNewRole,      // the first message not seen yet: "Unread messages" above it
     };
 
     using QAbstractListModel::QAbstractListModel;
@@ -88,6 +94,10 @@ public:
     Q_INVOKABLE void revealSpoiler(const QString& messageId, int spoiler);
     // Newest real message, for read acknowledgement.
     Snowflake newestMessageId() const;
+    // Messages after this one (and not our own) are new. 0: none are.
+    void setNewSince(Snowflake message);
+    int firstNewIndex() const { return m_firstNew; }
+    bool hasNew() const { return m_hasNew; }
 
     void setOwnUserId(Snowflake user) { m_ownUser = user; }
 
@@ -103,6 +113,7 @@ signals:
     void hasOlderChanged();
     void emojiSizeChanged();
     void paletteChanged();
+    void firstNewChanged();
 
 private:
     struct Row {
@@ -116,12 +127,16 @@ private:
     QVariantList richBody(const Message& message) const;
     static bool isJumbo(const Message& message);
     void refreshBodies();
+    void updateFirstNew();
 
     Snowflake m_guild = 0;
     Snowflake m_channel = 0;
     Snowflake m_ownUser = 0;
     Snowflake m_olderGap = 0;
     bool m_reachedStart = false;
+    Snowflake m_newSince = 0;
+    int m_firstNew = -1;
+    bool m_hasNew = false;
     std::vector<Row> m_rows;
     int m_emojiSize = 20;
     int m_jumboEmojiSize = 48;

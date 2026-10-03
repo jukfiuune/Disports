@@ -5,6 +5,7 @@
 #include <QGuiApplication>
 #include <QStandardPaths>
 
+#include <algorithm>
 #include <utility>
 
 #include "discord/DiscordInstance.hpp"
@@ -231,6 +232,16 @@ void Session::setChatVisible(bool visible)
         ensureMessagesLoaded();
         markCurrentChannelRead();
     }
+}
+
+void Session::setAtNewest(bool atNewest)
+{
+    if (m_atNewest == atNewest)
+        return;
+    m_atNewest = atNewest;
+    emit atNewestChanged();
+    if (atNewest)
+        markCurrentChannelRead();
 }
 
 void Session::setAutoSelectChannel(bool autoSelect)
@@ -525,11 +536,19 @@ void Session::coreSelectedChannelChanged()
         return;
     m_instance->HandledChannelSwitch();
     m_messages->setChannel(m_instance->GetCurrentGuildID(), m_instance->GetCurrentChannelID());
+    // What was read before (never read: everything there now): the
+    // "Unread messages" bar goes after it. With unread messages the chat
+    // opens at the bar and only marks them read once scrolled down.
+    const Channel* channel = m_instance->GetCurrentChannel();
+    m_messages->setNewSince(!channel ? 0 : channel->m_lastViewedMsg ? channel->m_lastViewedMsg : channel->m_lastSentMsg);
+    m_atNewest = !channel || !channel->HasUnreadMessages();
+    emit atNewestChanged();
     m_typing->clear();
     emit currentChannelChanged();
     m_permissions->update();
     updateCurrentCall();
     ensureMessagesLoaded();
+    emit channelOpened();
 }
 
 void Session::coreChannelListChanged()
@@ -658,11 +677,17 @@ void Session::coreMessagesRefreshed()
 
 void Session::markCurrentChannelRead()
 {
-    if (!m_instance || !connected() || !m_chatVisible || !applicationActive())
+    if (!m_instance || !connected() || !m_chatVisible || !applicationActive() || !m_atNewest)
         return;
     Channel* channel = m_instance->GetCurrentChannel();
-    const Snowflake newest = m_messages->newestMessageId();
-    if (!channel || !newest || m_messages->channel() != channel->m_snowflake)
+    if (!channel || m_messages->channel() != channel->m_snowflake)
+        return;
+    Snowflake newest = m_messages->newestMessageId();
+    // Once fetched, the newest messages are all here; the channel's last
+    // message can still be newer when it was deleted, and would stay unread.
+    if (m_fetchedChannels.contains(channel->m_snowflake) && !m_loadingMessages)
+        newest = std::max(newest, channel->m_lastSentMsg);
+    if (!newest)
         return;
     if (channel->m_lastViewedMsg >= newest && channel->m_mentionCount == 0)
         return;
@@ -677,6 +702,10 @@ void Session::markCurrentChannelRead()
 void Session::coreMessageAdded(Snowflake channel, const Message& message)
 {
     if (channel == m_messages->channel()) {
+        // Arriving while the newest messages are on screen: seen, no
+        // "Unread messages" bar above it (unless there is one already).
+        if (m_atNewest && applicationActive() && m_chatVisible && !m_messages->hasNew())
+            m_messages->setNewSince(message.m_snowflake);
         m_messages->sync();
         m_typing->userSent(message.m_author_snowflake);
         markCurrentChannelRead();

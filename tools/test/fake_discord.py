@@ -13,7 +13,8 @@ One server, "Test Server", where our user (100) has the role "Muted":
   #no-files       @everyone is denied Attach Files
 Roles: Moderators (mentionable), Muted. Members: alice, bob, carol, dave.
 A DM with Alice (2001); LIVE_DM=<seconds> makes a new message from her
-arrive that long after signing in.
+arrive that long after signing in. #media is read up to 15 messages before
+its end; LIVE_MEDIA=<seconds> sends a new message there every that often.
 
 Uploads follow Discord's two steps: POST .../attachments gives an upload
 URL, PUT sends the file there, then the message names the upload.
@@ -300,7 +301,9 @@ def ready():
                              {"id": BOB_DM, "type": 1, "recipient_ids": ["300"], "last_message_id": None},
                              {"id": GROUP, "type": 3, "name": "Weekend plans with the whole family and everyone else", "icon": None,
                               "recipient_ids": ["200", "300"], "last_message_id": None}],
-        "read_state": {"entries": [], "version": 1},
+        # #media was read up to 15 messages before its end.
+        "read_state": {"entries": [{"id": MEDIA, "last_message_id": HISTORY_MSGS[MEDIA][-16]["id"],
+                                    "mention_count": 0}], "version": 1},
         "relationships": [{"id": "200", "user_id": "200", "type": 1, "user": ALICE},
                           {"id": "300", "user_id": "300", "type": 1, "user": BOB}],
         "user_guild_settings": {"entries": [], "version": 0},
@@ -346,6 +349,17 @@ async def gateway(ws):
                         log("LIVE dm", msg["id"])
                         await dispatch(ws, "MESSAGE_CREATE", msg)
                     asyncio.create_task(live_dm())
+                # LIVE_MEDIA=<seconds>: a new message in #media then, and
+                # again every that many seconds.
+                if os.environ.get("LIVE_MEDIA"):
+                    async def live_media(ws=ws):
+                        for n in range(5):
+                            await asyncio.sleep(float(os.environ["LIVE_MEDIA"]))
+                            msg = message(MEDIA, BOB, "Live message %d in #media" % n)
+                            HISTORY_MSGS[MEDIA].append(msg)
+                            log("LIVE media", msg["id"])
+                            await dispatch(ws, "MESSAGE_CREATE", dict(msg, guild_id=GUILD))
+                    asyncio.create_task(live_media())
                 if os.environ.get("INCOMING"):
                     await dispatch(ws, "CALL_CREATE", {"channel_id": GROUP, "message_id": new_id(), "region": "x",
                                    "ringing": [ME["id"]], "voice_states": [
@@ -460,7 +474,7 @@ class Rest(BaseHTTPRequestHandler):
             before = int(query.get("before", 0) or 0)
             msgs = [x for x in HISTORY_MSGS.get(channel, []) if not before or int(x["id"]) < before]
             page = list(reversed(msgs))[:limit]
-            log("REST history", channel, "before", before or "-", "->", len(page))
+            log("REST history", channel, "before", before or "-", "->", len(page), "newest", page[0]["id"] if page else "-")
             return self.reply(200, page)
         # The Lottie sticker: a blue rounded square, turning once a second.
         if path == "/stickers/7003.json":
@@ -584,7 +598,9 @@ class Rest(BaseHTTPRequestHandler):
                 broadcast("CALL_UPDATE", {"channel_id": channel, "region": "x", "ringing": [], "voice_states": []})
             threading.Timer(3, decline).start()
             return self.reply(204)
-        if path.endswith("/ack"):
+        m = re.match(r"/api/v9/channels/(\d+)/messages/(\d+)/ack$", path)
+        if m:
+            log("REST ack", m.group(1), m.group(2))
             return self.reply(200, {"token": None})
         if path.endswith("/typing"):
             return self.reply(204)

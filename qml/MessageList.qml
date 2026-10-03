@@ -22,12 +22,41 @@ ListView {
     property bool followNewest: true
 
     function scrollToNewest() {
+        openingAtNew = false
         followNewest = true
         Qt.callLater(function() {
             if (list.followNewest)
                 list.positionViewAtBeginning()
         })
     }
+
+    // A channel with unread messages opens at the first one, under the
+    // "Unread messages" bar, once its messages are in. Only showing the
+    // newest ones marks the channel read (Session.atNewest).
+    property bool openingAtNew: false
+
+    function openAtNew() {
+        if (!openingAtNew || Session.loadingMessages || count === 0)
+            return
+        openingAtNew = false
+        let index = Session.messages.firstNewIndex
+        // Further back than loaded: the oldest loaded, which loads more.
+        if (index < 0 && Session.messages.hasNew)
+            index = count - 1
+        if (index < 0) {
+            scrollToNewest()
+            return
+        }
+        positionViewAtIndex(index, ListView.Center)
+        // All of it fits: already at the newest.
+        Qt.callLater(function() { list.followNewest = list.atYEnd })
+    }
+
+    function updateAtNewest() {
+        Session.atNewest = !openingAtNew && followNewest
+    }
+    onFollowNewestChanged: updateAtNewest()
+    onOpeningAtNewChanged: updateAtNewest()
 
     // Going to a message (a reply's original): it flashes once there. Not
     // loaded yet, older pages are loaded until it is; every few pages the
@@ -80,8 +109,19 @@ ListView {
         function onLoadingMessagesChanged() {
             if (!Session.loadingMessages && list.seekingId !== "")
                 Qt.callLater(list.jumpToMessage, list.seekingId)
+            if (list.openingAtNew)
+                Qt.callLater(list.openAtNew)
         }
         function onCurrentChannelChanged() { list.seekingId = "" }
+        function onChannelOpened() {
+            if (Session.atNewest) {
+                list.scrollToNewest()
+            } else {
+                list.openingAtNew = true
+                list.followNewest = false
+                Qt.callLater(list.openAtNew)
+            }
+        }
     }
 
     Component {
@@ -147,7 +187,12 @@ ListView {
         updateVisibleRange()
     }
     onFlickEnded: followNewest = atYEnd
-    onCountChanged: if (followNewest) scrollToNewest()
+    onCountChanged: {
+        if (openingAtNew)
+            Qt.callLater(openAtNew)
+        else if (followNewest)
+            scrollToNewest()
+    }
     onContentHeightChanged: {
         if (followNewest)
             scrollToNewest()
@@ -160,7 +205,7 @@ ListView {
     }
     // The visual top is atYBeginning.
     onAtYBeginningChanged: {
-        if (atYBeginning && !followNewest && count > 0
+        if (atYBeginning && !followNewest && !openingAtNew && count > 0
                 && Session.messages.hasOlder && !Session.loadingMessages)
             Session.loadOlderMessages()
     }

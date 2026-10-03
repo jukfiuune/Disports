@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Disports\n"
 "Report-Msgid-Bugs-To: https://github.com/jukfiuune/Disports/issues\n"
-"POT-Creation-Date: 2026-10-02 13:17+0300\n"
+"POT-Creation-Date: 2026-10-03 11:15+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -297,6 +297,10 @@ msgstr ""
 
 #: qml/MessageDelegate.qml
 msgid "Show"
+msgstr ""
+
+#: qml/MessageDelegate.qml
+msgid "Unread messages"
 msgstr ""
 
 #: qml/MessageList.qml

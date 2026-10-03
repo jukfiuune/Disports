@@ -67,6 +67,10 @@ class Session : public QObject
     // or only shows its channel list (phone).
     Q_PROPERTY(bool chatVisible READ chatVisible WRITE setChatVisible NOTIFY chatVisibleChanged)
     Q_PROPERTY(bool autoSelectChannel READ autoSelectChannel WRITE setAutoSelectChannel NOTIFY autoSelectChannelChanged)
+    // Set by the chat: it shows the newest messages, so they are seen and
+    // the channel is marked read. False when a channel with unread messages
+    // opens, until the chat has scrolled down to them.
+    Q_PROPERTY(bool atNewest READ atNewest WRITE setAtNewest NOTIFY atNewestChanged)
 
     Q_PROPERTY(GatewayConnection* connection READ connection CONSTANT)
     Q_PROPERTY(ChannelPermissions* permissions READ permissions CONSTANT)
@@ -126,6 +130,8 @@ public:
     void setChatVisible(bool visible);
     bool autoSelectChannel() const { return m_autoSelectChannel; }
     void setAutoSelectChannel(bool autoSelect);
+    bool atNewest() const { return m_atNewest; }
+    void setAtNewest(bool atNewest);
 
     GatewayConnection* connection() const { return m_connection; }
     ChannelPermissions* permissions() const { return m_permissions; }
@@ -215,6 +221,10 @@ signals:
     void loadingMessagesChanged();
     void chatVisibleChanged();
     void autoSelectChannelChanged();
+    void atNewestChanged();
+    // Another channel was opened (currentChannelChanged also comes with
+    // other changes). messages.firstNewIndex says where its new ones start.
+    void channelOpened();
     void membersChanged();
 
 private:
@@ -244,6 +254,7 @@ private:
     bool m_loadingMessages = false;
     bool m_chatVisible = false;
     bool m_autoSelectChannel = false;
+    bool m_atNewest = true;
     // Until the core has set up the first READY; see coreConnected().
     bool m_firstReadyPending = false;
     // Showing the offline cache's state until the real READY arrives.

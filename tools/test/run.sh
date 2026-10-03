@@ -8,7 +8,7 @@
 # (sanitizer builds) as build/test/<name>/asan.* / ubsan.*.
 #
 # STEPS drives it with xdotool, ";"-separated: "sleep 2;click 700 772;drag x1 y1 x2 y2;
-# type hi @bo;key Return;wheel 30 400 5" (5 scroll steps down at 30,400).
+# type hi @bo;key Return;wheel 30 400 5" (5 scroll steps down at 30,400; -5 up).
 # APP_INSTALL picks the build to run (default: check.sh's, which has the
 # test hooks). Files for tests go in
 # build/test/files (/files in the container). Test hooks
@@ -60,7 +60,8 @@ for step in "${steps[@]}"; do
                   xdotool mousemove --window "$win" $(( $2 + ($4 - $2) * i / 8 )) $(( $3 + ($5 - $3) * i / 8 )); sleep 0.03
               done
               xdotool mouseup 1 ;;
-        wheel) xdotool mousemove --window "$win" "$2" "$3" click --repeat "$4" --delay 60 5 ;;
+        wheel) if [ "$4" -lt 0 ]; then xdotool mousemove --window "$win" "$2" "$3" click --repeat "${4#-}" --delay 60 4
+               else xdotool mousemove --window "$win" "$2" "$3" click --repeat "$4" --delay 60 5; fi ;;
         type) xdotool windowfocus --sync "$win" 2>/dev/null; shift; xdotool type --delay 80 "$*" ;;
         key) xdotool windowfocus --sync "$win" 2>/dev/null; xdotool key "$2" ;;
     esac

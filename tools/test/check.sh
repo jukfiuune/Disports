@@ -240,13 +240,27 @@ scenario_stickers() {   # the DM's stickers, playing: the APNG one goes red, gre
     expect stickers 'REST lottie sticker'
 }
 
+scenario_unread() {     # opens at the "Unread messages" bar; read once scrolled down to the newest
+    # Left at the bar: nothing is read.
+    STEPS="sleep 7" "$HERE/run.sh" unread-stay 8000 DISPORTS_OPEN_CHANNEL=1109 "${WIDE[@]}"
+    if grep -a -q 'REST ack 1109' "$LOG"; then
+        echo "   FAIL unread: marked read without scrolling down"
+        FAILED=1
+    fi
+    # The button down to the newest: read up to the newest message.
+    STEPS="sleep 7;click 952 700;sleep 3" "$HERE/run.sh" unread 11000 DISPORTS_OPEN_CHANNEL=1109 "${WIDE[@]}"
+    local newest
+    newest=$(grep -a -o 'REST history 1109 before - .*' "$LOG" | tail -1 | awk '{print $NF}')
+    expect unread "REST ack 1109 $newest\$"
+}
+
 scenario_permissions() { # read-only, no history, no files, slowmode
     for channel in 1103 1104 1106 1105; do
         STEPS="sleep 5" "$HERE/run.sh" permissions-$channel 6500 DISPORTS_OPEN_CHANNEL=$channel "${WIDE[@]}"
     done
 }
 
-ALL=(channels mentions upload zoom nicknames dmcall call switch threads reply login captcha migration profile voicechat stickers permissions)
+ALL=(channels mentions upload zoom nicknames dmcall call switch threads reply login captcha migration profile voicechat stickers unread permissions)
 SCENARIOS=("${@:-${ALL[@]}}")
 [ $# -eq 0 ] && SCENARIOS=("${ALL[@]}")
 

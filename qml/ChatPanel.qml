@@ -57,7 +57,6 @@ Item {
         function onCurrentChannelChanged() {
             chatPanel.closeEmoji()
             composer.reset()
-            messageList.scrollToNewest()
         }
     }
 
@@ -116,6 +115,13 @@ Item {
         onProfileRequested: function(userId) {
             chatPanel.pageStack.push(Qt.resolvedUrl("ProfilePage.qml"), { "userId": userId })
         }
+    }
+
+    ScrollDownButton {
+        anchors { right: messageList.right; bottom: messageList.bottom; bottomMargin: width / 2 }
+        z: 1
+        shown: messageList.count > 0 && !messageList.followNewest
+        onClicked: messageList.scrollToNewest()
     }
 
     Label {
