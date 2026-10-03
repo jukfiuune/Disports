@@ -21,9 +21,17 @@ ListView {
     // message is at atYEnd, and positionViewAtBeginning() goes there.
     property bool followNewest: true
 
+    // At the newest message, give or take a little: rows still being laid
+    // out can leave the view a few pixels short of atYEnd.
+    function nearNewest() {
+        return atYEnd || originY + contentHeight - contentY - height < units.gu(1)
+    }
+
     function scrollToNewest() {
+        cancelFlick()
         openingAtNew = false
         followNewest = true
+        updateAtNewest()
         Qt.callLater(function() {
             if (list.followNewest)
                 list.positionViewAtBeginning()
@@ -49,10 +57,12 @@ ListView {
         }
         positionViewAtIndex(index, ListView.Center)
         // All of it fits: already at the newest.
-        Qt.callLater(function() { list.followNewest = list.atYEnd })
+        Qt.callLater(function() { list.followNewest = list.nearNewest() })
     }
 
     function updateAtNewest() {
+        if (!started)
+            return
         Session.atNewest = !openingAtNew && followNewest
     }
     onFollowNewestChanged: updateAtNewest()
@@ -194,20 +204,44 @@ ListView {
             "code": Qt.tint(theme.palette.normal.background, "#24808080").toString(),
             "spoiler": Qt.tint(theme.palette.normal.background, "#b0808080").toString(),
             "text": theme.palette.normal.backgroundText.toString(),
+            "link": theme.palette.normal.activity.toString(),
         })
     }
     verticalLayoutDirection: ListView.BottomToTop
     // Rows are built ahead of the finger in the background.
     cacheBuffer: units.gu(150)
 
-    Component.onCompleted: updateVisibleRange()
-    onContentYChanged: if (!moving) updateVisibleRange()
+    // On a phone the chat page (and this list) comes after the channel
+    // was opened: start as Session::channelOpened would have. Until then
+    // it doesn't follow the newest message or mark anything read.
+    property bool started: false
+    Component.onCompleted: {
+        started = true
+        updateVisibleRange()
+        if (!Session.atNewest) {
+            openingAtNew = true
+            followNewest = false
+            Qt.callLater(openAtNew)
+        } else {
+            scrollToNewest()
+        }
+    }
+    onContentYChanged: {
+        // Dragged away from the newest, even slowly: stop following it, or
+        // rows growing as they are laid out would pull the view back down.
+        if (moving && followNewest && !nearNewest())
+            followNewest = false
+        if (!moving)
+            updateVisibleRange()
+    }
     onMovementEnded: {
-        followNewest = atYEnd
+        followNewest = nearNewest()
         updateVisibleRange()
     }
-    onFlickEnded: followNewest = atYEnd
+    onFlickEnded: followNewest = nearNewest()
     onCountChanged: {
+        if (!started)
+            return
         if (requestedId !== "")
             Qt.callLater(goToRequested)
         else if (openingAtNew)
@@ -216,12 +250,12 @@ ListView {
             scrollToNewest()
     }
     onContentHeightChanged: {
-        if (followNewest)
+        if (followNewest && started)
             scrollToNewest()
         updateVisibleRange()
     }
     onHeightChanged: {
-        if (followNewest)
+        if (followNewest && started)
             scrollToNewest()
         updateVisibleRange()
     }

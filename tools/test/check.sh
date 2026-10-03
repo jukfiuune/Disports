@@ -247,6 +247,12 @@ scenario_unread() {     # opens at the "Unread messages" bar; read once scrolled
         echo "   FAIL unread: marked read without scrolling down"
         FAILED=1
     fi
+    # On a phone the chat page comes after the channel is picked: the same.
+    STEPS="sleep 6;click 28 209;sleep 2;click 200 450;sleep 5" "$HERE/run.sh" unread-phone 14000
+    if grep -a -q 'REST ack 1109' "$LOG"; then
+        echo "   FAIL unread: marked read on a phone without scrolling down"
+        FAILED=1
+    fi
     # The button down to the newest: read up to the newest message.
     STEPS="sleep 7;click 952 700;sleep 3" "$HERE/run.sh" unread 11000 DISPORTS_OPEN_CHANNEL=1109 "${WIDE[@]}"
     local newest

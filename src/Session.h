@@ -246,6 +246,7 @@ private:
     void ensureMessagesLoaded();
     void afterGuildSelected();
     void refreshUnread();
+    void startUnreadView();
     void updateCurrentCall();
     // Asks Discord for the server members behind the messages shown whose
     // nicknames aren't known (history carries no member objects).

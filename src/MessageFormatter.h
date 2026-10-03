@@ -24,6 +24,7 @@ struct Palette {
     QString code = QStringLiteral("#e8e8e8");
     QString spoiler = QStringLiteral("#888888");
     QString text = QStringLiteral("#333333");
+    QString link = QStringLiteral("#19b6ee");
 };
 void setPalette(const Palette& palette);
 

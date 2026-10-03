@@ -514,6 +514,7 @@ void MessageListModel::setPalette(const QVariantMap& palette)
     colours.code = palette.value(QStringLiteral("code"), colours.code).toString();
     colours.spoiler = palette.value(QStringLiteral("spoiler"), colours.spoiler).toString();
     colours.text = palette.value(QStringLiteral("text"), colours.text).toString();
+    colours.link = palette.value(QStringLiteral("link"), colours.link).toString();
     MessageFormatter::setPalette(colours);
     emit paletteChanged();
     m_bodyCache.clear();

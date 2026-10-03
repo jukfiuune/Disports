@@ -114,6 +114,8 @@ struct Protected {
     }
 };
 
+MessageFormatter::Palette s_palette;
+
 // Links, mentions, custom emoji and timestamps, applied to HTML-escaped text
 // (so "<" and ">" appear as entities). In rich mode the generated HTML is
 // kept in `store`.
@@ -157,7 +159,7 @@ QString replaceTokens(QString text, Snowflake guild, bool rich, Protected* store
     });
 
     // Links to channels and messages the account can open show as the
-    // channel's name (and a bubble for a message), and open it in the app
+    // channel's name (and a speech bubble for a message), and open it in the app
     // (Session::openChannelLink); others stay links for the browser.
     auto channelLink = [&](const QString& url, const QString& label) {
         return rich ? html(QStringLiteral("<a href=\"%1\" style=\"text-decoration:none\"><b>%2</b></a>")
@@ -169,9 +171,18 @@ QString replaceTokens(QString text, Snowflake guild, bool rich, Protected* store
         QString label = channelLinkLabel(DiscordUrls::fromId(m.captured(2)));
         if (label.isEmpty())
             return m.captured(0);
-        if (!m.captured(3).isEmpty())
-            label += QStringLiteral(" \u203A \U0001F4AC");
-        return channelLink(m.captured(0), label);
+        if (m.captured(3).isEmpty())
+            return channelLink(m.captured(0), label);
+        // A message: "#general › " and a speech bubble, as the official
+        // client shows it.
+        label += QStringLiteral(" \u203A ");
+        if (!rich)
+            return label + QStringLiteral("message");
+        const int iconSize = qMax(12, emojiSize);
+        return html(QStringLiteral("<a href=\"%1\" style=\"text-decoration:none\"><b>%2</b>"
+                                   "<img src=\"image://symbolic/message/%3\" width=\"%4\" height=\"%4\" align=\"middle\"></a>")
+                        .arg(m.captured(0), label.toHtmlEscaped(), QString(s_palette.link).remove(QLatin1Char('#')))
+                        .arg(iconSize));
     });
 
     if (rich) {
@@ -209,8 +220,6 @@ QString replaceTokens(QString text, Snowflake guild, bool rich, Protected* store
     });
     return text;
 }
-
-MessageFormatter::Palette s_palette;
 
 // Quotes are marked while the text is built, and cut out or indented at
 // the end (richBlocks(), richText()).

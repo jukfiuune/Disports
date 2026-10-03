@@ -514,13 +514,30 @@ void Session::openChannel(const QString& channelId)
     }
     const Snowflake channel = DiscordUrls::fromId(channelId);
     const Snowflake guild = guildOfChannel(m_instance, channel);
-    if (guild != m_instance->GetCurrentGuildID())
+    if (guild != m_instance->GetCurrentGuildID()) {
         m_instance->OnSelectGuild(guild, channel);
-    else if (channel != m_instance->GetCurrentChannelID())
+    } else if (channel != m_instance->GetCurrentChannelID()) {
         m_instance->OnSelectChannel(channel);
+    } else if (Channel* current = m_instance->GetCurrentChannel(); current && current->HasUnreadMessages()) {
+        // Back into the same channel (a phone's channel list), with new
+        // messages since: opens at them like another channel would.
+        startUnreadView();
+        emit channelOpened();
+    }
 
     ensureMessagesLoaded();
     markCurrentChannelRead();
+}
+
+// What was read before (never read: everything there now): the "Unread
+// messages" bar goes after it. With unread messages the chat opens at the
+// bar and only marks them read once scrolled down.
+void Session::startUnreadView()
+{
+    const Channel* channel = m_instance ? m_instance->GetCurrentChannel() : nullptr;
+    m_messages->setNewSince(!channel ? 0 : channel->m_lastViewedMsg ? channel->m_lastViewedMsg : channel->m_lastSentMsg);
+    m_atNewest = !channel || !channel->HasUnreadMessages();
+    emit atNewestChanged();
 }
 
 bool Session::openChannelLink(const QString& url)
@@ -552,13 +569,7 @@ void Session::coreSelectedChannelChanged()
         return;
     m_instance->HandledChannelSwitch();
     m_messages->setChannel(m_instance->GetCurrentGuildID(), m_instance->GetCurrentChannelID());
-    // What was read before (never read: everything there now): the
-    // "Unread messages" bar goes after it. With unread messages the chat
-    // opens at the bar and only marks them read once scrolled down.
-    const Channel* channel = m_instance->GetCurrentChannel();
-    m_messages->setNewSince(!channel ? 0 : channel->m_lastViewedMsg ? channel->m_lastViewedMsg : channel->m_lastSentMsg);
-    m_atNewest = !channel || !channel->HasUnreadMessages();
-    emit atNewestChanged();
+    startUnreadView();
     m_typing->clear();
     emit currentChannelChanged();
     m_permissions->update();

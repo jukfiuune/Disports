@@ -11,6 +11,7 @@
 #include "Session.h"
 #include "media/GstVideoPlayer.h"
 #include "media/ApngView.h"
+#include "media/SymbolicIcons.h"
 #include "media/LottieView.h"
 #ifdef DISPORTS_TEST_HOOKS
 #include "testing/TestHooks.h"
@@ -97,6 +98,7 @@ int main(int argc, char* argv[])
     QQuickView view;
     ImageCacheFactory imageCache;
     view.engine()->setNetworkAccessManagerFactory(&imageCache);
+    view.engine()->addImageProvider(QStringLiteral("symbolic"), new SymbolicIcons);
     view.setResizeMode(QQuickView::SizeRootObjectToView);
     view.setTitle(QStringLiteral("Disports"));
     view.resize(450, 800);
