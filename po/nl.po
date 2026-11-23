@@ -1,0 +1,882 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR Martin Filipov
+# This file is distributed under the same license as the Disports package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Disports\n"
+"Report-Msgid-Bugs-To: https://github.com/jukfiuune/Disports/issues\n"
+"POT-Creation-Date: 2026-10-02 13:17+0300\n"
+"PO-Revision-Date: 2026-10-03 10:57+0200\n"
+"Last-Translator: Heimen Stoffels <vistausss@fastmail.com>\n"
+"Language-Team: \n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"X-Generator: Poedit 3.9\n"
+
+#: qml/AttachmentBar.qml
+msgid "Sending %1"
+msgstr "Bezig met versturen van %1"
+
+#: qml/CallBanner.qml
+msgid "Tap to return to call"
+msgstr "Druk om terug te keren naar de oproep"
+
+#: qml/CallBar.qml
+msgid "Call in progress"
+msgstr "Aan het bellen"
+
+#: qml/CallBar.qml
+msgid "Tap to join"
+msgstr "Druk om deel te nemen"
+
+#: qml/CallPage.qml src/voice/CallManager.cpp
+msgid "Calling..."
+msgstr "Aan het bellen…"
+
+#: qml/CallPage.qml src/voice/CallManager.cpp
+msgid "Connecting..."
+msgstr "Bezig met verbinden…"
+
+#: qml/CallPage.qml
+msgid "You are deafened"
+msgstr "Je bent zojuist doof geworden"
+
+#: qml/CaptchaPage.qml
+msgid "Are you human?"
+msgstr "Ben je een mens?"
+
+#: qml/CaptchaPage.qml qml/ChatPanel.qml qml/LoginPage.qml qml/SettingsPage.qml
+msgid "Cancel"
+msgstr "Annuleren"
+
+#: qml/CaptchaPage.qml
+msgid ""
+"Discord wants to make sure you're a person. Solve the captcha to continue."
+msgstr ""
+"Discord wil vaststellen of je een mens van vlees en bloed bent. Los de "
+"captcha op om door te gaan."
+
+#: qml/CaptchaPage.qml
+msgid "The captcha couldn't be loaded. Check your internet connection."
+msgstr "De captcha kan niet worden geladen — controleer je internetverbinding."
+
+#: qml/ChannelInfoPage.qml
+msgid "Age-restricted channel"
+msgstr "Leeftijdsgebonden kanaal"
+
+#: qml/ChannelInfoPage.qml
+msgid "Blocked"
+msgstr "Geblokkeerd"
+
+#: qml/ChannelInfoPage.qml
+msgid "Category"
+msgstr "Categorie"
+
+#: qml/ChannelInfoPage.qml
+msgid "Channel"
+msgstr "Kanaal"
+
+#: qml/ChannelInfoPage.qml qml/MessageDelegate.qml qml/ProfileView.qml
+msgid "Copy"
+msgstr "Kopiëren"
+
+#: qml/ChannelInfoPage.qml qml/ProfileView.qml
+msgid "ID"
+msgstr "Id"
+
+#: qml/ChannelInfoPage.qml qml/ChatPage.qml
+msgid "Info"
+msgstr "Informatie"
+
+#: qml/ChannelInfoPage.qml
+msgid "Members (%1)"
+msgstr "Leden (%1)"
+
+#: qml/ChannelInfoPage.qml
+msgid "Server"
+msgstr "Server"
+
+#: qml/ChannelInfoPage.qml
+msgid "Topic"
+msgstr "Onderwerp"
+
+#: qml/ChannelInfoPage.qml
+msgid "You"
+msgstr "Ik"
+
+#: qml/ChannelPanel.qml qml/MessageList.qml
+msgid "Loading..."
+msgstr "Bezig met laden…"
+
+#: qml/ChannelPanel.qml
+msgid "No channels"
+msgstr "Er zijn geen kanalen"
+
+#: qml/ChannelPanel.qml
+msgid "No conversations yet"
+msgstr "Je hebt nog geen gesprekken gevoerd"
+
+#: qml/ChannelPanel.qml
+msgid "and %1 more"
+msgstr "en %1 andere"
+
+#: qml/ChatPage.qml
+msgid "Call"
+msgstr "Bellen"
+
+#: qml/ChatPage.qml
+msgid "Join call"
+msgstr "Deelnemen aan oproep"
+
+#: qml/ChatPanel.qml
+msgid "Are you sure you want to permanently delete this message?"
+msgstr "Weet je zeker dat je dit bericht wilt verwijderen?"
+
+#: qml/ChatPanel.qml qml/MessageDelegate.qml
+msgid "Delete"
+msgstr "Verwijderen"
+
+#: qml/ChatPanel.qml
+msgid "Delete message"
+msgstr "Bericht verwijderen"
+
+#: qml/Composer.qml qml/ConnectionBanner.qml qml/Main.qml
+msgid "Connecting to Discord..."
+msgstr "Bezig met verbinden met Discord…"
+
+#: qml/Composer.qml
+msgid "Editing message"
+msgstr "Bericht bewerken"
+
+#: qml/Composer.qml
+msgid "Message %1"
+msgstr "Bericht %1"
+
+#: qml/Composer.qml
+msgid ""
+"Messages cannot exceed %1 characters. Your text has been truncated to fit "
+"the limit."
+msgstr ""
+"Berichten mogen niet meer dan %1 tekens bevatten — de tekst is daarom "
+"ingekort."
+
+#: qml/Composer.qml
+msgid "Replying to %1"
+msgstr "Antwoord aan %1"
+
+#: qml/Composer.qml src/MessageSender.cpp
+msgid "Slowmode: wait %1 s"
+msgstr "Langzaamaan: wacht %1 sec."
+
+#: qml/Composer.qml qml/Main.qml
+msgid "Waiting for network..."
+msgstr "Bezig met wachten op internetverbinding…"
+
+#: qml/Composer.qml src/MessageSender.cpp
+msgid "You can't send messages in this channel"
+msgstr "Je kunt geen berichten versturen aan dit kanaal"
+
+#: qml/ConnectionBanner.qml src/voice/CallManager.cpp
+msgid "Connected"
+msgstr "Verbonden"
+
+#: qml/ConnectionBanner.qml
+msgid "Offline - showing saved conversations"
+msgstr "Offline — er worden gesprekken uit de cache getoond"
+
+#: qml/ConnectionBanner.qml
+msgid "Reconnecting - retrying in %1 second, tap to retry now"
+msgid_plural "Reconnecting - retrying in %1 seconds, tap to retry now"
+msgstr[0] "Herverbinden: automatisch over %1 seconde — druk om nu te proberen"
+msgstr[1] "Herverbinden: automatisch over %1 seconden — druk om nu te proberen"
+
+#: qml/ContentPickerPage.qml
+msgid "Attach a file"
+msgstr "Bijlage toevoegen"
+
+#: qml/EmojiPicker.qml
+msgid "No emoji found"
+msgstr "Er zijn geen emoji beschikbaar"
+
+#: qml/EmojiPicker.qml
+msgid "Search emoji"
+msgstr "Emoji doorzoeken"
+
+#: qml/LoginPage.qml
+msgid "Paste a token instead (not recommended)"
+msgstr "Toegangssleutel plakken (niet aanbevolen)"
+
+#: qml/LoginPage.qml
+msgid "Paste your Discord account token to sign in directly."
+msgstr "Plak de toegangssleutel van je Discord-account om direct in te loggen."
+
+#: qml/LoginPage.qml
+msgid "Refresh QR code"
+msgstr "QR-code herladen"
+
+#: qml/LoginPage.qml
+msgid "Scan the QR code with the Discord mobile app."
+msgstr "Scan de QR-code met de mobiele Discord-app."
+
+#: qml/LoginPage.qml qml/PasswordLoginPage.qml
+msgid "Sign in"
+msgstr "Inloggen"
+
+#: qml/LoginPage.qml
+msgid "Sign in with a password (not recommended)"
+msgstr "Inloggen met wachtwoord (niet aanbevolen)"
+
+#: qml/LoginPage.qml
+msgid "Sign in with a token"
+msgstr "Inloggen met toegangssleutel"
+
+#: qml/LoginPage.qml
+msgid "Token"
+msgstr "Toegangssleutel"
+
+#: qml/LoginPage.qml
+msgid ""
+"Using any unofficial Discord client is against Discord's Terms of Service "
+"and may result in your account being restricted or banned."
+msgstr ""
+"Let op: het gebruik van onofficiële Discord-apps druist in tegen de algemene "
+"voorwaarden en kan leiden accountbeperkingen of zelfs -verbanningen."
+
+#: qml/Main.qml
+msgid ""
+"Discord wants a captcha solved, but this version of Ubuntu Touch can't show "
+"one. Update to 24.04-2.x or newer."
+msgstr ""
+"Discord wil dat je een captcha oplost, maar deze versie van Ubuntu Touch kan "
+"die niet tonen. Werk je systeem bij naar 24.04-2.x of nieuwer."
+
+#: qml/MainPage.qml
+msgid "Pick a conversation"
+msgstr "Kies een gesprek"
+
+#: qml/MainPage.qml qml/SettingsPage.qml
+msgid "Settings"
+msgstr "Instellingen"
+
+#: qml/MediaViewerPage.qml
+msgid "Media"
+msgstr "Media"
+
+#: qml/MediaViewerPage.qml
+msgid "Open in browser"
+msgstr "Openen in webbrowser"
+
+#: qml/MediaViewerPage.qml qml/VideoPlayer.qml
+msgid "Use \"Open in browser\"."
+msgstr "Gebruik ‘Openen in webbrowser’."
+
+#: qml/MediaViewerPage.qml src/media/GstVideoPlayer.cpp
+msgid "Videos can't be played on this device."
+msgstr "Dit apparaat kan geen video's afspelen."
+
+#: qml/MessageDelegate.qml
+msgid "Edit"
+msgstr "Bewerken"
+
+#: qml/MessageDelegate.qml
+msgid "Forwarded"
+msgstr "Doorgestuurd"
+
+#: qml/MessageDelegate.qml
+msgid "Message from a blocked user"
+msgstr "Bericht van geblokkeerde gebruiker"
+
+#: qml/MessageDelegate.qml
+msgid "Original message was deleted"
+msgstr "Het oorspronkelijke bericht is verwijderd"
+
+#: qml/MessageDelegate.qml
+msgid "React"
+msgstr "Reageren"
+
+#: qml/MessageDelegate.qml
+msgid "Reply"
+msgstr "Beantwoorden"
+
+#: qml/MessageDelegate.qml
+msgid "Show"
+msgstr "Bekijken"
+
+#: qml/MessageList.qml
+msgid "It isn't in the last %1 messages. Keep looking?"
+msgstr "Niet aangetroffen in de vorige %1 berichten. Wil je verder zoeken?"
+
+#: qml/MessageList.qml
+msgid "Keep looking"
+msgstr "Verder zoeken"
+
+#: qml/MessageList.qml
+msgid "Load older messages"
+msgstr "Oudere berichten laden"
+
+#: qml/MessageList.qml
+msgid "Stop"
+msgstr "Stoppen"
+
+#: qml/MessageList.qml
+msgid "The message could not be found."
+msgstr "Het bericht is niet aangetroffen."
+
+#: qml/MessageList.qml
+msgid "The message is far back"
+msgstr "Het bericht is van lang geleden"
+
+#: qml/MessageList.qml
+msgid "This is the beginning of #%1"
+msgstr "Dit is het begin van #%1"
+
+#: qml/MessageList.qml
+msgid "This is the beginning of your conversation with %1"
+msgstr "Dit is het begin van je gesprek met %1"
+
+#: qml/MessageList.qml
+msgid "You don't have permission to read earlier messages in this channel"
+msgstr "Je bent niet bevoegd om oudere berichten op dit kanaal te lezen"
+
+#: qml/PasswordLoginPage.qml
+msgid "Code"
+msgstr "Code"
+
+#: qml/PasswordLoginPage.qml
+msgid "Email or phone number"
+msgstr "E-mailadres of telefoonnummer"
+
+#: qml/PasswordLoginPage.qml
+msgid "Enter the code from the text message."
+msgstr "Voer de code uit de sms in."
+
+#: qml/PasswordLoginPage.qml
+msgid "Enter the code from your authenticator app."
+msgstr "Voer de code uit je verificatieapp in."
+
+#: qml/PasswordLoginPage.qml
+msgid "Password"
+msgstr "Wachtwoord"
+
+#: qml/PasswordLoginPage.qml
+msgid "Sign in with a password"
+msgstr "Inloggen met wachtwoord"
+
+#: qml/PasswordLoginPage.qml
+msgid ""
+"Signing in with a password from an unofficial app makes Discord more "
+"suspicious of the account. The QR code is the safer way."
+msgstr ""
+"Let op: door in te loggen met je wachtwoord in een onofficiële app, wordt "
+"Discord wantrouwiger. De QR-code is veiliger."
+
+#: qml/PasswordLoginPage.qml
+msgid "Start again"
+msgstr "Opnieuw beginnen"
+
+#: qml/PasswordLoginPage.qml
+msgid "Text me a code instead"
+msgstr "Code versturen"
+
+#: qml/PasswordLoginPage.qml
+msgid "Verify"
+msgstr "Verifiëren"
+
+#: qml/PasswordLoginPage.qml
+msgid "You can also use a backup code."
+msgstr "Je kunt ook een herstelcode gebruiken."
+
+#: qml/PollCard.qml
+msgid "%1 vote"
+msgid_plural "%1 votes"
+msgstr[0] "%1 stem"
+msgstr[1] "%1 stemmen"
+
+#: qml/PollCard.qml
+msgid "Poll"
+msgstr "Peiling"
+
+#: qml/PollCard.qml
+msgid "Poll closed"
+msgstr "Peiling gesloten"
+
+#: qml/PollCard.qml
+msgid "pick any"
+msgstr "kies iets"
+
+#: qml/ProfileView.qml
+msgid "About me"
+msgstr "Over mij"
+
+#: qml/ProfileView.qml
+msgid "Bot"
+msgstr "Bot"
+
+#: qml/ProfileView.qml
+msgid "Do not disturb"
+msgstr "Niet storen"
+
+#: qml/ProfileView.qml
+msgid "Idle"
+msgstr "Inactief"
+
+#: qml/ProfileView.qml
+msgid "Message"
+msgstr "Bericht"
+
+#: qml/ProfileView.qml
+msgid "Offline"
+msgstr "Offline"
+
+#: qml/ProfileView.qml
+msgid "Online"
+msgstr "Online"
+
+#: qml/ProfileView.qml
+msgid "You blocked this user"
+msgstr "Je hebt deze gebruiker geblokkeerd"
+
+#: qml/SettingsPage.qml
+msgid "Calls"
+msgstr "Oproepen"
+
+#: qml/SettingsPage.qml
+msgid "Chat"
+msgstr "Gesprek"
+
+#: qml/SettingsPage.qml
+msgid "Dark"
+msgstr "Donker"
+
+#: qml/SettingsPage.qml src/Session.cpp
+msgid "Direct messages"
+msgstr "Privéberichten"
+
+#: qml/SettingsPage.qml
+msgid "Echo cancellation"
+msgstr "Echo-onderdrukking"
+
+#: qml/SettingsPage.qml
+msgid "Follow system"
+msgstr "Systeemthema"
+
+#: qml/SettingsPage.qml
+msgid "Hide completely"
+msgstr "Volledig verbergen"
+
+#: qml/SettingsPage.qml
+msgid "How far the message box grows before it scrolls"
+msgstr "Hoe groot het berichtveld moet worden voordat je moet scrollen"
+
+#: qml/SettingsPage.qml
+msgid ""
+"Keeps others from hearing themselves through your loudspeaker, and evens out "
+"your volume."
+msgstr "Zorg er voor dat anderen zichzelf niet horen door je luidspreker."
+
+#: qml/SettingsPage.qml
+msgid "Light"
+msgstr "Licht"
+
+#: qml/SettingsPage.qml
+msgid "Log out"
+msgstr "Uitloggen"
+
+#: qml/SettingsPage.qml
+msgid "Message box lines"
+msgstr "Grootte van berichtveld"
+
+#: qml/SettingsPage.qml
+msgid "Messages from blocked users"
+msgstr "Berichten van geblokkeerde gebruikers"
+
+#: qml/SettingsPage.qml
+msgid "Noise suppression"
+msgstr "Ruisonderdrukking"
+
+#: qml/SettingsPage.qml
+msgid "Play GIFs automatically"
+msgstr "Gifjes automatisch afspelen"
+
+#: qml/SettingsPage.qml
+msgid ""
+"Removes background noise such as typing, fans and traffic from your "
+"microphone."
+msgstr ""
+"Vermindert achtergrondruis op je microfoon, zoals typ- en ventilatorgeluiden."
+
+#: qml/SettingsPage.qml
+msgid "Show a placeholder to tap"
+msgstr "Opvultekst tonen om op te drukken"
+
+#: qml/SettingsPage.qml
+msgid "Show normally"
+msgstr "Normaal tonen"
+
+#: qml/SettingsPage.qml
+msgid "Show profile pictures"
+msgstr "Profielfoto's tonen"
+
+#: qml/SettingsPage.qml
+msgid "Theme"
+msgstr "Thema"
+
+#: qml/SettingsPage.qml
+msgid "You'll need to sign in again to use Disports."
+msgstr "Log opnieuw in om Disports te gebruiken."
+
+#: qml/Sidebar.qml
+msgid "DMs"
+msgstr "PB's"
+
+#: qml/UpdateNotice.qml
+msgid "A look more consistent with Ubuntu Touch"
+msgstr "Betere integratie met Ubuntu Touch"
+
+#: qml/UpdateNotice.qml
+msgid "Calls in DMs, groups and voice channels"
+msgstr "Bellen in PB's, groepen en spraakkanalen"
+
+#: qml/UpdateNotice.qml
+msgid ""
+"Disports has been rebuilt from scratch for Ubuntu Touch 24.04. Your sign-in "
+"and settings were carried over from the old version."
+msgstr ""
+"Disports is volledig opnieuw ontworpen voor Ubuntu Touch 24.04. Je "
+"inloggegevens en instellingen uit de oude versie zijn overgezet."
+
+#: qml/UpdateNotice.qml
+msgid "Got it"
+msgstr "Ik begrijp het"
+
+#: qml/UpdateNotice.qml
+msgid "New in this version:"
+msgstr "Wijzigingslog:"
+
+#: qml/UpdateNotice.qml
+msgid "Recent conversations stay readable without a connection"
+msgstr "Onlangs gevoerde gesprekken zijn zonder internetverbinding te lezen"
+
+#: qml/UpdateNotice.qml
+msgid "Signing in with your email and password"
+msgstr "Inloggen met e-mailadres en wachtwoord"
+
+#: qml/UpdateNotice.qml
+msgid ""
+"Something not working like before? <a href=\"%1\">Let us know on GitHub</a>."
+msgstr ""
+"Werkt iets niet naar behoren? <a href=\"%1\">Laat het ons weten op GitHub</"
+"a>."
+
+#: qml/UpdateNotice.qml
+msgid "Welcome to Disports %1"
+msgstr "Welkom in Disports %1"
+
+#: qml/VideoPlayer.qml src/media/GstVideoPlayer.cpp
+msgid "The video could not be played."
+msgstr "De video kan niet worden afgespeeld."
+
+#: src/ChannelInfo.cpp
+msgid "Direct message"
+msgstr "Privébericht"
+
+#: src/ChannelInfo.cpp
+msgid "Group"
+msgstr "Groep"
+
+#: src/ChannelInfo.cpp
+msgid "Voice channel"
+msgstr "Spraakkanaal"
+
+#: src/ChannelInfo.cpp
+msgid "Stage channel"
+msgstr "Stagekanaal"
+
+#: src/ChannelInfo.cpp
+msgid "Announcement channel"
+msgstr "Aankondigingskanaal"
+
+#: src/ChannelInfo.cpp
+msgid "Forum"
+msgstr "Forum"
+
+#: src/ChannelInfo.cpp
+msgid "Media channel"
+msgstr "Mediakanaal"
+
+#: src/ChannelInfo.cpp
+msgid "Thread"
+msgstr "Gesprek"
+
+#: src/ChannelInfo.cpp
+msgid "Text channel"
+msgstr "Tekstkanaal"
+
+#: src/ChannelPermissions.cpp
+msgid "You're timed out until %1"
+msgstr "Je hebt geen toegang tot en met %1"
+
+#: src/MentionSuggester.cpp
+msgid "Notify everyone who can see this channel"
+msgstr "Iedereen vermelden die toegang heeft tot dit kanaal"
+
+#: src/MentionSuggester.cpp
+msgid "Notify everyone online who can see this channel"
+msgstr "Iedereen vermelden die online is en toegang heeft tot dit kanaal"
+
+#: src/MentionSuggester.cpp
+msgid "Role"
+msgstr "Rol"
+
+#: src/MessageSender.cpp
+msgid "Wait for the file being sent to finish."
+msgstr "Wacht totdat het bestand verstuurd is."
+
+#: src/MessageSender.cpp
+msgid "You can't attach files in this channel."
+msgstr "Je kunt geen bijlagen toevoegen aan dit kanaal."
+
+#: src/MessageSender.cpp
+msgid "%1 is too large to send."
+msgstr "%1 te groot om te versturen."
+
+#: src/MessageSender.cpp
+msgid "%1 could not be read."
+msgstr "%1 kan niet worden gelezen."
+
+#: src/MessageSender.cpp
+msgid "%1 could not be sent (error %2)."
+msgstr "%1 kan niet worden verstuurd (foutmelding: %2)."
+
+#: src/PasswordLogin.cpp
+msgid "Enter your email or phone number and your password."
+msgstr "Voer je e-mailadres/telefoonnummer en wachtwoord in."
+
+#: src/PasswordLogin.cpp
+msgid ""
+"This account only has a security key for two-factor authentication, which "
+"Disports can't use. Sign in with the QR code instead."
+msgstr ""
+"Let op: dit account beschikt over verificatie in twee stappen, een functie "
+"die Disports niet ondersteunt. Log in met de QR-code."
+
+#: src/PasswordLogin.cpp
+msgid "A code was sent to %1."
+msgstr "Er is een code verstuurd naar %1."
+
+#: src/PasswordLogin.cpp
+msgid "A code was sent to your phone."
+msgstr "Er is een code verstuurd naar je telefoon."
+
+#: src/PasswordLogin.cpp
+msgid "Enter the code."
+msgstr "Voer de code in."
+
+#: src/PasswordLogin.cpp
+msgid "Enter a 6-digit code, or an 8-character backup code."
+msgstr "Voer de zescijferige code in of een achtcijferige herstelcode."
+
+#: src/PasswordLogin.cpp
+msgid "Enter the 6-digit code."
+msgstr "Voer de zescijferige code in."
+
+#: src/PasswordLogin.cpp
+msgid "Signing in took too long. Please start again."
+msgstr "Het inloggen duurde te lang — begin overnieuw."
+
+#: src/PasswordLogin.cpp
+msgid "That code isn't right. Check it and try again."
+msgstr "De code is onjuist. Controleer de code en probeer het opnieuw."
+
+#: src/PasswordLogin.cpp
+msgid "Discord didn't send a sign-in token. Please try again."
+msgstr "Discord heeft geen toegangssleutel verzonden. Probeer het opnieuw."
+
+#: src/PasswordLogin.cpp
+msgid ""
+"Discord asks you to change your password. You can do that on discord.com."
+msgstr ""
+"Discord heeft om een wachtwoordwijziging gevraagd. Je kunt dit doen op "
+"discord.com."
+
+#: src/PasswordLogin.cpp
+msgid "Couldn't reach Discord. Check your internet connection and try again."
+msgstr ""
+"Discord is onbereikbaar. Controleer je verbinding en probeer het opnieuw."
+
+#: src/PasswordLogin.cpp
+msgid ""
+"Discord asked for a kind of captcha Disports can't show. Sign in with the QR "
+"code instead."
+msgstr ""
+"Discord probeerde een niet-ondersteunde captcha te tonen. Log in met de QR-"
+"code."
+
+#: src/PasswordLogin.cpp
+msgid "Discord needs the captcha solved before you can sign in."
+msgstr "Discord vereist dat je eerst de captcha oplost."
+
+#: src/PasswordLogin.cpp
+msgid "Too many attempts. Wait %1 s and try again."
+msgstr "Te veel pogingen — wacht %1 sec. en probeer het opnieuw."
+
+#: src/PasswordLogin.cpp
+msgid ""
+"Discord has suspended this account. See discord.com to find out why and to "
+"appeal."
+msgstr ""
+"Discord heeft dit account op non-actief gezet. Ga naar discord.com om de "
+"reden te bekijken en bezwaar in te dienen."
+
+#: src/PasswordLogin.cpp
+msgid "Discord is having trouble right now. Try again in a few minutes."
+msgstr ""
+"Discord ondervindt momenteel problemen. Probeer het over een paar minuten "
+"opnieuw."
+
+#: src/PasswordLogin.cpp
+msgid ""
+"This account is disabled or scheduled for deletion. Restore it in the "
+"official Discord app first."
+msgstr ""
+"Dit account is uitgeschakeld of staat op het punt verwijderd te worden. "
+"Herstel je account in de officiële Discord-app."
+
+#: src/PasswordLogin.cpp
+msgid ""
+"Discord sent a code to your phone to confirm this new sign-in. Disports "
+"can't take that code yet: sign in with your email address or the QR code "
+"instead."
+msgstr ""
+"Discord heeft een code verstuurd naar je telefoon om de inlogpoging te "
+"verifiëren. Disports ondersteunt dit nog niet. Log in met je e-mailadres of "
+"de QR-code."
+
+#: src/PasswordLogin.cpp
+msgid "The email, phone number or password isn't right."
+msgstr "Het e-mailadres, telefoonnummer of wachtwoord is onjuist."
+
+#: src/PasswordLogin.cpp
+msgid ""
+"Discord sent you an email to confirm this new sign-in. Open it, confirm, "
+"then sign in here again."
+msgstr ""
+"Discord heeft een e-mail gestuurd om de inlogpoging te verifiëren. Bevestig "
+"de poging via de mail en log opnieuw in."
+
+#: src/PasswordLogin.cpp
+msgid "Discord said: %1"
+msgstr "Discord gaf als antwoord: %1"
+
+#: src/PasswordLogin.cpp
+msgid "Signing in didn't work (error %1). Please try again."
+msgstr "Het inloggen is misluk (foutmelding: %1). Probeer het opnieuw."
+
+#: src/RemoteAuth.cpp
+msgid "Preparing QR code..."
+msgstr "Bezig met laden van QR-code…"
+
+#: src/RemoteAuth.cpp
+msgid "QR login only works with Discord's own servers."
+msgstr "Het inloggen met een QR-code werkt alleen op Discords eigen servers."
+
+#: src/RemoteAuth.cpp
+msgid "Discord QR login failed. Tap refresh to try again."
+msgstr "Het inloggen is mislukt. Druk op herladen om het opnieuw te proberen."
+
+#: src/RemoteAuth.cpp
+msgid ""
+"Couldn't reach Discord. Check your internet connection, then tap refresh."
+msgstr ""
+"Discord is onbereikbaar. Controleer je verbinding en druk dan op herladen."
+
+#: src/RemoteAuth.cpp
+msgid "The QR code expired. Tap refresh to get a new one."
+msgstr "De QR-code is verlopen. Druk op herladen om een nieuwe op te vragen."
+
+#: src/RemoteAuth.cpp
+msgid "Open Discord on your Android or iOS device and scan to sign in."
+msgstr ""
+"Open Discord op je Android- of iOS-apparaat en scan de QR-code om in te "
+"loggen."
+
+#: src/RemoteAuth.cpp
+msgid "Confirm the login on your phone."
+msgstr "Keur het inloggen goed op je telefoon."
+
+#: src/RemoteAuth.cpp
+msgid "QR login was canceled on your phone."
+msgstr "Het inloggen met een QR-code is afgebroken."
+
+#: src/RemoteAuth.cpp
+msgid "Signing in..."
+msgstr "Bezig met inloggen…"
+
+#: src/RemoteAuth.cpp
+msgid "Signed in."
+msgstr "Ingelogd."
+
+#: src/Session.cpp
+msgid ""
+"Discord didn't accept this token. Make sure you copied all of it, and that "
+"it's still valid (signing out of Discord makes it invalid)."
+msgstr ""
+"Discord heeft deze toegangssleutel afgekeurd. Zorg dat je heel de sleutel "
+"kopieert en dat deze geldig is (door uit te loggen op Discord wordt de "
+"sleutel ongeldig verklaard)."
+
+#: src/Session.cpp
+msgid "Your session has expired. Please sign in again."
+msgstr "Je sessie is verlopen — log opnieuw in."
+
+#: src/Session.cpp
+msgid "The message could not be edited."
+msgstr "Dit bericht kan niet worden bewerkt."
+
+#: src/TypingIndicator.cpp
+msgid "Someone"
+msgstr "Iemand"
+
+#: src/TypingIndicator.cpp
+msgid "%1 is typing..."
+msgstr "%1 is aan het typen…"
+
+#: src/TypingIndicator.cpp
+msgid "%1 and %2 are typing..."
+msgstr "%1 en %2 zijn aan het typen…"
+
+#: src/TypingIndicator.cpp
+msgid "Several people are typing..."
+msgstr "Verschillende personen zijn aan het typen…"
+
+#: src/voice/CallManager.cpp
+msgid "You left the call: no one else joined for 3 minutes."
+msgstr ""
+"Je hebt de oproep verlaten: niemand anders nam in de afgelopen 3 minuten "
+"deel."
+
+#: src/voice/CallManager.cpp
+msgid "Incoming call"
+msgstr "Inkomende oproep"
+
+#: src/voice/CallManager.cpp
+msgid "Waiting for others..."
+msgstr "Bezig met wachten op anderen…"
+
+#: src/voice/CallManager.cpp
+msgid "The call ended: the connection to Discord was lost."
+msgstr "Het gesprek is beëindigd: de verbinding met Discord is verbroken."
+
+#: src/voice/CallManager.cpp
+msgid "You don't have permission to speak in this channel."
+msgstr "Je bent niet bevoegd om dingen in te spreken op dit kanaal."
+
+#: src/voice/CallManager.cpp
+msgid "The call ended: %1"
+msgstr "De oproep is beëindigd: %1"
